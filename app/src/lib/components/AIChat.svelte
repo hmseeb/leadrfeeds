@@ -226,26 +226,6 @@
 			});
 		}
 
-		// Add category context (e.g., Reddit.com)
-		if (currentCategory) {
-			newContexts.push({
-				id: `category-${currentCategory}`,
-				type: 'category',
-				label: currentCategory,
-				data: { category: currentCategory }
-			});
-		}
-
-		// Add specific feed context (e.g., OpenAI News)
-		if (currentFeed) {
-			newContexts.push({
-				id: `feed-${currentFeed.feed_id}`,
-				type: 'feed',
-				label: currentFeed.feed_title,
-				data: currentFeed
-			});
-		}
-
 		// Add specific entry context (opened post)
 		if (currentEntry) {
 			newContexts.push({
@@ -254,6 +234,27 @@
 				label: currentEntry.entry_title,
 				data: currentEntry
 			});
+		} else {
+			// Only add category/feed context if no specific entry is selected
+			// Add category context (e.g., Reddit.com)
+			if (currentCategory) {
+				newContexts.push({
+					id: `category-${currentCategory}`,
+					type: 'category',
+					label: currentCategory,
+					data: { category: currentCategory }
+				});
+			}
+
+			// Add specific feed context (e.g., OpenAI News)
+			if (currentFeed) {
+				newContexts.push({
+					id: `feed-${currentFeed.feed_id}`,
+					type: 'feed',
+					label: currentFeed.feed_title,
+					data: currentFeed
+				});
+			}
 		}
 
 		// Build the new context array without triggering effect recursion
