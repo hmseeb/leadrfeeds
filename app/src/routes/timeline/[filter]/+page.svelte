@@ -40,11 +40,33 @@
 
 		const { data, error } = await supabase
 			.from('user_subscriptions')
-			.select('feeds(id, title, description, category)')
+			.select('feeds(id, title, url, site_url, description, category)')
 			.eq('user_id', $user.id);
 
 		if (!error && data) {
 			feeds = data.map((sub: any) => sub.feeds).filter(Boolean);
+		}
+	}
+
+	function getDomainCategory(url: string | null, siteUrl: string | null): string {
+		const feedUrl = url || siteUrl;
+		if (!feedUrl) return 'Other';
+
+		try {
+			const urlObj = new URL(feedUrl);
+			let domain = urlObj.hostname.replace('www.', '');
+
+			// Map common domains to readable names (same as sidebar)
+			if (domain.includes('youtube.com')) return 'YouTube';
+			if (domain.includes('reddit.com')) return 'Reddit';
+			if (domain.includes('github.com')) return 'GitHub';
+			if (domain.includes('medium.com')) return 'Medium';
+			if (domain.includes('substack.com')) return 'Substack';
+
+			// Capitalize first letter for other domains
+			return domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+		} catch (e) {
+			return 'Other';
 		}
 	}
 
@@ -103,7 +125,20 @@
 		}
 
 		if (categoryFilter) {
-			// Query entries directly by joining with feeds and filtering by category
+			// Filter feeds by domain category
+			const categoryFeeds = feeds.filter(f => {
+				const domainCat = getDomainCategory(f.url, f.site_url);
+				return domainCat === categoryFilter;
+			});
+			const feedIds = categoryFeeds.map(f => f.id);
+
+			if (feedIds.length === 0) {
+				// No feeds in this category
+				loading = false;
+				return;
+			}
+
+			// Query entries for feeds in this domain category
 			const { data, error } = await supabase
 				.from('entries')
 				.select(`
@@ -114,7 +149,7 @@
 					content,
 					author,
 					published_at,
-					feed:feed_id!inner (
+					feed:feed_id (
 						id,
 						title,
 						category,
@@ -127,7 +162,7 @@
 						user_id
 					)
 				`)
-				.eq('feed.category', categoryFilter)
+				.in('feed_id', feedIds)
 				.eq('user_entries.user_id', $user.id)
 				.order('published_at', { ascending: false })
 				.range(offset, offset + limit - 1);
