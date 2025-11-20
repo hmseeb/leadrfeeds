@@ -987,15 +987,15 @@ The user is asking about the content above. Provide insightful, accurate analysi
 	}
 </script>
 
-<div class="w-[400px] border-l border-gray-800 bg-[#1a1a1a] flex flex-col h-full">
+<div class="w-[400px] border-l border-gray-800/50 bg-[#121212] flex flex-col h-full">
 	<!-- Header -->
-	<div class="p-4 border-b border-gray-800">
-		<h2 class="font-semibold text-gray-200">AI Assistant</h2>
-		<p class="text-xs text-gray-500">Powered by OpenRouter</p>
+	<div class="px-6 py-5 border-b border-gray-800/50">
+		<h2 class="font-bold text-xl text-gray-100 tracking-tight">AI Assistant</h2>
+		<p class="text-xs text-gray-500 mt-0.5">Powered by OpenRouter</p>
 	</div>
 
 	<!-- Messages -->
-	<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4 space-y-4">
+	<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-6 space-y-4">
 		{#if !apiKey}
 			<div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-400">
 				<p class="font-medium mb-2">OpenRouter API Key Required</p>

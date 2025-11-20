@@ -300,10 +300,10 @@
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Timeline -->
 		<div class="flex-1 overflow-y-auto">
-			<div class="max-w-3xl mx-auto p-6">
+			<div class="max-w-3xl mx-auto px-8 py-8">
 				<!-- Header -->
-				<div class="mb-6">
-					<h1 class="text-2xl font-bold text-foreground">
+				<div class="mb-8">
+					<h1 class="text-3xl font-bold text-foreground tracking-tight">
 						{#if filter === 'all'}
 							All Posts
 						{:else if filter === 'starred'}
@@ -333,7 +333,7 @@
 						{/if}
 					</div>
 				{:else}
-					<div class="space-y-4">
+					<div class="space-y-6">
 						{#each entries as entry (entry.entry_id)}
 							<EntryCard
 								{entry}

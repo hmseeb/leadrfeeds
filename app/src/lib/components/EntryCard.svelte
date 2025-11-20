@@ -50,7 +50,7 @@
 
 <article
 	onclick={handleClick}
-	class="bg-card border border-border rounded-lg p-6 hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-200 cursor-pointer {!entry.is_read ? 'border-l-4 border-l-primary shadow-md shadow-black/20' : 'shadow-sm shadow-black/10'}"
+	class="bg-card border border-border rounded-xl p-8 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer backdrop-blur-sm {!entry.is_read ? 'border-l-[3px] border-l-primary shadow-lg shadow-primary/5' : 'shadow-md shadow-black/5'}"
 >
 	<!-- Feed Info -->
 	<div class="flex items-center gap-3 mb-3">
@@ -108,13 +108,13 @@
 	</div>
 
 	<!-- Title -->
-	<h2 class="text-lg font-semibold text-foreground mb-2 {!entry.is_read ? 'font-bold' : ''}">
+	<h2 class="text-xl font-semibold text-foreground mb-3 leading-snug {!entry.is_read ? 'font-bold' : 'font-medium'}">
 		{entry.entry_title || 'Untitled Post'}
 	</h2>
 
 	<!-- Description -->
 	{#if entry.entry_description}
-		<p class="text-sm text-muted-foreground mb-3 line-clamp-2">
+		<p class="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
 			{entry.entry_description}
 		</p>
 	{/if}

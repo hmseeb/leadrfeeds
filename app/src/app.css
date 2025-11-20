@@ -1,29 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 8%;
-    --foreground: 30 5% 90%;
+    /* Material Design dark theme - using #121212 base */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 95%;
+
+    /* Elevated surfaces with proper depth */
     --card: 0 0% 11%;
-    --card-foreground: 30 5% 90%;
-    --popover: 0 0% 11%;
-    --popover-foreground: 30 5% 90%;
-    --primary: 217 91% 60%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Desaturated primary - reduced saturation for dark mode */
+    --primary: 217 75% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 20 3% 16%;
-    --secondary-foreground: 30 5% 90%;
-    --muted: 20 3% 16%;
-    --muted-foreground: 30 5% 65%;
-    --accent: 142 70% 45%;
+
+    /* Secondary with proper contrast */
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 0 0% 95%;
+
+    /* Muted with subtle warmth */
+    --muted: 220 8% 20%;
+    --muted-foreground: 220 10% 70%;
+
+    /* Desaturated accent green for dark mode */
+    --accent: 142 55% 45%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+
+    /* Vibrant but not overwhelming destructive */
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 20 6% 22%;
-    --input: 20 3% 16%;
-    --ring: 217 91% 60%;
-    --radius: 0.5rem;
+
+    /* Subtle borders with slight color */
+    --border: 220 10% 25%;
+    --input: 220 10% 18%;
+    --ring: 217 75% 55%;
+    --radius: 0.75rem;
   }
 }
 
@@ -33,7 +50,15 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: 1.5;
+    letter-spacing: -0.011em;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.022em;
+    font-weight: 600;
   }
 }
 

@@ -145,19 +145,19 @@
 	}
 </script>
 
-<div class="w-64 bg-[#1a1a1a] flex flex-col h-screen text-gray-200 overflow-hidden">
+<div class="w-64 bg-[#121212] flex flex-col h-screen text-gray-200 overflow-hidden">
 	<!-- Header -->
-	<div class="p-4 flex items-center justify-between border-b border-gray-800 flex-shrink-0">
-		<h1 class="text-lg font-semibold">LeadrFeeds</h1>
+	<div class="px-6 py-5 flex items-center justify-between border-b border-gray-800/50 flex-shrink-0">
+		<h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">LeadrFeeds</h1>
 	</div>
 
 	<!-- Navigation -->
 	<nav class="flex-1 overflow-y-auto scrollbar-overlay">
 		<!-- Main Navigation -->
-		<div class="px-2 py-3 space-y-0.5">
+		<div class="px-3 py-4 space-y-1">
 			<a
 				href="/timeline/all"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 {currentPath === '/timeline/all' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+				class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' ? 'bg-gray-800/70 shadow-md shadow-black/10 text-blue-400' : 'text-gray-300'}"
 			>
 				<Home size={18} class="text-gray-400 flex-shrink-0" />
 				<span class="flex-1 min-w-0 truncate">All Posts</span>
@@ -170,7 +170,7 @@
 
 			<a
 				href="/timeline/starred"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 {currentPath === '/timeline/starred' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+				class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 			>
 				<Star size={18} class="text-gray-400 flex-shrink-0" />
 				<span class="flex-1 min-w-0 truncate">Starred</span>
@@ -178,7 +178,7 @@
 
 			<a
 				href="/discover"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 {currentPath === '/discover' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+				class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 			>
 				<Search size={18} class="text-gray-400 flex-shrink-0" />
 				<span class="flex-1 min-w-0 truncate">Discover</span>
