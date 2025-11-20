@@ -23,9 +23,10 @@
 		onToggleStar: (entryId: string) => void;
 		onMarkRead: (entryId: string) => void;
 		onClick: (entry: Entry) => void;
+		isSelected?: boolean;
 	}
 
-	let { entry, onToggleStar, onMarkRead, onClick }: Props = $props();
+	let { entry, onToggleStar, onMarkRead, onClick, isSelected = false }: Props = $props();
 
 	function getTimeAgo(dateString: string) {
 		try {
@@ -50,7 +51,7 @@
 
 <article
 	onclick={handleClick}
-	class="bg-card border border-border rounded-xl p-8 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer backdrop-blur-sm {!entry.is_read ? 'border-l-[3px] border-l-primary shadow-lg shadow-primary/5' : 'shadow-md shadow-black/5'}"
+	class="bg-card border rounded-xl p-8 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer backdrop-blur-sm {isSelected ? 'border-primary border-2 shadow-xl shadow-primary/10 ring-2 ring-primary/20' : !entry.is_read ? 'border-l-[3px] border-l-primary border-border shadow-lg shadow-primary/5' : 'border-border shadow-md shadow-black/5'}"
 >
 	<!-- Feed Info -->
 	<div class="flex items-center gap-3 mb-3">

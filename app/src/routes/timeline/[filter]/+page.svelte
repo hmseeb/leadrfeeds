@@ -340,6 +340,7 @@
 								onToggleStar={handleToggleStar}
 								onMarkRead={handleMarkRead}
 								onClick={handleEntryClick}
+								isSelected={selectedEntry?.entry_id === entry.entry_id}
 							/>
 						{/each}
 					</div>
@@ -373,12 +374,12 @@
 
 		<!-- Entry Detail Panel -->
 		{#if selectedEntry}
-			<div class="w-[600px] border-l border-border bg-card overflow-y-auto">
-				<div class="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">Article</h2>
+			<div class="w-[650px] border-l border-border bg-card overflow-y-auto flex-shrink-0">
+				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10">
+					<h2 class="font-semibold text-lg text-foreground">Article</h2>
 					<button
 						onclick={closeEntryDetail}
-						class="text-muted-foreground hover:text-foreground transition-colors"
+						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all"
 					>
 						✕
 					</button>
