@@ -163,11 +163,11 @@
 		{#if feeds.length > 0}
 			<div class="px-2 space-y-0.5">
 				{#each feeds as feed}
+					{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
+					{@const isMultiFeedCategory = categoryFeeds.length > 1}
 					<div>
 						<!-- Main Feed Item -->
 						<div class="flex items-center gap-2 group">
-							{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
-							{@const isMultiFeedCategory = categoryFeeds.length > 1}
 							<a
 								href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
 								class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
