@@ -156,14 +156,14 @@
 						image,
 						site_url
 					),
-					user_entries!inner (
+					user_entry_status!inner (
 						is_read,
 						is_starred,
 						user_id
 					)
 				`)
 				.in('feed_id', feedIds)
-				.eq('user_entries.user_id', $user.id)
+				.eq('user_entry_status.user_id', $user.id)
 				.order('published_at', { ascending: false })
 				.range(offset, offset + limit - 1);
 
@@ -173,7 +173,7 @@
 				// Transform data to match timeline entry format
 				const transformedData = data.map(entry => {
 					const feed = Array.isArray(entry.feed) ? entry.feed[0] : entry.feed;
-					const userEntry = Array.isArray(entry.user_entries) ? entry.user_entries[0] : entry.user_entries;
+					const userEntry = Array.isArray(entry.user_entry_status) ? entry.user_entry_status[0] : entry.user_entry_status;
 					return {
 						entry_id: entry.id,
 						entry_title: entry.title,
