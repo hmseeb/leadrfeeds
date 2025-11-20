@@ -24,6 +24,7 @@
 	let feeds = $state<any[]>([]);
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
 	let loadMoreElement: HTMLElement;
+	let isSidebarCollapsed = $state(false);
 
 	onMount(async () => {
 		if (!$user) {
@@ -294,16 +295,16 @@
 
 <div class="flex h-screen bg-background">
 	<!-- Sidebar -->
-	<Sidebar {activeFeedId} {activeCategory} />
+	<Sidebar {activeFeedId} {activeCategory} onCollapseChange={(collapsed) => isSidebarCollapsed = collapsed} />
 
 	<!-- Main Content -->
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Timeline -->
 		<div class="flex-1 overflow-y-auto bg-secondary">
-			<div class="max-w-3xl mx-auto px-8 py-8">
+			<div class="{selectedEntry ? 'w-full px-3' : 'max-w-3xl px-6 mx-auto'} py-6 transition-all duration-300">
 				<!-- Header -->
-				<div class="mb-8">
-					<h1 class="text-3xl font-bold text-foreground tracking-tight">
+				<div class="mb-6">
+					<h1 class="text-2xl font-bold text-foreground tracking-tight">
 						{#if filter === 'all'}
 							All Posts
 						{:else if filter === 'starred'}
@@ -333,7 +334,7 @@
 						{/if}
 					</div>
 				{:else}
-					<div class="space-y-6">
+					<div class="space-y-2">
 						{#each entries as entry (entry.entry_id)}
 							<EntryCard
 								{entry}
@@ -374,7 +375,7 @@
 
 		<!-- Entry Detail Panel -->
 		{#if selectedEntry}
-			<div class="w-[650px] border-l border-border bg-card overflow-y-auto flex-shrink-0">
+			<div class="{isSidebarCollapsed ? 'w-[850px]' : 'w-[650px]'} border-l border-border bg-card overflow-y-auto flex-shrink-0 transition-all duration-300">
 				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10">
 					<h2 class="font-semibold text-lg text-foreground">Article</h2>
 					<button

@@ -13,6 +13,7 @@
 	let searchQuery = $state('');
 	let selectedCategory = $state<string>('');
 	let categories = $state<string[]>([]);
+	let allCategories = $state<string[]>([]); // Store all categories regardless of filters
 	let loading = $state(true);
 	let subscribingIds = $state<Set<string>>(new Set());
 
@@ -28,7 +29,22 @@
 	async function loadFeeds() {
 		loading = true;
 
-		// Load discovery feeds
+		// Load all categories (without filter) if not already loaded
+		if (allCategories.length === 0) {
+			const { data: allFeedsData } = await supabase.rpc('get_discovery_feeds', {
+				search_query: undefined,
+				category_filter: undefined,
+				limit_param: 1000,
+				offset_param: 0
+			});
+
+			if (allFeedsData) {
+				const uniqueCategories = new Set(allFeedsData.map(f => f.feed_category).filter(Boolean));
+				allCategories = Array.from(uniqueCategories).sort();
+			}
+		}
+
+		// Load discovery feeds with filters
 		const { data: feedsData, error: feedsError } = await supabase.rpc('get_discovery_feeds', {
 			search_query: searchQuery || undefined,
 			category_filter: selectedCategory || undefined,
@@ -40,10 +56,6 @@
 			console.error('Error loading feeds:', feedsError);
 		} else if (feedsData) {
 			feeds = feedsData;
-
-			// Extract unique categories
-			const uniqueCategories = new Set(feedsData.map(f => f.feed_category).filter(Boolean));
-			categories = Array.from(uniqueCategories).sort();
 		}
 
 		// Load user's subscriptions
@@ -64,8 +76,8 @@
 	async function toggleSubscription(feedId: string) {
 		if (!$user) return;
 
-		subscribingIds.add(feedId);
-		subscribingIds = subscribingIds;
+		// Add to subscribing set
+		subscribingIds = new Set(subscribingIds).add(feedId);
 
 		const isSubscribed = subscribedFeedIds.has(feedId);
 
@@ -78,8 +90,9 @@
 				.eq('feed_id', feedId);
 
 			if (!error) {
-				subscribedFeedIds.delete(feedId);
-				subscribedFeedIds = subscribedFeedIds;
+				const newSet = new Set(subscribedFeedIds);
+				newSet.delete(feedId);
+				subscribedFeedIds = newSet;
 			}
 		} else {
 			// Subscribe
@@ -91,13 +104,14 @@
 				});
 
 			if (!error) {
-				subscribedFeedIds.add(feedId);
-				subscribedFeedIds = subscribedFeedIds;
+				subscribedFeedIds = new Set(subscribedFeedIds).add(feedId);
 			}
 		}
 
-		subscribingIds.delete(feedId);
-		subscribingIds = subscribingIds;
+		// Remove from subscribing set
+		const newSubscribingSet = new Set(subscribingIds);
+		newSubscribingSet.delete(feedId);
+		subscribingIds = newSubscribingSet;
 	}
 
 	async function handleSearch() {
@@ -133,7 +147,7 @@
 		</div>
 
 		<!-- Categories -->
-		{#if categories.length > 0}
+		{#if allCategories.length > 0}
 			<div class="mb-8">
 				<div class="flex flex-wrap gap-2">
 					<button
@@ -142,7 +156,7 @@
 					>
 						All
 					</button>
-					{#each categories as category}
+					{#each allCategories as category}
 						<button
 							onclick={() => filterByCategory(category)}
 							class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory === category ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
@@ -166,7 +180,7 @@
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each feeds as feed}
-					<div class="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors">
+					<div class="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors flex flex-col">
 						<div class="flex items-start justify-between mb-4">
 							<div class="flex-1 min-w-0">
 								{#if feed.feed_image}
@@ -217,29 +231,37 @@
 							</div>
 						</div>
 
-						{#if feed.feed_description}
-							<p class="text-sm text-muted-foreground mb-4 line-clamp-2">
-								{feed.feed_description}
-							</p>
-						{/if}
+						<div class="flex-1 flex flex-col">
+							{#if feed.feed_description}
+								<p class="text-sm text-muted-foreground mb-4 line-clamp-2">
+									{feed.feed_description}
+								</p>
+							{/if}
 
-						{#if feed.feed_site_url}
-							<a
-								href={feed.feed_site_url}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="text-xs text-primary hover:text-primary/90 mb-4 block truncate"
-							>
-								{feed.feed_site_url}
-							</a>
-						{/if}
+							{#if feed.feed_site_url}
+								<a
+									href={feed.feed_site_url}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="text-xs text-primary hover:text-primary/90 mb-4 block truncate"
+								>
+									{feed.feed_site_url}
+								</a>
+							{/if}
+						</div>
 
 						<button
 							onclick={() => toggleSubscription(feed.feed_id)}
 							disabled={subscribingIds.has(feed.feed_id)}
-							class="w-full py-2 px-4 rounded-md font-medium text-sm transition-colors {subscribedFeedIds.has(feed.feed_id) ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-primary text-primary-foreground hover:bg-primary/90'} disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+							class="w-full py-2 px-4 rounded-md font-medium text-sm transition-all duration-200 {subscribedFeedIds.has(feed.feed_id) ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-primary text-primary-foreground hover:bg-primary/90'} disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
 						>
-							{#if subscribedFeedIds.has(feed.feed_id)}
+							{#if subscribingIds.has(feed.feed_id)}
+								<svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								{subscribedFeedIds.has(feed.feed_id) ? 'Unsubscribing...' : 'Subscribing...'}
+							{:else if subscribedFeedIds.has(feed.feed_id)}
 								<Check size={16} />
 								Subscribed
 							{:else}

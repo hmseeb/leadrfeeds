@@ -51,15 +51,15 @@
 
 <article
 	onclick={handleClick}
-	class="bg-card border rounded-xl p-8 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer backdrop-blur-sm {isSelected ? 'border-primary border-2 shadow-xl shadow-primary/10 ring-2 ring-primary/20' : !entry.is_read ? 'border-l-[3px] border-l-primary border-border shadow-lg shadow-primary/5' : 'border-border shadow-md shadow-black/5'}"
+	class="bg-card border rounded-lg hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer backdrop-blur-sm {isSelected ? 'border-primary border-2 shadow-lg shadow-primary/10 ring-1 ring-primary/20 p-3' : !entry.is_read ? 'border-l-[3px] border-l-primary border-border shadow-md shadow-primary/5 p-4' : 'border-border shadow-sm shadow-black/5 p-4'}"
 >
 	<!-- Feed Info -->
-	<div class="flex items-center gap-3 mb-3">
+	<div class="flex items-center gap-2 mb-2">
 		{#if entry.feed_image}
 			<img
 				src={entry.feed_image}
 				alt={entry.feed_title}
-				class="w-6 h-6 rounded object-cover"
+				class="w-5 h-5 rounded object-cover"
 				onerror={(e) => {
 					if (!e.target.dataset.fallbackAttempted) {
 						e.target.dataset.fallbackAttempted = 'true';
@@ -75,13 +75,13 @@
 			<img
 				src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(entry.entry_url)}&size=64`}
 				alt={entry.feed_title}
-				class="w-6 h-6 rounded object-cover"
+				class="w-5 h-5 rounded object-cover"
 				onerror={(e) => {
 					e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
 				}}
 			/>
 		{:else}
-			<div class="w-6 h-6 rounded flex items-center justify-center bg-accent/10">
+			<div class="w-5 h-5 rounded flex items-center justify-center bg-accent/10">
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
 					<path d="M4 11a9 9 0 0 1 9 9"/>
 					<path d="M4 4a16 16 0 0 1 16 16"/>
@@ -109,19 +109,19 @@
 	</div>
 
 	<!-- Title -->
-	<h2 class="text-xl font-semibold text-foreground mb-3 leading-snug {!entry.is_read ? 'font-bold' : 'font-medium'}">
+	<h2 class="text-lg font-semibold text-foreground mb-2 leading-tight {!entry.is_read ? 'font-bold' : 'font-medium'} {isSelected ? 'truncate' : ''}">
 		{entry.entry_title || 'Untitled Post'}
 	</h2>
 
 	<!-- Description -->
 	{#if entry.entry_description}
-		<p class="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
+		<p class="text-sm text-muted-foreground mb-2 leading-relaxed {isSelected ? 'truncate' : 'line-clamp-2'}">
 			{entry.entry_description}
 		</p>
 	{/if}
 
 	<!-- Metadata -->
-	<div class="flex items-center gap-3 text-xs text-muted-foreground">
+	<div class="flex items-center gap-2 text-xs text-muted-foreground">
 		{#if entry.entry_author}
 			<span>{entry.entry_author}</span>
 			<span>•</span>

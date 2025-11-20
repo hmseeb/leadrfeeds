@@ -3,7 +3,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Home, Star, Settings, LogOut, Search, ChevronDown } from 'lucide-svelte';
+	import { Home, Star, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	interface FeedWithUnread {
 		feed_id: string;
@@ -15,7 +15,13 @@
 		unread_count: number;
 	}
 
-	let { activeFeedId = null, activeCategory = null }: { activeFeedId?: string | null; activeCategory?: string | null } = $props();
+	let { activeFeedId = null, activeCategory = null, onCollapseChange }: { activeFeedId?: string | null; activeCategory?: string | null; onCollapseChange?: (collapsed: boolean) => void } = $props();
+
+	let isCollapsed = $state(false);
+
+	$effect(() => {
+		onCollapseChange?.(isCollapsed);
+	});
 
 	let feeds = $state<FeedWithUnread[]>([]);
 	let totalUnread = $state(0);
@@ -145,10 +151,29 @@
 	}
 </script>
 
-<div class="w-64 bg-[#121212] flex flex-col h-screen text-gray-200 overflow-hidden">
+<div class="{isCollapsed ? 'w-16' : 'w-64'} bg-[#121212] flex flex-col h-screen text-gray-200 overflow-visible transition-all duration-300 relative">
+	<!-- Toggle Button -->
+	<button
+		onclick={() => isCollapsed = !isCollapsed}
+		class="absolute -right-3 top-1/2 -translate-y-1/2 z-50 bg-gray-800 hover:bg-gray-700 rounded-full p-1.5 shadow-lg transition-colors border border-gray-700"
+		title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+	>
+		{#if isCollapsed}
+			<ChevronRight size={16} class="text-gray-300" />
+		{:else}
+			<ChevronLeft size={16} class="text-gray-300" />
+		{/if}
+	</button>
+
 	<!-- Header -->
 	<div class="px-6 py-5 flex items-center justify-between border-b border-gray-800/50 flex-shrink-0">
-		<h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">LeadrFeeds</h1>
+		{#if !isCollapsed}
+			<h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">LeadrFeeds</h1>
+		{:else}
+			<div class="w-full flex justify-center">
+				<span class="text-xl font-bold text-blue-400">L</span>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Navigation -->
@@ -157,44 +182,56 @@
 		<div class="px-3 py-4 space-y-1">
 			<a
 				href="/timeline/all"
-				class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' ? 'bg-gray-800/70 shadow-md shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'bg-gray-800/70 shadow-md shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				title={isCollapsed ? 'All Posts' : ''}
 			>
-				<Home size={18} class="text-gray-400 flex-shrink-0" />
-				<span class="flex-1 min-w-0 truncate">All Posts</span>
-				{#if totalUnread > 0}
-					<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
-						{totalUnread}
-					</span>
+				<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				{#if !isCollapsed}
+					<span class="flex-1 min-w-0 truncate">All Posts</span>
+					{#if totalUnread > 0}
+						<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+							{totalUnread}
+						</span>
+					{/if}
 				{/if}
 			</a>
 
 			<a
 				href="/timeline/starred"
-				class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				title={isCollapsed ? 'Starred' : ''}
 			>
-				<Star size={18} class="text-gray-400 flex-shrink-0" />
-				<span class="flex-1 min-w-0 truncate">Starred</span>
+				<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				{#if !isCollapsed}
+					<span class="flex-1 min-w-0 truncate">Starred</span>
+				{/if}
 			</a>
 
 			<a
 				href="/discover"
-				class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' || currentPath.includes('/discover') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				title={isCollapsed ? 'Discover' : ''}
 			>
-				<Search size={18} class="text-gray-400 flex-shrink-0" />
-				<span class="flex-1 min-w-0 truncate">Discover</span>
+				<Search size={18} class="{currentPath === '/discover' || currentPath.includes('/discover') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				{#if !isCollapsed}
+					<span class="flex-1 min-w-0 truncate">Discover</span>
+				{/if}
 			</a>
 		</div>
 
 		<!-- Divider -->
 		<div class="mx-4 my-2 border-t border-gray-800"></div>
 
-		<!-- Feeds Section Header -->
-		<div class="px-4 py-2">
-			<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Feeds</h2>
-		</div>
+		{#if !isCollapsed}
+			<!-- Feeds Section Header -->
+			<div class="px-4 py-2">
+				<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Feeds</h2>
+			</div>
+		{/if}
 
 		<!-- Feed List (One per Domain Category) -->
 		{#if feeds.length > 0}
+			{#if !isCollapsed}
 			<div class="px-2 space-y-0.5">
 				{#each getRepresentativeFeeds() as feed}
 					{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
@@ -309,6 +346,57 @@
 					{/if}
 				{/each}
 			</div>
+			{:else}
+				<!-- Collapsed Feed Icons -->
+				<div class="px-2 space-y-1">
+					{#each getRepresentativeFeeds() as feed}
+						{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
+						{@const isMultiFeedCategory = categoryFeeds.length > 1}
+						{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0)}
+						<a
+							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
+							class="flex items-center justify-center p-2 rounded-md hover:bg-gray-800 transition-colors relative {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+							title={isMultiFeedCategory ? feed.feed_category : feed.feed_title}
+						>
+							{#if feed.feed_image}
+								<img
+									src={feed.feed_image}
+									alt={feed.feed_title}
+									class="w-6 h-6 rounded object-cover"
+									onerror={(e) => {
+										if (!e.target.dataset.fallbackAttempted) {
+											e.target.dataset.fallbackAttempted = 'true';
+											e.target.src = feed.feed_site_url
+												? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`
+												: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
+										}
+									}}
+								/>
+							{:else if feed.feed_site_url}
+								<img
+									src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`}
+									alt={feed.feed_title}
+									class="w-6 h-6 rounded object-cover"
+									onerror={(e) => {
+										e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
+									}}
+								/>
+							{:else}
+								<div class="w-6 h-6 rounded flex items-center justify-center bg-gray-700">
+									<div class="w-3 h-3 rounded-full bg-gray-500"></div>
+								</div>
+							{/if}
+
+							<!-- Unread badge -->
+							{#if totalCategoryUnread > 0}
+								<span class="absolute -top-1 -right-1 w-4 h-4 text-[10px] font-bold rounded-full bg-blue-500 text-white flex items-center justify-center">
+									{totalCategoryUnread > 9 ? '9+' : totalCategoryUnread}
+								</span>
+							{/if}
+						</a>
+					{/each}
+				</div>
+			{/if}
 		{/if}
 	</nav>
 
@@ -316,18 +404,24 @@
 	<div class="p-2 border-t border-gray-800 space-y-0.5 flex-shrink-0">
 		<a
 			href="/settings"
-			class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
+			class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-3'} py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
+			title={isCollapsed ? 'Settings' : ''}
 		>
 			<Settings size={18} class="text-gray-400 flex-shrink-0" />
-			<span class="flex-1 min-w-0 truncate">Settings</span>
+			{#if !isCollapsed}
+				<span class="flex-1 min-w-0 truncate">Settings</span>
+			{/if}
 		</a>
 
 		<button
 			onclick={handleSignOut}
-			class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors text-left"
+			class="w-full flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-3'} py-2 rounded-md text-sm hover:bg-gray-800 transition-colors text-left"
+			title={isCollapsed ? 'Sign Out' : ''}
 		>
 			<LogOut size={18} class="text-gray-400 flex-shrink-0" />
-			<span class="flex-1 min-w-0 truncate">Sign Out</span>
+			{#if !isCollapsed}
+				<span class="flex-1 min-w-0 truncate">Sign Out</span>
+			{/if}
 		</button>
 	</div>
 </div>
