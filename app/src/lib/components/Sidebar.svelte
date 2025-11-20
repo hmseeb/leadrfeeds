@@ -104,7 +104,11 @@
 		expandedFeeds = newExpanded;
 	}
 
-	function getCategoryFeeds(category: string, excludeFeedId: string) {
+	function getCategoryFeeds(category: string) {
+		return feeds.filter(f => f.feed_category === category);
+	}
+
+	function getOtherCategoryFeeds(category: string, excludeFeedId: string) {
 		return feeds.filter(f => f.feed_category === category && f.feed_id !== excludeFeedId);
 	}
 </script>
@@ -162,9 +166,11 @@
 					<div>
 						<!-- Main Feed Item -->
 						<div class="flex items-center gap-2 group">
+							{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
+							{@const isMultiFeedCategory = categoryFeeds.length > 1}
 							<a
-								href="/timeline/{feed.feed_id}"
-								class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {activeFeedId === feed.feed_id ? 'bg-gray-800' : ''}"
+								href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
+								class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
 							>
 								{#if feed.feed_image}
 									<img
@@ -201,11 +207,11 @@
 							</a>
 
 							<!-- More Button (show only if there are other feeds in the same category) -->
-							{#if getCategoryFeeds(feed.feed_category, feed.feed_id).length > 0}
+							{#if isMultiFeedCategory}
 								<button
 									onclick={() => toggleFeedCategory(feed.feed_id)}
 									class="p-1.5 hover:bg-gray-800 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-									title="Show more from {feed.feed_category}"
+									title="Show individual feeds"
 								>
 									<ChevronDown
 										size={14}
@@ -217,22 +223,10 @@
 
 						<!-- Expanded Category Feeds -->
 						{#if expandedFeeds.has(feed.feed_id)}
-							{@const categoryFeeds = getCategoryFeeds(feed.feed_category, feed.feed_id)}
+							{@const allCategoryFeeds = getCategoryFeeds(feed.feed_category)}
 							<div class="ml-10 mt-0.5 mb-1 space-y-0.5">
-								<!-- Category "View All" -->
-								<a
-									href="/timeline/category:{encodeURIComponent(feed.feed_category)}"
-									class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors text-gray-400 {activeCategory === feed.feed_category ? 'bg-gray-800 text-gray-200' : ''}"
-								>
-									<span class="flex-1">All {feed.feed_category}</span>
-									{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0) + feed.unread_count}
-									{#if totalCategoryUnread > 0}
-										<span class="text-xs">{totalCategoryUnread}</span>
-									{/if}
-								</a>
-
-								<!-- Other Feeds in Category -->
-								{#each categoryFeeds as categoryFeed}
+								<!-- All Feeds in Category -->
+								{#each allCategoryFeeds as categoryFeed}
 									<a
 										href="/timeline/{categoryFeed.feed_id}"
 										class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors text-gray-400 {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : ''}"
