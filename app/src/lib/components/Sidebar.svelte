@@ -3,7 +3,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Home, Star, Settings, LogOut, Search, ChevronRight, ChevronDown } from 'lucide-svelte';
+	import { Home, Star, Settings, LogOut, Search, ChevronRight } from 'lucide-svelte';
 
 	interface FeedWithUnread {
 		feed_id: string;
@@ -144,16 +144,17 @@
 	</div>
 
 	<!-- Navigation -->
-	<nav class="flex-1 overflow-y-auto p-4">
-		<div class="space-y-1 mb-6">
+	<nav class="flex-1 overflow-y-auto">
+		<!-- Main Navigation -->
+		<div class="p-3 space-y-0.5">
 			<a
 				href="/timeline/all"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors {currentPath === '/timeline/all' ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent'}"
+				class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {currentPath === '/timeline/all' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground hover:bg-accent/50'}"
 			>
 				<Home size={18} />
 				<span class="flex-1">All Posts</span>
 				{#if totalUnread > 0}
-					<span class="px-2 py-0.5 text-xs rounded-full bg-primary text-primary-foreground">
+					<span class="px-2 py-0.5 text-xs font-semibold rounded-md bg-primary/20 text-primary {currentPath === '/timeline/all' ? 'bg-primary-foreground/20 text-primary-foreground' : ''}">
 						{totalUnread}
 					</span>
 				{/if}
@@ -161,7 +162,7 @@
 
 			<a
 				href="/timeline/starred"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors {currentPath === '/timeline/starred' ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent'}"
+				class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {currentPath === '/timeline/starred' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground hover:bg-accent/50'}"
 			>
 				<Star size={18} />
 				<span>Starred</span>
@@ -169,92 +170,99 @@
 
 			<a
 				href="/discover"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors {currentPath === '/discover' ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent'}"
+				class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {currentPath === '/discover' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground hover:bg-accent/50'}"
 			>
 				<Search size={18} />
 				<span>Discover</span>
 			</a>
 		</div>
 
-		<!-- Categorized Feeds -->
+		<!-- Divider -->
+		<div class="mx-3 my-2 border-t border-border"></div>
+
+		<!-- Feeds by Category -->
 		{#if categorizedFeeds.length > 0}
-			<div class="space-y-4">
+			<div class="p-3 space-y-1">
 				{#each categorizedFeeds as group}
 					<div>
-						<div class="flex items-center gap-1">
-							<button
-								onclick={() => toggleCategory(group.category)}
-								class="p-2 hover:bg-accent rounded-md transition-colors"
-								aria-label="Toggle category"
-							>
-								{#if expandedCategories.has(group.category)}
-									<ChevronDown size={16} class="text-muted-foreground" />
-								{:else}
-									<ChevronRight size={16} class="text-muted-foreground" />
-								{/if}
-							</button>
-							<button
-								onclick={(e) => handleCategoryClick(group.category, e)}
-								class="flex-1 flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent transition-colors text-left {activeCategory === group.category ? 'bg-accent' : ''}"
-							>
-								<h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-									{group.category}
-								</h3>
-								{#if group.totalUnread > 0}
-									<span class="text-xs text-muted-foreground">
-										{group.totalUnread}
-									</span>
-								{/if}
-							</button>
-						</div>
+						<!-- Category Header -->
+						<button
+							onclick={() => toggleCategory(group.category)}
+							class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:bg-accent/50 group"
+						>
+							<ChevronRight
+								size={14}
+								class="text-muted-foreground transition-transform duration-200 {expandedCategories.has(group.category) ? 'rotate-90' : ''}"
+							/>
+							<span class="flex-1 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								{group.category}
+							</span>
+							{#if group.totalUnread > 0}
+								<span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-primary/10 text-primary">
+									{group.totalUnread}
+								</span>
+							{/if}
+						</button>
 
+						<!-- Category Feeds (Collapsed by default) -->
 						{#if expandedCategories.has(group.category)}
-							<div class="space-y-1 ml-2">
+							<div class="mt-0.5 ml-4 space-y-0.5">
+								<!-- "All in Category" option -->
+								<a
+									href="/timeline/category:{encodeURIComponent(group.category)}"
+									class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all {activeCategory === group.category ? 'bg-accent text-accent-foreground font-medium' : 'text-foreground/80 hover:bg-accent/50 hover:text-foreground'}"
+								>
+									<div class="w-4 h-4 rounded flex items-center justify-center bg-primary/10">
+										<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+									</div>
+									<span class="flex-1 text-xs font-medium">All {group.category}</span>
+									{#if group.totalUnread > 0}
+										<span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-primary/10 text-primary">
+											{group.totalUnread}
+										</span>
+									{/if}
+								</a>
+
+								<!-- Individual Feeds -->
 								{#each group.feeds as feed}
 									<a
 										href="/timeline/{feed.feed_id}"
-										class="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors {activeFeedId === feed.feed_id ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent'}"
+										class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all {activeFeedId === feed.feed_id ? 'bg-accent text-accent-foreground font-medium' : 'text-foreground/80 hover:bg-accent/50 hover:text-foreground'}"
 									>
-									{#if feed.feed_image}
-										<img
-											src={feed.feed_image}
-											alt={feed.feed_title}
-											class="w-5 h-5 rounded object-cover"
-											onerror={(e) => {
-												if (!e.target.dataset.fallbackAttempted) {
-													e.target.dataset.fallbackAttempted = 'true';
-													e.target.src = feed.feed_site_url
-														? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=64`
-														: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
-												} else {
-													e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
-												}
-											}}
-										/>
-									{:else if feed.feed_site_url}
-										<img
-											src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=64`}
-											alt={feed.feed_title}
-											class="w-5 h-5 rounded object-cover"
-											onerror={(e) => {
-												e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
-											}}
-										/>
-									{:else}
-										<div class="w-5 h-5 rounded flex items-center justify-center bg-accent/10">
-											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-												<path d="M4 11a9 9 0 0 1 9 9"/>
-												<path d="M4 4a16 16 0 0 1 16 16"/>
-												<circle cx="5" cy="19" r="1"/>
-											</svg>
-										</div>
-									{/if}
-									<span class="flex-1 truncate">{feed.feed_title}</span>
-									{#if feed.unread_count > 0}
-										<span class="px-1.5 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
-											{feed.unread_count}
-										</span>
-									{/if}
+										{#if feed.feed_image}
+											<img
+												src={feed.feed_image}
+												alt={feed.feed_title}
+												class="w-4 h-4 rounded object-cover flex-shrink-0"
+												onerror={(e) => {
+													if (!e.target.dataset.fallbackAttempted) {
+														e.target.dataset.fallbackAttempted = 'true';
+														e.target.src = feed.feed_site_url
+															? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`
+															: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
+													}
+												}}
+											/>
+										{:else if feed.feed_site_url}
+											<img
+												src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`}
+												alt={feed.feed_title}
+												class="w-4 h-4 rounded object-cover flex-shrink-0"
+												onerror={(e) => {
+													e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
+												}}
+											/>
+										{:else}
+											<div class="w-4 h-4 rounded flex items-center justify-center bg-accent/20 flex-shrink-0">
+												<div class="w-2 h-2 rounded-full bg-muted-foreground/40"></div>
+											</div>
+										{/if}
+										<span class="flex-1 truncate text-xs">{feed.feed_title}</span>
+										{#if feed.unread_count > 0}
+											<span class="px-1.5 py-0.5 text-xs font-semibold rounded bg-primary/10 text-primary">
+												{feed.unread_count}
+											</span>
+										{/if}
 									</a>
 								{/each}
 							</div>
@@ -266,10 +274,10 @@
 	</nav>
 
 	<!-- Footer -->
-	<div class="p-4 border-t border-border space-y-1">
+	<div class="p-3 border-t border-border space-y-0.5">
 		<a
 			href="/settings"
-			class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent transition-colors"
+			class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-accent/50 transition-all"
 		>
 			<Settings size={18} />
 			<span>Settings</span>
@@ -277,10 +285,19 @@
 
 		<button
 			onclick={handleSignOut}
-			class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent transition-colors"
+			class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-foreground hover:bg-accent/50 transition-all"
 		>
 			<LogOut size={18} />
 			<span>Sign Out</span>
 		</button>
 	</div>
 </div>
+
+<style>
+	/* Smooth transitions */
+	* {
+		transition-property: background-color, color, transform;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+		transition-duration: 150ms;
+	}
+</style>
