@@ -644,18 +644,18 @@ ${customPrompt}`
 
 		for (const context of activeContexts) {
 			if (context.type === 'view' && context.label === 'All') {
-				// Include summaries of visible timeline entries
+				// Include summaries of visible timeline entries with content
 				if (timelineEntries.length > 0) {
 					const entrySummaries = timelineEntries
-						.slice(0, 15)
-						.map(
-							(entry) =>
-								`- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${entry.entry_description?.substring(0, 150) || 'No description'}...`
-						)
+						.slice(0, 8)
+						.map((entry) => {
+							const content = entry.entry_content || entry.entry_description || 'No content';
+							return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
+						})
 						.join('\n\n');
 
 					contextParts.push(
-						`## All Posts Feed (${timelineEntries.length} visible entries):\n${entrySummaries}`
+						`## All Posts Feed (${timelineEntries.length} visible entries, showing first 8):\n${entrySummaries}`
 					);
 				}
 			} else if (context.type === 'view' && context.label === 'Starred') {
@@ -672,26 +672,26 @@ ${customPrompt}`
 				});
 				if (categoryPosts.length > 0) {
 					const summaries = categoryPosts
-						.slice(0, 10)
-						.map(
-							(entry) =>
-								`- "${entry.entry_title}" (${entry.feed_title})\n  ${entry.entry_description?.substring(0, 100) || ''}...`
-						)
+						.slice(0, 8)
+						.map((entry) => {
+							const content = entry.entry_content || entry.entry_description || 'No content';
+							return `- "${entry.entry_title}" (${entry.feed_title})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
+						})
 						.join('\n\n');
-					contextParts.push(`## ${context.label} Posts:\n${summaries}`);
+					contextParts.push(`## ${context.label} Posts (showing ${Math.min(8, categoryPosts.length)} of ${categoryPosts.length}):\n${summaries}`);
 				}
 			} else if (context.type === 'feed') {
 				// Include posts from specific feed
 				const feedPosts = timelineEntries.filter((e) => e.feed_id === context.data.feed_id);
 				if (feedPosts.length > 0) {
 					const summaries = feedPosts
-						.slice(0, 10)
-						.map(
-							(entry) =>
-								`- "${entry.entry_title}"\n  ${entry.entry_description?.substring(0, 100) || ''}...`
-						)
+						.slice(0, 8)
+						.map((entry) => {
+							const content = entry.entry_content || entry.entry_description || 'No content';
+							return `- "${entry.entry_title}"\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
+						})
 						.join('\n\n');
-					contextParts.push(`## ${context.label} Feed:\n${summaries}`);
+					contextParts.push(`## ${context.label} Feed (showing ${Math.min(8, feedPosts.length)} of ${feedPosts.length} posts):\n${summaries}`);
 				} else {
 					contextParts.push(`## Context: User is asking about the "${context.label}" feed`);
 				}
