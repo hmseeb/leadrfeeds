@@ -333,11 +333,12 @@
 </div>
 
 <style>
-	/* Overlay scrollbar - only visible on hover */
+	/* Overlay scrollbar - only visible on hover, never shifts content */
 	.scrollbar-overlay {
 		scrollbar-width: thin;
 		scrollbar-color: transparent transparent;
-		overflow-y: overlay; /* Overlay mode if supported */
+		scrollbar-gutter: stable; /* Reserve space to prevent layout shift */
+		overflow-y: auto;
 	}
 
 	/* Show scrollbar on hover */
@@ -348,6 +349,7 @@
 	/* Webkit browsers (Chrome, Edge, Safari) */
 	.scrollbar-overlay::-webkit-scrollbar {
 		width: 8px;
+		background: transparent;
 	}
 
 	.scrollbar-overlay::-webkit-scrollbar-track {
@@ -366,5 +368,10 @@
 
 	.scrollbar-overlay::-webkit-scrollbar-thumb:hover {
 		background: #4b5563;
+	}
+
+	/* Force scrollbar to overlay on Webkit */
+	.scrollbar-overlay::-webkit-scrollbar-button {
+		display: none;
 	}
 </style>
