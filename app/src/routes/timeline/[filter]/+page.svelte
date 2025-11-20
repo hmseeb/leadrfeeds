@@ -23,6 +23,7 @@
 	let selectedEntry = $state<TimelineEntry | null>(null);
 	let feeds = $state<any[]>([]);
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
+	let loadMoreElement: HTMLElement;
 
 	onMount(async () => {
 		if (!$user) {
@@ -33,6 +34,26 @@
 		filter = $page.params.filter;
 		await loadFeeds();
 		await loadEntries();
+
+		// Set up intersection observer for infinite scroll
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && hasMore && !loading) {
+					loadMore();
+				}
+			},
+			{ threshold: 0.1 }
+		);
+
+		if (loadMoreElement) {
+			observer.observe(loadMoreElement);
+		}
+
+		return () => {
+			if (loadMoreElement) {
+				observer.unobserve(loadMoreElement);
+			}
+		};
 	});
 
 	async function loadFeeds() {
@@ -323,15 +344,27 @@
 						{/each}
 					</div>
 
+					<!-- Infinite scroll sentinel and loading indicator -->
 					{#if hasMore}
+						<div
+							bind:this={loadMoreElement}
+							class="text-center py-6"
+						>
+							{#if loading}
+								<div class="flex items-center justify-center gap-2 text-muted-foreground">
+									<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									<span>Loading more posts...</span>
+								</div>
+							{:else}
+								<p class="text-muted-foreground text-sm">Scroll for more</p>
+							{/if}
+						</div>
+					{:else if entries.length > 0}
 						<div class="text-center py-6">
-							<button
-								onclick={loadMore}
-								disabled={loading}
-								class="px-6 py-2 bg-card border border-border rounded-lg text-foreground hover:border-primary transition-colors disabled:opacity-50"
-							>
-								{loading ? 'Loading...' : 'Load More'}
-							</button>
+							<p class="text-muted-foreground text-sm">No more posts</p>
 						</div>
 					{/if}
 				{/if}
