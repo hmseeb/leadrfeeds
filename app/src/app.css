@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* Material Design dark theme - using #121212 base */
-    --background: 0 0% 7%;
+    --background: 0 0% 7.1%;
     --foreground: 0 0% 95%;
 
     /* Elevated surfaces with proper depth */
