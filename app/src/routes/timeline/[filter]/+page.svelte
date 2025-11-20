@@ -299,7 +299,7 @@
 	<!-- Main Content -->
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Timeline -->
-		<div class="flex-1 overflow-y-auto">
+		<div class="flex-1 overflow-y-auto bg-secondary">
 			<div class="max-w-3xl mx-auto px-8 py-8">
 				<!-- Header -->
 				<div class="mb-8">
