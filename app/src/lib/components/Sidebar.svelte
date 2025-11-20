@@ -9,6 +9,7 @@
 		feed_id: string;
 		feed_title: string;
 		feed_category: string;
+		feed_url: string | null;
 		feed_image: string | null;
 		feed_site_url: string | null;
 		unread_count: number;
@@ -20,6 +21,27 @@
 	let totalUnread = $state(0);
 	let currentPath = $state('');
 	let expandedFeeds = $state<Set<string>>(new Set());
+
+	function getDomainCategory(url: string | null): string {
+		if (!url) return 'Other';
+
+		try {
+			const urlObj = new URL(url);
+			let domain = urlObj.hostname.replace('www.', '');
+
+			// Map common domains to readable names
+			if (domain.includes('youtube.com')) return 'YouTube';
+			if (domain.includes('reddit.com')) return 'Reddit';
+			if (domain.includes('github.com')) return 'GitHub';
+			if (domain.includes('medium.com')) return 'Medium';
+			if (domain.includes('substack.com')) return 'Substack';
+
+			// Capitalize first letter for other domains
+			return domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+		} catch (e) {
+			return 'Other';
+		}
+	}
 
 	onMount(async () => {
 		if (!$user) {
@@ -46,6 +68,7 @@
 				feeds:feed_id (
 					id,
 					title,
+					url,
 					category,
 					image,
 					site_url
@@ -71,15 +94,17 @@
 
 		const unreadMap = new Map(unreadData?.map(u => [u.feed_id, u.unread_count]) || []);
 
-		// Build feeds list
+		// Build feeds list with domain-based categories
 		feeds = userFeeds
 			.filter(uf => uf.feeds)
 			.map(uf => {
 				const feed = Array.isArray(uf.feeds) ? uf.feeds[0] : uf.feeds;
+				const feedUrl = feed.url || feed.site_url;
 				return {
 					feed_id: feed.id,
 					feed_title: feed.title || 'Untitled Feed',
-					feed_category: feed.category || 'Other',
+					feed_category: getDomainCategory(feedUrl),
+					feed_url: feedUrl,
 					feed_image: feed.image?.replace(/\/+$/, '') || null,
 					feed_site_url: feed.site_url || null,
 					unread_count: unreadMap.get(feed.id) || 0
@@ -108,8 +133,15 @@
 		return feeds.filter(f => f.feed_category === category);
 	}
 
-	function getOtherCategoryFeeds(category: string, excludeFeedId: string) {
-		return feeds.filter(f => f.feed_category === category && f.feed_id !== excludeFeedId);
+	function getRepresentativeFeeds() {
+		// Get one representative feed per category
+		const categoryMap = new Map<string, FeedWithUnread>();
+		feeds.forEach(feed => {
+			if (!categoryMap.has(feed.feed_category)) {
+				categoryMap.set(feed.feed_category, feed);
+			}
+		});
+		return Array.from(categoryMap.values());
 	}
 </script>
 
@@ -159,12 +191,13 @@
 			<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Feeds</h2>
 		</div>
 
-		<!-- Flat Feed List -->
+		<!-- Feed List (One per Domain Category) -->
 		{#if feeds.length > 0}
 			<div class="px-2 space-y-0.5">
-				{#each feeds as feed}
+				{#each getRepresentativeFeeds() as feed}
 					{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
 					{@const isMultiFeedCategory = categoryFeeds.length > 1}
+					{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0)}
 					<div>
 						<!-- Main Feed Item -->
 						<div class="flex items-center gap-2 group">
@@ -200,9 +233,14 @@
 										<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
 									</div>
 								{/if}
-								<span class="flex-1 truncate text-sm">{feed.feed_title}</span>
-								{#if feed.unread_count > 0}
-									<span class="text-xs text-gray-400 min-w-[20px] text-right">{feed.unread_count}</span>
+								<span class="flex-1 truncate text-sm">
+									{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
+									{#if isMultiFeedCategory}
+										<span class="text-xs text-gray-500 block truncate">{categoryFeeds.length} feeds</span>
+									{/if}
+								</span>
+								{#if totalCategoryUnread > 0}
+									<span class="text-xs text-gray-400 min-w-[20px] text-right">{totalCategoryUnread}</span>
 								{/if}
 							</a>
 
