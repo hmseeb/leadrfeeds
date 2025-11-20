@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
-	import { Send, Loader2, X, Plus } from 'lucide-svelte';
+	import { Send, X, Plus } from 'lucide-svelte';
 	import type { Tables } from '$lib/types/database';
 	import { marked } from 'marked';
 
@@ -1039,7 +1039,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 			{:else if loading}
 				<div class="flex justify-start">
 					<div class="bg-accent/10 rounded-lg px-4 py-2">
-						<Loader2 class="animate-spin text-muted-foreground" size={16} />
+						<p class="text-sm text-muted-foreground">Thinking...</p>
 					</div>
 				</div>
 			{/if}
