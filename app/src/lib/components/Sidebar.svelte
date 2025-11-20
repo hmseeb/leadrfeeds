@@ -145,7 +145,7 @@
 	}
 </script>
 
-<div class="w-64 bg-[#1a1a1a] flex flex-col h-screen text-gray-200">
+<div class="w-64 bg-[#1a1a1a] flex flex-col h-screen text-gray-200 overflow-hidden">
 	<!-- Header -->
 	<div class="p-4 flex items-center justify-between border-b border-gray-800 flex-shrink-0">
 		<h1 class="text-lg font-semibold">LeadrFeeds</h1>
@@ -200,80 +200,75 @@
 					{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
 					{@const isMultiFeedCategory = categoryFeeds.length > 1}
 					{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0)}
-					<div>
-						<!-- Main Feed Item -->
-						<div class="flex items-center gap-2 group">
-							<a
-								href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
-								class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
-							>
-								{#if feed.feed_image}
-									<img
-										src={feed.feed_image}
-										alt={feed.feed_title}
-										class="w-5 h-5 rounded object-cover flex-shrink-0"
-										onerror={(e) => {
-											if (!e.target.dataset.fallbackAttempted) {
-												e.target.dataset.fallbackAttempted = 'true';
-												e.target.src = feed.feed_site_url
-													? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`
-													: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
-											}
-										}}
-									/>
-								{:else if feed.feed_site_url}
-									<img
-										src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`}
-										alt={feed.feed_title}
-										class="w-5 h-5 rounded object-cover flex-shrink-0"
-										onerror={(e) => {
-											e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
-										}}
-									/>
-								{:else}
-									<div class="w-5 h-5 rounded flex items-center justify-center bg-gray-700 flex-shrink-0">
-										<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
-									</div>
-								{/if}
-								<div class="flex-1 min-w-0">
-									<div class="truncate text-sm">
-										{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
-									</div>
+					<div class="flex items-center">
+						<a
+							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
+							class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors min-w-0 {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
+						>
+							{#if feed.feed_image}
+								<img
+									src={feed.feed_image}
+									alt={feed.feed_title}
+									class="w-5 h-5 rounded object-cover flex-shrink-0"
+									onerror={(e) => {
+										if (!e.target.dataset.fallbackAttempted) {
+											e.target.dataset.fallbackAttempted = 'true';
+											e.target.src = feed.feed_site_url
+												? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`
+												: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
+										}
+									}}
+								/>
+							{:else if feed.feed_site_url}
+								<img
+									src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`}
+									alt={feed.feed_title}
+									class="w-5 h-5 rounded object-cover flex-shrink-0"
+									onerror={(e) => {
+										e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3C/svg%3E';
+									}}
+								/>
+							{:else}
+								<div class="w-5 h-5 rounded flex items-center justify-center bg-gray-700 flex-shrink-0">
+									<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
 								</div>
+							{/if}
+							<span class="flex-1 truncate text-sm min-w-0">
+								{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
+							</span>
+						</a>
 
-								<!-- Badge for single feeds -->
-								{#if !isMultiFeedCategory && feed.unread_count > 0}
-									<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
-										{feed.unread_count}
-									</span>
-								{/if}
-							</a>
-
-							<!-- Chevron button for multi-feed categories -->
+						<!-- Chevron button OR badge - same width for alignment -->
+						<div class="flex-shrink-0 px-2">
 							{#if isMultiFeedCategory}
 								<button
 									onclick={() => toggleFeedCategory(feed.feed_id)}
-									class="p-2 hover:bg-gray-800 rounded-md transition-colors"
+									class="p-1 hover:bg-gray-800 rounded-md transition-colors"
 									aria-label="Expand category"
 								>
 									<ChevronDown
 										size={16}
-										class="text-gray-400 flex-shrink-0 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}"
+										class="text-gray-400 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}"
 									/>
 								</button>
+							{:else if feed.unread_count > 0}
+								<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 inline-block">
+									{feed.unread_count}
+								</span>
 							{/if}
 						</div>
+					</div>
 
-						<!-- Expanded Category Feeds -->
-						{#if expandedFeeds.has(feed.feed_id)}
-							{@const allCategoryFeeds = getCategoryFeeds(feed.feed_category)}
-							<div class="ml-10 mt-0.5 mb-1 space-y-0.5">
-								<!-- All Feeds in Category -->
-								{#each allCategoryFeeds as categoryFeed}
-									<a
-										href="/timeline/{categoryFeed.feed_id}"
-										class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
-									>
+					<!-- Expanded Category Feeds -->
+					{#if expandedFeeds.has(feed.feed_id)}
+						{@const allCategoryFeeds = getCategoryFeeds(feed.feed_category)}
+						<div class="ml-8 mt-0.5 mb-1 space-y-0.5 overflow-hidden">
+							<!-- All Feeds in Category -->
+							{#each allCategoryFeeds as categoryFeed}
+								<a
+									href="/timeline/{categoryFeed.feed_id}"
+									class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors min-w-0 {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+								>
 										{#if categoryFeed.feed_image}
 											<img
 												src={categoryFeed.feed_image}
@@ -302,17 +297,16 @@
 												<div class="w-2 h-2 rounded-full bg-gray-500"></div>
 											</div>
 										{/if}
-										<span class="flex-1 truncate min-w-0">{categoryFeed.feed_title}</span>
-										{#if categoryFeed.unread_count > 0}
-											<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
-												{categoryFeed.unread_count}
-											</span>
-										{/if}
-									</a>
-								{/each}
-							</div>
-						{/if}
-					</div>
+									<span class="flex-1 truncate min-w-0">{categoryFeed.feed_title}</span>
+									{#if categoryFeed.unread_count > 0}
+										<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+											{categoryFeed.unread_count}
+										</span>
+									{/if}
+								</a>
+							{/each}
+						</div>
+					{/if}
 				{/each}
 			</div>
 		{/if}
