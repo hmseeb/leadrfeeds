@@ -129,7 +129,7 @@
 			categoryFilter = decodeURIComponent(filter.substring(9));
 			activeFeedId = null;
 			activeCategory = categoryFilter;
-			currentFeed = { feed_id: 'category', feed_title: categoryFilter };
+			currentFeed = null;
 		} else if (filter !== 'all') {
 			// Assume it's a feed UUID
 			feedIdFilter = filter;
