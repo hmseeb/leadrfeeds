@@ -4,6 +4,7 @@
 	import { user } from '$lib/stores/auth';
 	import { Send, Loader2, X, Plus } from 'lucide-svelte';
 	import type { Tables } from '$lib/types/database';
+	import { marked } from 'marked';
 
 	interface ContextBadge {
 		id: string;
@@ -81,6 +82,12 @@
 	];
 
 	let filteredCommands = $state<SlashCommand[]>([]);
+
+	// Strip HTML tags from content
+	function stripHtml(html: string): string {
+		const doc = new DOMParser().parseFromString(html, 'text/html');
+		return doc.body.textContent || '';
+	}
 
 	// Domain category helper (same as sidebar/timeline)
 	function getDomainCategory(url: string | null, siteUrl: string | null): string {
@@ -650,7 +657,8 @@ ${customPrompt}`
 					const entrySummaries = timelineEntries
 						.slice(0, 8)
 						.map((entry) => {
-							const content = entry.entry_content || entry.entry_description || 'No content';
+							const rawContent = entry.entry_content || entry.entry_description || 'No content';
+							const content = stripHtml(rawContent);
 							return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
 						})
 						.join('\n\n');
@@ -675,7 +683,8 @@ ${customPrompt}`
 					const summaries = categoryPosts
 						.slice(0, 8)
 						.map((entry) => {
-							const content = entry.entry_content || entry.entry_description || 'No content';
+							const rawContent = entry.entry_content || entry.entry_description || 'No content';
+							const content = stripHtml(rawContent);
 							return `- "${entry.entry_title}" (${entry.feed_title})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
 						})
 						.join('\n\n');
@@ -688,7 +697,8 @@ ${customPrompt}`
 					const summaries = feedPosts
 						.slice(0, 8)
 						.map((entry) => {
-							const content = entry.entry_content || entry.entry_description || 'No content';
+							const rawContent = entry.entry_content || entry.entry_description || 'No content';
+							const content = stripHtml(rawContent);
 							return `- "${entry.entry_title}"\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
 						})
 						.join('\n\n');
@@ -698,7 +708,8 @@ ${customPrompt}`
 				}
 			} else if (context.type === 'entry') {
 				// Include full entry content (up to 10000 chars for complete articles)
-				const content = context.data.entry_content || context.data.entry_description || '';
+				const rawContent = context.data.entry_content || context.data.entry_description || '';
+				const content = stripHtml(rawContent);
 				contextParts.push(
 					`## Article: "${context.label}"\nAuthor: ${context.data.entry_author || 'Unknown'}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content.substring(0, 10000)}${content.length > 10000 ? '...\n\n[Content truncated - full article exceeds 10000 characters]' : ''}`
 				);
@@ -872,6 +883,10 @@ The user is asking about the content above. Provide insightful, accurate analysi
 			sendMessage();
 		}
 	}
+
+	function renderMarkdown(content: string): string {
+		return marked(content, { breaks: true, gfm: true }) as string;
+	}
 </script>
 
 <div class="w-[400px] border-l border-border bg-card flex flex-col h-full">
@@ -903,7 +918,13 @@ The user is asking about the content above. Provide insightful, accurate analysi
 					<div
 						class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-accent/10 text-foreground'}"
 					>
-						<p class="text-sm whitespace-pre-wrap">{message.content}</p>
+						{#if message.role === 'user'}
+							<p class="text-sm whitespace-pre-wrap">{message.content}</p>
+						{:else}
+							<div class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-gray-800 prose-pre:text-gray-100">
+								{@html renderMarkdown(message.content)}
+							</div>
+						{/if}
 					</div>
 				</div>
 			{/each}
