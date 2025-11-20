@@ -152,7 +152,7 @@
 	</div>
 
 	<!-- Navigation -->
-	<nav class="flex-1 overflow-y-auto scrollbar-thin">
+	<nav class="flex-1 overflow-y-auto scrollbar-overlay">
 		<!-- Main Navigation -->
 		<div class="px-2 py-3 space-y-0.5">
 			<a
@@ -333,26 +333,38 @@
 </div>
 
 <style>
-	/* Custom scrollbar for dark theme */
-	.scrollbar-thin {
+	/* Overlay scrollbar - only visible on hover */
+	.scrollbar-overlay {
 		scrollbar-width: thin;
-		scrollbar-color: #374151 #1a1a1a;
+		scrollbar-color: transparent transparent;
+		overflow-y: overlay; /* Overlay mode if supported */
 	}
 
-	.scrollbar-thin::-webkit-scrollbar {
-		width: 6px;
+	/* Show scrollbar on hover */
+	.scrollbar-overlay:hover {
+		scrollbar-color: #374151 transparent;
 	}
 
-	.scrollbar-thin::-webkit-scrollbar-track {
-		background: #1a1a1a;
+	/* Webkit browsers (Chrome, Edge, Safari) */
+	.scrollbar-overlay::-webkit-scrollbar {
+		width: 8px;
 	}
 
-	.scrollbar-thin::-webkit-scrollbar-thumb {
+	.scrollbar-overlay::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.scrollbar-overlay::-webkit-scrollbar-thumb {
+		background: transparent;
+		border-radius: 4px;
+	}
+
+	/* Show scrollbar thumb on hover */
+	.scrollbar-overlay:hover::-webkit-scrollbar-thumb {
 		background: #374151;
-		border-radius: 3px;
 	}
 
-	.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+	.scrollbar-overlay::-webkit-scrollbar-thumb:hover {
 		background: #4b5563;
 	}
 </style>
