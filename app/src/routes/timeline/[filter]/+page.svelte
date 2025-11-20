@@ -103,17 +103,7 @@
 		}
 
 		if (categoryFilter) {
-			// For category filter, we need to get feeds in that category first
-			const categoryFeeds = feeds.filter(f => f.category === categoryFilter);
-			const feedIds = categoryFeeds.map(f => f.id);
-
-			if (feedIds.length === 0) {
-				// No feeds in this category
-				loading = false;
-				return;
-			}
-
-			// Fetch entries for all feeds in this category
+			// Query entries directly by joining with feeds and filtering by category
 			const { data, error } = await supabase
 				.from('entries')
 				.select(`
@@ -124,7 +114,7 @@
 					content,
 					author,
 					published_at,
-					feed:feed_id (
+					feed:feed_id!inner (
 						id,
 						title,
 						category,
@@ -137,7 +127,7 @@
 						user_id
 					)
 				`)
-				.in('feed_id', feedIds)
+				.eq('feed.category', categoryFilter)
 				.eq('user_entries.user_id', $user.id)
 				.order('published_at', { ascending: false })
 				.range(offset, offset + limit - 1);
