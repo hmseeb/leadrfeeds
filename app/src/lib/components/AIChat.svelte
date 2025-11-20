@@ -43,6 +43,7 @@
 	let apiKey = $state('');
 	let preferredModel = $state('anthropic/claude-3.5-sonnet');
 	let chatContainer: HTMLDivElement;
+	let streamingContent = $state('');
 
 	// Context management
 	let activeContexts = $state<ContextBadge[]>([]);
@@ -419,7 +420,8 @@ Focus on substance over details. Be clear and direct.`
 		};
 
 		try {
-			// Call OpenRouter
+			// Call OpenRouter with streaming
+			streamingContent = '';
 			const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 				method: 'POST',
 				headers: {
@@ -430,7 +432,8 @@ Focus on substance over details. Be clear and direct.`
 				},
 				body: JSON.stringify({
 					model: preferredModel,
-					messages: [systemMessage, { role: 'user', content: 'Please summarize this article.' }]
+					messages: [systemMessage, { role: 'user', content: 'Please summarize this article.' }],
+					stream: true
 				})
 			});
 
@@ -438,8 +441,38 @@ Focus on substance over details. Be clear and direct.`
 				throw new Error('OpenRouter API request failed');
 			}
 
-			const data = await response.json();
-			const summary = data.choices[0]?.message?.content || 'No response generated';
+			const reader = response.body?.getReader();
+			const decoder = new TextDecoder();
+			let summary = '';
+
+			if (reader) {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+
+					const chunk = decoder.decode(value, { stream: true });
+					const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
+
+					for (const line of lines) {
+						const data = line.replace(/^data: /, '');
+						if (data === '[DONE]') continue;
+
+						try {
+							const parsed = JSON.parse(data);
+							const content = parsed.choices[0]?.delta?.content || '';
+							if (content) {
+								summary += content;
+								streamingContent = summary;
+								scrollToBottom();
+							}
+						} catch (e) {
+							// Skip invalid JSON
+						}
+					}
+				}
+			}
+
+			streamingContent = '';
 
 			// Save assistant response
 			const { data: assistantMsg } = await supabase
@@ -449,7 +482,7 @@ Focus on substance over details. Be clear and direct.`
 					context_type: contextType,
 					context_id: contextId || null,
 					role: 'assistant',
-					content: summary
+					content: summary || 'No response generated'
 				})
 				.select()
 				.single();
@@ -588,6 +621,7 @@ ${customPrompt}`
 		];
 
 		try {
+			streamingContent = '';
 			const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 				method: 'POST',
 				headers: {
@@ -598,7 +632,8 @@ ${customPrompt}`
 				},
 				body: JSON.stringify({
 					model: preferredModel,
-					messages: apiMessages
+					messages: apiMessages,
+					stream: true
 				})
 			});
 
@@ -606,8 +641,38 @@ ${customPrompt}`
 				throw new Error('OpenRouter API request failed');
 			}
 
-			const data = await response.json();
-			const assistantMessage = data.choices[0]?.message?.content || 'No response';
+			const reader = response.body?.getReader();
+			const decoder = new TextDecoder();
+			let assistantMessage = '';
+
+			if (reader) {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+
+					const chunk = decoder.decode(value, { stream: true });
+					const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
+
+					for (const line of lines) {
+						const data = line.replace(/^data: /, '');
+						if (data === '[DONE]') continue;
+
+						try {
+							const parsed = JSON.parse(data);
+							const content = parsed.choices[0]?.delta?.content || '';
+							if (content) {
+								assistantMessage += content;
+								streamingContent = assistantMessage;
+								scrollToBottom();
+							}
+						} catch (e) {
+							// Skip invalid JSON
+						}
+					}
+				}
+			}
+
+			streamingContent = '';
 
 			const { data: assistantMsg } = await supabase
 				.from('chat_messages')
@@ -616,7 +681,7 @@ ${customPrompt}`
 					context_type: contextType,
 					context_id: contextId || null,
 					role: 'assistant',
-					content: assistantMessage
+					content: assistantMessage || 'No response'
 				})
 				.select()
 				.single();
@@ -811,8 +876,9 @@ The user is asking about the content above. Provide insightful, accurate analysi
 			{ role: 'user', content: userMessage }
 		];
 
-		// Call OpenRouter API
+		// Call OpenRouter API with streaming
 		try {
+			streamingContent = '';
 			const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 				method: 'POST',
 				headers: {
@@ -823,7 +889,8 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				},
 				body: JSON.stringify({
 					model: preferredModel,
-					messages: apiMessages
+					messages: apiMessages,
+					stream: true
 				})
 			});
 
@@ -831,8 +898,39 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				throw new Error('OpenRouter API request failed');
 			}
 
-			const data = await response.json();
-			const assistantMessage = data.choices[0]?.message?.content || 'No response';
+			const reader = response.body?.getReader();
+			const decoder = new TextDecoder();
+			let assistantMessage = '';
+
+			if (reader) {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+
+					const chunk = decoder.decode(value, { stream: true });
+					const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
+
+					for (const line of lines) {
+						const data = line.replace(/^data: /, '');
+						if (data === '[DONE]') continue;
+
+						try {
+							const parsed = JSON.parse(data);
+							const content = parsed.choices[0]?.delta?.content || '';
+							if (content) {
+								assistantMessage += content;
+								streamingContent = assistantMessage;
+								scrollToBottom();
+							}
+						} catch (e) {
+							// Skip invalid JSON
+						}
+					}
+				}
+			}
+
+			// Clear streaming content
+			streamingContent = '';
 
 			// Save assistant message
 			const { data: assistantMsg, error: assistantError } = await supabase
@@ -842,7 +940,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 					context_type: contextType,
 					context_id: contextId || null,
 					role: 'assistant',
-					content: assistantMessage
+					content: assistantMessage || 'No response'
 				})
 				.select()
 				.single();
@@ -929,7 +1027,16 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				</div>
 			{/each}
 
-			{#if loading}
+			{#if streamingContent}
+				<div class="flex justify-start">
+					<div class="max-w-[80%] rounded-lg px-4 py-2 bg-accent/10 text-foreground">
+						<div class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-gray-800 prose-pre:text-gray-100">
+							{@html renderMarkdown(streamingContent)}
+						</div>
+						<div class="inline-block w-2 h-4 bg-foreground animate-pulse ml-1"></div>
+					</div>
+				</div>
+			{:else if loading}
 				<div class="flex justify-start">
 					<div class="bg-accent/10 rounded-lg px-4 py-2">
 						<Loader2 class="animate-spin text-muted-foreground" size={16} />
