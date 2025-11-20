@@ -157,7 +157,7 @@
 		<div class="px-2 py-3 space-y-0.5">
 			<a
 				href="/timeline/all"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {currentPath === '/timeline/all' ? 'bg-gray-800' : ''}"
+				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 {currentPath === '/timeline/all' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 			>
 				<Home size={18} class="text-gray-400 flex-shrink-0" />
 				<span class="flex-1 min-w-0 truncate">All Posts</span>
@@ -170,7 +170,7 @@
 
 			<a
 				href="/timeline/starred"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {currentPath === '/timeline/starred' ? 'bg-gray-800' : ''}"
+				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 {currentPath === '/timeline/starred' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 			>
 				<Star size={18} class="text-gray-400 flex-shrink-0" />
 				<span class="flex-1 min-w-0 truncate">Starred</span>
@@ -178,7 +178,7 @@
 
 			<a
 				href="/discover"
-				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {currentPath === '/discover' ? 'bg-gray-800' : ''}"
+				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 {currentPath === '/discover' ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 			>
 				<Search size={18} class="text-gray-400 flex-shrink-0" />
 				<span class="flex-1 min-w-0 truncate">Discover</span>
@@ -203,7 +203,7 @@
 					<div class="flex items-center">
 						<a
 							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
-							class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors min-w-0 {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
+							class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0 {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 						>
 							{#if feed.feed_image}
 								<img

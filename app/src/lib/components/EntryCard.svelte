@@ -50,7 +50,7 @@
 
 <article
 	onclick={handleClick}
-	class="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors cursor-pointer {!entry.is_read ? 'border-l-4 border-l-primary' : ''}"
+	class="bg-card border border-border rounded-lg p-6 hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-200 cursor-pointer {!entry.is_read ? 'border-l-4 border-l-primary shadow-md shadow-black/20' : 'shadow-sm shadow-black/10'}"
 >
 	<!-- Feed Info -->
 	<div class="flex items-center gap-3 mb-3">
@@ -92,17 +92,17 @@
 			<span class="text-sm font-medium text-foreground truncate">
 				{entry.feed_title}
 			</span>
-			<span class="px-2 py-0.5 text-xs bg-accent/10 text-accent rounded">
+			<span class="px-2 py-0.5 text-xs bg-accent/20 text-accent font-medium rounded-full border border-accent/30">
 				{entry.feed_category}
 			</span>
 		</div>
 		<button
 			onclick={handleStarClick}
-			class="text-muted-foreground hover:text-accent transition-colors"
+			class="text-muted-foreground hover:text-accent hover:scale-110 transition-all duration-200"
 		>
 			<Star
 				size={18}
-				class={entry.is_starred ? 'fill-accent text-accent' : ''}
+				class={entry.is_starred ? 'fill-accent text-accent drop-shadow-lg' : ''}
 			/>
 		</button>
 	</div>
