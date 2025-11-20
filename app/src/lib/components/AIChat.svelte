@@ -214,26 +214,6 @@
 	$effect(() => {
 		const newContexts: ContextBadge[] = [];
 
-		// Add "All" context when viewing all posts
-		if (currentView === 'all') {
-			newContexts.push({
-				id: 'view-all',
-				type: 'view',
-				label: 'All',
-				data: { view: 'all' }
-			});
-		}
-
-		// Add "Starred" context when viewing starred posts
-		if (currentView === 'starred') {
-			newContexts.push({
-				id: 'view-starred',
-				type: 'view',
-				label: 'Starred',
-				data: { view: 'starred' }
-			});
-		}
-
 		// Add specific entry context (opened post)
 		if (currentEntry) {
 			newContexts.push({
@@ -243,6 +223,26 @@
 				data: currentEntry
 			});
 		} else {
+			// Only add view contexts if no specific entry is selected
+			// Add "All" context when viewing all posts
+			if (currentView === 'all') {
+				newContexts.push({
+					id: 'view-all',
+					type: 'view',
+					label: 'All',
+					data: { view: 'all' }
+				});
+			}
+
+			// Add "Starred" context when viewing starred posts
+			if (currentView === 'starred') {
+				newContexts.push({
+					id: 'view-starred',
+					type: 'view',
+					label: 'Starred',
+					data: { view: 'starred' }
+				});
+			}
 			// Only add category/feed context if no specific entry is selected
 			// Add category context (e.g., Reddit.com)
 			if (currentCategory) {
