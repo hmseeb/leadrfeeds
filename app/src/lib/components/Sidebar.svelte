@@ -159,10 +159,12 @@
 				href="/timeline/all"
 				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {currentPath === '/timeline/all' ? 'bg-gray-800' : ''}"
 			>
-				<Home size={18} class="text-gray-400" />
-				<span class="flex-1">All Posts</span>
+				<Home size={18} class="text-gray-400 flex-shrink-0" />
+				<span class="flex-1 min-w-0 truncate">All Posts</span>
 				{#if totalUnread > 0}
-					<span class="text-xs text-gray-400">{totalUnread}</span>
+					<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+						{totalUnread}
+					</span>
 				{/if}
 			</a>
 
@@ -170,16 +172,16 @@
 				href="/timeline/starred"
 				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {currentPath === '/timeline/starred' ? 'bg-gray-800' : ''}"
 			>
-				<Star size={18} class="text-gray-400" />
-				<span>Starred</span>
+				<Star size={18} class="text-gray-400 flex-shrink-0" />
+				<span class="flex-1 min-w-0 truncate">Starred</span>
 			</a>
 
 			<a
 				href="/discover"
 				class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {currentPath === '/discover' ? 'bg-gray-800' : ''}"
 			>
-				<Search size={18} class="text-gray-400" />
-				<span>Discover</span>
+				<Search size={18} class="text-gray-400 flex-shrink-0" />
+				<span class="flex-1 min-w-0 truncate">Discover</span>
 			</a>
 		</div>
 
@@ -200,11 +202,16 @@
 					{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0)}
 					<div>
 						<!-- Main Feed Item -->
-						<div class="flex items-center gap-2 group">
-							<a
-								href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
-								class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
-							>
+						<a
+							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
+							onclick={(e) => {
+								if (isMultiFeedCategory) {
+									e.preventDefault();
+									toggleFeedCategory(feed.feed_id);
+								}
+							}}
+							class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors cursor-pointer {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
+						>
 								{#if feed.feed_image}
 									<img
 										src={feed.feed_image}
@@ -233,31 +240,27 @@
 										<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
 									</div>
 								{/if}
-								<span class="flex-1 truncate text-sm">
+							<div class="flex-1 min-w-0">
+								<div class="truncate text-sm">
 									{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
-									{#if isMultiFeedCategory}
-										<span class="text-xs text-gray-500 block truncate">{categoryFeeds.length} feeds</span>
-									{/if}
-								</span>
-								{#if totalCategoryUnread > 0}
-									<span class="text-xs text-gray-400 min-w-[20px] text-right">{totalCategoryUnread}</span>
+								</div>
+								{#if isMultiFeedCategory}
+									<div class="text-xs text-gray-500 truncate">{categoryFeeds.length} feeds</div>
 								{/if}
-							</a>
+							</div>
 
-							<!-- More Button (show only if there are other feeds in the same category) -->
+							<!-- Show chevron for multi-feed categories, badge for single feeds -->
 							{#if isMultiFeedCategory}
-								<button
-									onclick={() => toggleFeedCategory(feed.feed_id)}
-									class="p-1.5 hover:bg-gray-800 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-									title="Show individual feeds"
-								>
-									<ChevronDown
-										size={14}
-										class="text-gray-400 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}"
-									/>
-								</button>
+								<ChevronDown
+									size={16}
+									class="text-gray-400 flex-shrink-0 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}"
+								/>
+							{:else if feed.unread_count > 0}
+								<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+									{feed.unread_count}
+								</span>
 							{/if}
-						</div>
+						</a>
 
 						<!-- Expanded Category Feeds -->
 						{#if expandedFeeds.has(feed.feed_id)}
@@ -267,7 +270,7 @@
 								{#each allCategoryFeeds as categoryFeed}
 									<a
 										href="/timeline/{categoryFeed.feed_id}"
-										class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors text-gray-400 {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : ''}"
+										class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
 									>
 										{#if categoryFeed.feed_image}
 											<img
@@ -297,9 +300,11 @@
 												<div class="w-2 h-2 rounded-full bg-gray-500"></div>
 											</div>
 										{/if}
-										<span class="flex-1 truncate">{categoryFeed.feed_title}</span>
+										<span class="flex-1 truncate min-w-0">{categoryFeed.feed_title}</span>
 										{#if categoryFeed.unread_count > 0}
-											<span class="text-xs">{categoryFeed.unread_count}</span>
+											<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+												{categoryFeed.unread_count}
+											</span>
 										{/if}
 									</a>
 								{/each}
@@ -317,16 +322,16 @@
 			href="/settings"
 			class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
 		>
-			<Settings size={18} class="text-gray-400" />
-			<span>Settings</span>
+			<Settings size={18} class="text-gray-400 flex-shrink-0" />
+			<span class="flex-1 min-w-0 truncate">Settings</span>
 		</a>
 
 		<button
 			onclick={handleSignOut}
-			class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
+			class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors text-left"
 		>
-			<LogOut size={18} class="text-gray-400" />
-			<span>Sign Out</span>
+			<LogOut size={18} class="text-gray-400 flex-shrink-0" />
+			<span class="flex-1 min-w-0 truncate">Sign Out</span>
 		</button>
 	</div>
 </div>
