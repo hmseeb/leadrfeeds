@@ -34,8 +34,12 @@
 		filter = $page.params.filter;
 		await loadFeeds();
 		await loadEntries();
+	});
 
-		// Set up intersection observer for infinite scroll
+	// Set up intersection observer when loadMoreElement is available
+	$effect(() => {
+		if (!loadMoreElement || !hasMore) return;
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0].isIntersecting && hasMore && !loading) {
@@ -45,14 +49,10 @@
 			{ threshold: 0.1 }
 		);
 
-		if (loadMoreElement) {
-			observer.observe(loadMoreElement);
-		}
+		observer.observe(loadMoreElement);
 
 		return () => {
-			if (loadMoreElement) {
-				observer.unobserve(loadMoreElement);
-			}
+			observer.unobserve(loadMoreElement);
 		};
 	});
 
