@@ -1055,12 +1055,12 @@ The user is asking about the content above. Provide insightful, accurate analysi
 			<div class="flex flex-wrap gap-2 mb-3">
 				{#each activeContexts as context}
 					<div
-						class="flex items-center gap-1 px-3 py-1 bg-blue-500/20 border border-blue-400 rounded-full text-xs"
+						class="flex items-center gap-1 px-3 py-1 bg-blue-500/20 border border-blue-400 rounded-full text-xs max-w-[250px]"
 					>
-						<span class="text-gray-200">{context.label}</span>
+						<span class="text-gray-200 truncate" title={context.label}>{context.label}</span>
 						<button
 							onclick={() => removeContext(context.id)}
-							class="hover:bg-blue-500/30 rounded-full p-0.5 transition-colors"
+							class="hover:bg-blue-500/30 rounded-full p-0.5 transition-colors flex-shrink-0"
 							type="button"
 						>
 							<X size={12} />
