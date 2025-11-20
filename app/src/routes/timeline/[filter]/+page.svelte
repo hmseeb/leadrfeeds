@@ -139,7 +139,6 @@
 			}
 
 			// Query entries for feeds in this domain category
-			// Use LEFT JOIN so entries without user_entry_status still show up
 			const { data, error } = await supabase
 				.from('entries')
 				.select(`
@@ -156,15 +155,9 @@
 						category,
 						image,
 						site_url
-					),
-					user_entry_status!left (
-						is_read,
-						is_starred,
-						user_id
 					)
 				`)
 				.in('feed_id', feedIds)
-				.or(`user_entry_status.user_id.eq.${$user.id},user_entry_status.user_id.is.null`)
 				.order('published_at', { ascending: false })
 				.range(offset, offset + limit - 1);
 
@@ -174,7 +167,6 @@
 				// Transform data to match timeline entry format
 				const transformedData = data.map(entry => {
 					const feed = Array.isArray(entry.feed) ? entry.feed[0] : entry.feed;
-					const userEntry = Array.isArray(entry.user_entry_status) ? entry.user_entry_status[0] : entry.user_entry_status;
 					return {
 						entry_id: entry.id,
 						entry_title: entry.title,
@@ -188,8 +180,8 @@
 						feed_category: feed.category,
 						feed_image: feed.image?.replace(/\/+$/, '') || null,
 						feed_site_url: feed.site_url,
-						is_read: userEntry?.is_read || false,
-						is_starred: userEntry?.is_starred || false
+						is_read: false,
+						is_starred: false
 					};
 				});
 				entries = [...entries, ...transformedData];
