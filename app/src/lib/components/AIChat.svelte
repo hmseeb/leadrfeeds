@@ -697,10 +697,10 @@ ${customPrompt}`
 					contextParts.push(`## Context: User is asking about the "${context.label}" feed`);
 				}
 			} else if (context.type === 'entry') {
-				// Include full entry content
+				// Include full entry content (up to 10000 chars for complete articles)
 				const content = context.data.entry_content || context.data.entry_description || '';
 				contextParts.push(
-					`## Article: "${context.label}"\nAuthor: ${context.data.entry_author || 'Unknown'}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content.substring(0, 2000)}${content.length > 2000 ? '...' : ''}`
+					`## Article: "${context.label}"\nAuthor: ${context.data.entry_author || 'Unknown'}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content.substring(0, 10000)}${content.length > 10000 ? '...\n\n[Content truncated - full article exceeds 10000 characters]' : ''}`
 				);
 			}
 		}
