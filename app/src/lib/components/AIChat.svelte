@@ -82,6 +82,29 @@
 
 	let filteredCommands = $state<SlashCommand[]>([]);
 
+	// Domain category helper (same as sidebar/timeline)
+	function getDomainCategory(url: string | null, siteUrl: string | null): string {
+		const feedUrl = url || siteUrl;
+		if (!feedUrl) return 'Other';
+
+		try {
+			const urlObj = new URL(feedUrl);
+			let domain = urlObj.hostname.replace('www.', '');
+
+			// Map common domains to readable names
+			if (domain.includes('youtube.com')) return 'YouTube';
+			if (domain.includes('reddit.com')) return 'Reddit';
+			if (domain.includes('github.com')) return 'GitHub';
+			if (domain.includes('medium.com')) return 'Medium';
+			if (domain.includes('substack.com')) return 'Substack';
+
+			// Capitalize first letter for other domains
+			return domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+		} catch (e) {
+			return 'Other';
+		}
+	}
+
 	// Context management functions
 	function addContext(context: ContextBadge) {
 		// Check if context already exists
@@ -638,10 +661,15 @@ ${customPrompt}`
 			} else if (context.type === 'view' && context.label === 'Starred') {
 				contextParts.push(`## Context: User is viewing their starred/saved posts`);
 			} else if (context.type === 'category') {
-				// Include posts from specific category
-				const categoryPosts = timelineEntries.filter(
-					(e) => e.feed_category === context.data.category
-				);
+				// Include posts from specific category (using domain-based categories)
+				const categoryPosts = timelineEntries.filter((e) => {
+					// Find the feed for this entry
+					const feed = feeds.find((f) => f.id === e.feed_id);
+					if (!feed) return false;
+					// Get domain category from feed URL
+					const domainCat = getDomainCategory(feed.url, feed.site_url);
+					return domainCat === context.data.category;
+				});
 				if (categoryPosts.length > 0) {
 					const summaries = categoryPosts
 						.slice(0, 10)

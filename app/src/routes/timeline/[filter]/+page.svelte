@@ -484,7 +484,7 @@
 			contextType={selectedEntry ? 'entry' : 'feed'}
 			contextId={selectedEntry?.entry_id || activeFeedId}
 			currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : 'feed'}
-			currentCategory={activeFeedId ? entries[0]?.feed_category || null : null}
+			currentCategory={activeCategory}
 			{currentFeed}
 			currentEntry={selectedEntry
 				? {
