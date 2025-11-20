@@ -3,7 +3,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Home, Star, Settings, LogOut, Search } from 'lucide-svelte';
+	import { Home, Star, Settings, LogOut, Search, ChevronRight, ChevronDown } from 'lucide-svelte';
 
 	interface FeedWithUnread {
 		feed_id: string;
@@ -20,12 +20,13 @@
 		totalUnread: number;
 	}
 
-	let { activeFeedId = null }: { activeFeedId?: string | null } = $props();
+	let { activeFeedId = null, activeCategory = null }: { activeFeedId?: string | null; activeCategory?: string | null } = $props();
 
 	let feeds = $state<FeedWithUnread[]>([]);
 	let categorizedFeeds = $state<CategoryGroup[]>([]);
 	let totalUnread = $state(0);
 	let currentPath = $state('');
+	let expandedCategories = $state<Set<string>>(new Set());
 
 	onMount(async () => {
 		if (!$user) {
@@ -119,6 +120,21 @@
 		await signOut();
 		goto('/auth/login');
 	}
+
+	function toggleCategory(category: string) {
+		const newExpanded = new Set(expandedCategories);
+		if (newExpanded.has(category)) {
+			newExpanded.delete(category);
+		} else {
+			newExpanded.add(category);
+		}
+		expandedCategories = newExpanded;
+	}
+
+	function handleCategoryClick(category: string, event: MouseEvent) {
+		event.preventDefault();
+		goto(`/timeline/category:${encodeURIComponent(category)}`);
+	}
 </script>
 
 <div class="w-64 bg-card border-r border-border flex flex-col h-screen">
@@ -165,23 +181,40 @@
 			<div class="space-y-4">
 				{#each categorizedFeeds as group}
 					<div>
-						<div class="flex items-center justify-between px-3 py-2">
-							<h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-								{group.category}
-							</h3>
-							{#if group.totalUnread > 0}
-								<span class="text-xs text-muted-foreground">
-									{group.totalUnread}
-								</span>
-							{/if}
+						<div class="flex items-center gap-1">
+							<button
+								onclick={() => toggleCategory(group.category)}
+								class="p-2 hover:bg-accent rounded-md transition-colors"
+								aria-label="Toggle category"
+							>
+								{#if expandedCategories.has(group.category)}
+									<ChevronDown size={16} class="text-muted-foreground" />
+								{:else}
+									<ChevronRight size={16} class="text-muted-foreground" />
+								{/if}
+							</button>
+							<button
+								onclick={(e) => handleCategoryClick(group.category, e)}
+								class="flex-1 flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent transition-colors text-left {activeCategory === group.category ? 'bg-accent' : ''}"
+							>
+								<h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+									{group.category}
+								</h3>
+								{#if group.totalUnread > 0}
+									<span class="text-xs text-muted-foreground">
+										{group.totalUnread}
+									</span>
+								{/if}
+							</button>
 						</div>
 
-						<div class="space-y-1">
-							{#each group.feeds as feed}
-								<a
-									href="/timeline/{feed.feed_id}"
-									class="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors {activeFeedId === feed.feed_id ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent'}"
-								>
+						{#if expandedCategories.has(group.category)}
+							<div class="space-y-1 ml-2">
+								{#each group.feeds as feed}
+									<a
+										href="/timeline/{feed.feed_id}"
+										class="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors {activeFeedId === feed.feed_id ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent'}"
+									>
 									{#if feed.feed_image}
 										<img
 											src={feed.feed_image}
@@ -222,9 +255,10 @@
 											{feed.unread_count}
 										</span>
 									{/if}
-								</a>
-							{/each}
-						</div>
+									</a>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{/each}
 			</div>

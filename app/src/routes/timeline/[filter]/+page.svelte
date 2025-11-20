@@ -19,6 +19,7 @@
 
 	let filter = $state('');
 	let activeFeedId = $state<string | null>(null);
+	let activeCategory = $state<string | null>(null);
 	let selectedEntry = $state<TimelineEntry | null>(null);
 	let feeds = $state<any[]>([]);
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
@@ -69,48 +70,129 @@
 
 		loading = true;
 
-		// Parse filter: "all", "starred", or a feed UUID
+		// Parse filter: "all", "starred", "category:CategoryName", or a feed UUID
 		let feedIdFilter: string | undefined;
+		let categoryFilter: string | undefined;
 		let starredOnly = false;
 		let unreadOnly = false;
 
 		if (filter === 'starred') {
 			starredOnly = true;
-			activeFeedId = null; // Clear feed ID in starred view
+			activeFeedId = null;
+			activeCategory = null;
 			currentFeed = null;
+		} else if (filter.startsWith('category:')) {
+			// Category filter
+			categoryFilter = decodeURIComponent(filter.substring(9));
+			activeFeedId = null;
+			activeCategory = categoryFilter;
+			currentFeed = { feed_id: 'category', feed_title: categoryFilter };
 		} else if (filter !== 'all') {
 			// Assume it's a feed UUID
 			feedIdFilter = filter;
 			activeFeedId = feedIdFilter;
+			activeCategory = null;
 			// Find the feed from the loaded feeds
 			const feed = feeds.find((f) => f.id === feedIdFilter);
 			currentFeed = feed ? { feed_id: feed.id, feed_title: feed.title } : null;
 		} else {
 			// Clear feed ID in "all" view
 			activeFeedId = null;
+			activeCategory = null;
 			currentFeed = null;
 		}
 
-		const { data, error } = await supabase.rpc('get_user_timeline', {
-			user_id_param: $user.id,
-			feed_id_filter: feedIdFilter,
-			starred_only: starredOnly,
-			unread_only: unreadOnly,
-			limit_param: limit,
-			offset_param: offset
-		});
+		if (categoryFilter) {
+			// For category filter, we need to get feeds in that category first
+			const categoryFeeds = feeds.filter(f => f.category === categoryFilter);
+			const feedIds = categoryFeeds.map(f => f.id);
 
-		if (error) {
-			console.error('Error loading entries:', error);
-		} else if (data) {
-			// Clean up feed_image URLs by removing trailing slashes
-			const cleanedData = data.map(entry => ({
-				...entry,
-				feed_image: entry.feed_image?.replace(/\/+$/, '') || null
-			}));
-			entries = [...entries, ...cleanedData];
-			hasMore = data.length === limit;
-			offset += data.length;
+			if (feedIds.length === 0) {
+				// No feeds in this category
+				loading = false;
+				return;
+			}
+
+			// Fetch entries for all feeds in this category
+			const { data, error } = await supabase
+				.from('entries')
+				.select(`
+					id,
+					title,
+					url,
+					description,
+					content,
+					author,
+					published_at,
+					feed:feed_id (
+						id,
+						title,
+						category,
+						image,
+						site_url
+					),
+					user_entries!inner (
+						is_read,
+						is_starred,
+						user_id
+					)
+				`)
+				.in('feed_id', feedIds)
+				.eq('user_entries.user_id', $user.id)
+				.order('published_at', { ascending: false })
+				.range(offset, offset + limit - 1);
+
+			if (error) {
+				console.error('Error loading category entries:', error);
+			} else if (data) {
+				// Transform data to match timeline entry format
+				const transformedData = data.map(entry => {
+					const feed = Array.isArray(entry.feed) ? entry.feed[0] : entry.feed;
+					const userEntry = Array.isArray(entry.user_entries) ? entry.user_entries[0] : entry.user_entries;
+					return {
+						entry_id: entry.id,
+						entry_title: entry.title,
+						entry_url: entry.url,
+						entry_description: entry.description,
+						entry_content: entry.content,
+						entry_author: entry.author,
+						entry_published_at: entry.published_at,
+						feed_id: feed.id,
+						feed_title: feed.title,
+						feed_category: feed.category,
+						feed_image: feed.image?.replace(/\/+$/, '') || null,
+						feed_site_url: feed.site_url,
+						is_read: userEntry.is_read,
+						is_starred: userEntry.is_starred
+					};
+				});
+				entries = [...entries, ...transformedData];
+				hasMore = data.length === limit;
+				offset += data.length;
+			}
+		} else {
+			// Use the existing RPC function for other filters
+			const { data, error } = await supabase.rpc('get_user_timeline', {
+				user_id_param: $user.id,
+				feed_id_filter: feedIdFilter,
+				starred_only: starredOnly,
+				unread_only: unreadOnly,
+				limit_param: limit,
+				offset_param: offset
+			});
+
+			if (error) {
+				console.error('Error loading entries:', error);
+			} else if (data) {
+				// Clean up feed_image URLs by removing trailing slashes
+				const cleanedData = data.map(entry => ({
+					...entry,
+					feed_image: entry.feed_image?.replace(/\/+$/, '') || null
+				}));
+				entries = [...entries, ...cleanedData];
+				hasMore = data.length === limit;
+				offset += data.length;
+			}
 		}
 
 		loading = false;
@@ -173,7 +255,7 @@
 
 <div class="flex h-screen bg-background">
 	<!-- Sidebar -->
-	<Sidebar {activeFeedId} />
+	<Sidebar {activeFeedId} {activeCategory} />
 
 	<!-- Main Content -->
 	<div class="flex-1 flex overflow-hidden">
@@ -187,6 +269,10 @@
 							All Posts
 						{:else if filter === 'starred'}
 							Starred Posts
+						{:else if activeCategory}
+							{activeCategory}
+						{:else if currentFeed}
+							{currentFeed.feed_title}
 						{:else}
 							Feed Posts
 						{/if}
