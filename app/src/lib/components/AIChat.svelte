@@ -472,8 +472,6 @@ Focus on substance over details. Be clear and direct.`
 				}
 			}
 
-			streamingContent = '';
-
 			// Save assistant response
 			const { data: assistantMsg } = await supabase
 				.from('chat_messages')
@@ -491,8 +489,12 @@ Focus on substance over details. Be clear and direct.`
 				messages = [...messages, assistantMsg];
 				scrollToBottom();
 			}
+
+			streamingContent = '';
+			loading = false;
 		} catch (error) {
 			console.error('Error calling OpenRouter:', error);
+			loading = false;
 			const errorMsg = {
 				id: 'error-' + Date.now(),
 				user_id: $user!.id,
@@ -505,8 +507,6 @@ Focus on substance over details. Be clear and direct.`
 			} as ChatMessage;
 			messages = [...messages, errorMsg];
 			scrollToBottom();
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -672,8 +672,6 @@ ${customPrompt}`
 				}
 			}
 
-			streamingContent = '';
-
 			const { data: assistantMsg } = await supabase
 				.from('chat_messages')
 				.insert({
@@ -690,8 +688,12 @@ ${customPrompt}`
 				messages = [...messages, assistantMsg];
 				scrollToBottom();
 			}
+
+			streamingContent = '';
+			loading = false;
 		} catch (error) {
 			console.error('Error calling OpenRouter:', error);
+			loading = false;
 			const errorMsg = {
 				id: 'error-' + Date.now(),
 				user_id: $user!.id,
@@ -704,8 +706,6 @@ ${customPrompt}`
 			} as ChatMessage;
 			messages = [...messages, errorMsg];
 			scrollToBottom();
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -772,11 +772,11 @@ ${customPrompt}`
 					contextParts.push(`## Context: User is asking about the "${context.label}" feed`);
 				}
 			} else if (context.type === 'entry') {
-				// Include full entry content (up to 10000 chars for complete articles)
+				// Include full entry content (no truncation for individual articles)
 				const rawContent = context.data.entry_content || context.data.entry_description || '';
 				const content = stripHtml(rawContent);
 				contextParts.push(
-					`## Article: "${context.label}"\nAuthor: ${context.data.entry_author || 'Unknown'}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content.substring(0, 10000)}${content.length > 10000 ? '...\n\n[Content truncated - full article exceeds 10000 characters]' : ''}`
+					`## Article: "${context.label}"\nAuthor: ${context.data.entry_author || 'Unknown'}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content}`
 				);
 			}
 		}
@@ -929,10 +929,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				}
 			}
 
-			// Clear streaming content
-			streamingContent = '';
-
-			// Save assistant message
+			// Save assistant message (keep streaming content visible until saved)
 			const { data: assistantMsg, error: assistantError } = await supabase
 				.from('chat_messages')
 				.insert({
@@ -949,8 +946,13 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				messages = [...messages, assistantMsg];
 				scrollToBottom();
 			}
+
+			// Clear streaming content and loading state after message is saved
+			streamingContent = '';
+			loading = false;
 		} catch (error) {
 			console.error('Error calling OpenRouter:', error);
+			loading = false;
 			// Show error message
 			const errorMsg = {
 				id: 'error-' + Date.now(),
@@ -962,8 +964,6 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				created_at: new Date().toISOString()
 			} as ChatMessage;
 			messages = [...messages, errorMsg];
-		} finally {
-			loading = false;
 		}
 	}
 
@@ -987,17 +987,17 @@ The user is asking about the content above. Provide insightful, accurate analysi
 	}
 </script>
 
-<div class="w-[400px] border-l border-border bg-card flex flex-col h-full">
+<div class="w-[400px] border-l border-gray-800 bg-[#1a1a1a] flex flex-col h-full">
 	<!-- Header -->
-	<div class="p-4 border-b border-border">
-		<h2 class="font-semibold text-foreground">AI Assistant</h2>
-		<p class="text-xs text-muted-foreground">Powered by OpenRouter</p>
+	<div class="p-4 border-b border-gray-800">
+		<h2 class="font-semibold text-gray-200">AI Assistant</h2>
+		<p class="text-xs text-gray-500">Powered by OpenRouter</p>
 	</div>
 
 	<!-- Messages -->
 	<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4 space-y-4">
 		{#if !apiKey}
-			<div class="bg-accent/10 border border-accent/20 rounded-lg p-4 text-sm text-accent">
+			<div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-400">
 				<p class="font-medium mb-2">OpenRouter API Key Required</p>
 				<p class="text-xs">
 					Configure your OpenRouter API key in
@@ -1006,7 +1006,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 				</p>
 			</div>
 		{:else if messages.length === 0}
-			<div class="text-center py-8 text-muted-foreground text-sm">
+			<div class="text-center py-8 text-gray-400 text-sm">
 				<p>No messages yet.</p>
 				<p class="mt-2">Ask me anything about your feeds!</p>
 			</div>
@@ -1014,12 +1014,12 @@ The user is asking about the content above. Provide insightful, accurate analysi
 			{#each messages as message}
 				<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
 					<div
-						class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-accent/10 text-foreground'}"
+						class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user' ? 'bg-blue-500/20 text-gray-200' : 'bg-gray-800 text-gray-200'}"
 					>
 						{#if message.role === 'user'}
 							<p class="text-sm whitespace-pre-wrap">{message.content}</p>
 						{:else}
-							<div class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-gray-800 prose-pre:text-gray-100">
+							<div class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-[#0d0d0d] prose-pre:text-gray-100">
 								{@html renderMarkdown(message.content)}
 							</div>
 						{/if}
@@ -1029,17 +1029,19 @@ The user is asking about the content above. Provide insightful, accurate analysi
 
 			{#if streamingContent}
 				<div class="flex justify-start">
-					<div class="max-w-[80%] rounded-lg px-4 py-2 bg-accent/10 text-foreground">
-						<div class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-gray-800 prose-pre:text-gray-100">
+					<div class="max-w-[80%] rounded-lg px-4 py-2 bg-gray-800 text-gray-200">
+						<div class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-[#0d0d0d] prose-pre:text-gray-100">
 							{@html renderMarkdown(streamingContent)}
 						</div>
-						<div class="inline-block w-2 h-4 bg-foreground animate-pulse ml-1"></div>
+						<div class="inline-block w-2 h-4 bg-gray-200 animate-pulse ml-1"></div>
 					</div>
 				</div>
 			{:else if loading}
 				<div class="flex justify-start">
-					<div class="bg-accent/10 rounded-lg px-4 py-2">
-						<p class="text-sm text-muted-foreground">Thinking...</p>
+					<div class="bg-gray-800 rounded-lg px-4 py-2">
+						<p class="text-sm text-gray-400">
+							Thinking<span class="blinking-dots"><span>.</span><span>.</span><span>.</span></span>
+						</p>
 					</div>
 				</div>
 			{/if}
@@ -1047,18 +1049,18 @@ The user is asking about the content above. Provide insightful, accurate analysi
 	</div>
 
 	<!-- Input -->
-	<div class="p-4 border-t border-border">
+	<div class="p-4 border-t border-gray-800">
 		<!-- Context Badges -->
 		{#if activeContexts.length > 0}
 			<div class="flex flex-wrap gap-2 mb-3">
 				{#each activeContexts as context}
 					<div
-						class="flex items-center gap-1 px-3 py-1 bg-primary/20 border border-primary rounded-full text-xs"
+						class="flex items-center gap-1 px-3 py-1 bg-blue-500/20 border border-blue-400 rounded-full text-xs"
 					>
-						<span class="text-foreground">{context.label}</span>
+						<span class="text-gray-200">{context.label}</span>
 						<button
 							onclick={() => removeContext(context.id)}
-							class="hover:bg-primary/30 rounded-full p-0.5 transition-colors"
+							class="hover:bg-blue-500/30 rounded-full p-0.5 transition-colors"
 							type="button"
 						>
 							<X size={12} />
@@ -1072,7 +1074,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 			<!-- Command Dropdown -->
 			{#if showCommandMenu && filteredCommands.length > 0}
 				<div
-					class="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-lg z-50"
+					class="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-lg z-50"
 				>
 					<div class="p-2">
 						{#each filteredCommands as command}
@@ -1083,10 +1085,10 @@ The user is asking about the content above. Provide insightful, accurate analysi
 									showCommandMenu = false;
 									sendMessage();
 								}}
-								class="w-full text-left px-3 py-2 rounded-md hover:bg-accent/10 transition-colors"
+								class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-800 transition-colors"
 							>
-								<div class="font-medium text-sm text-foreground">{command.label}</div>
-								<div class="text-xs text-muted-foreground">{command.description}</div>
+								<div class="font-medium text-sm text-gray-200">{command.label}</div>
+								<div class="text-xs text-gray-400">{command.description}</div>
 							</button>
 						{/each}
 					</div>
@@ -1100,12 +1102,12 @@ The user is asking about the content above. Provide insightful, accurate analysi
 					disabled={!apiKey || loading}
 					placeholder="Ask about your feeds..."
 					rows="2"
-					class="flex-1 px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none disabled:opacity-50"
+					class="flex-1 px-3 py-2 bg-[#0d0d0d] border border-gray-800 rounded-md text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
 				></textarea>
 				<button
 					type="submit"
 					disabled={!apiKey || loading || !input.trim()}
-					class="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+					class="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 				>
 					<Send size={18} />
 				</button>
@@ -1117,7 +1119,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 					<button
 						type="button"
 						onclick={() => (showContextMenu = !showContextMenu)}
-						class="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded-md hover:bg-accent/10 transition-colors"
+						class="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 border border-gray-800 rounded-md hover:bg-gray-800 transition-colors"
 					>
 						<Plus size={14} />
 						Add Context
@@ -1126,15 +1128,15 @@ The user is asking about the content above. Provide insightful, accurate analysi
 					<!-- Context Dropdown Menu -->
 					{#if showContextMenu}
 						<div
-							class="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-lg shadow-lg z-50"
+							class="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-lg z-50"
 						>
 							<!-- Search box -->
-							<div class="p-2 border-b border-border">
+							<div class="p-2 border-b border-gray-800">
 								<input
 									type="text"
 									placeholder="Search for context..."
 									bind:value={contextSearch}
-									class="w-full px-2 py-1 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+									class="w-full px-2 py-1 text-xs bg-[#0d0d0d] text-gray-200 border border-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 								/>
 							</div>
 
@@ -1142,7 +1144,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 							<div class="max-h-96 overflow-y-auto">
 								<!-- Views Section -->
 								<div class="p-2">
-									<div class="text-xs text-muted-foreground mb-1 px-2">Views</div>
+									<div class="text-xs text-gray-500 mb-1 px-2">Views</div>
 									<button
 										type="button"
 										onclick={() => {
@@ -1154,7 +1156,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 											});
 											showContextMenu = false;
 										}}
-										class="w-full text-left px-2 py-1 text-xs rounded hover:bg-accent/10 transition-colors"
+										class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
 									>
 										All Posts
 									</button>
@@ -1169,7 +1171,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 											});
 											showContextMenu = false;
 										}}
-										class="w-full text-left px-2 py-1 text-xs rounded hover:bg-accent/10 transition-colors"
+										class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
 									>
 										Starred Posts
 									</button>
@@ -1177,8 +1179,8 @@ The user is asking about the content above. Provide insightful, accurate analysi
 
 								<!-- Feeds Section -->
 								{#if feeds.length > 0}
-									<div class="p-2 border-t border-border">
-										<div class="text-xs text-muted-foreground mb-1 px-2">Feeds</div>
+									<div class="p-2 border-t border-gray-800">
+										<div class="text-xs text-gray-500 mb-1 px-2">Feeds</div>
 										{#each feeds.filter((f) =>
 											!contextSearch ||
 											f.title?.toLowerCase().includes(contextSearch.toLowerCase())
@@ -1195,7 +1197,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 													showContextMenu = false;
 													contextSearch = '';
 												}}
-												class="w-full text-left px-2 py-1 text-xs rounded hover:bg-accent/10 transition-colors truncate"
+												class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors truncate"
 											>
 												{feed.title}
 											</button>
@@ -1205,8 +1207,8 @@ The user is asking about the content above. Provide insightful, accurate analysi
 
 								<!-- Recent Entries Section -->
 								{#if timelineEntries.length > 0}
-									<div class="p-2 border-t border-border">
-										<div class="text-xs text-muted-foreground mb-1 px-2">Recent Entries</div>
+									<div class="p-2 border-t border-gray-800">
+										<div class="text-xs text-gray-500 mb-1 px-2">Recent Entries</div>
 										{#each timelineEntries
 											.filter(
 												(e) =>
@@ -1226,7 +1228,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
 													showContextMenu = false;
 													contextSearch = '';
 												}}
-												class="w-full text-left px-2 py-1 text-xs rounded hover:bg-accent/10 transition-colors truncate"
+												class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors truncate"
 											>
 												{entry.entry_title}
 											</button>
@@ -1237,8 +1239,39 @@ The user is asking about the content above. Provide insightful, accurate analysi
 						</div>
 					{/if}
 				</div>
-				<span class="text-xs text-muted-foreground">Auto</span>
+				<span class="text-xs text-gray-500">Auto</span>
 			</div>
 		</form>
 	</div>
 </div>
+
+<style>
+	.blinking-dots span {
+		animation: blink 1.4s infinite;
+		opacity: 0;
+	}
+
+	.blinking-dots span:nth-child(1) {
+		animation-delay: 0s;
+	}
+
+	.blinking-dots span:nth-child(2) {
+		animation-delay: 0.2s;
+	}
+
+	.blinking-dots span:nth-child(3) {
+		animation-delay: 0.4s;
+	}
+
+	@keyframes blink {
+		0%, 20% {
+			opacity: 0;
+		}
+		40% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
+	}
+</style>
