@@ -85,8 +85,12 @@
 			if (domain.includes('medium.com')) return 'Medium';
 			if (domain.includes('substack.com')) return 'Substack';
 
-			// Capitalize first letter for other domains
-			return domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+			// Extract main domain (e.g., "google" from "blog.google.com")
+			const parts = domain.split('.');
+			// Get second-to-last part for multi-level domains (blog.google.com -> google)
+			// or first part for simple domains (example.com -> example)
+			const mainDomain = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+			return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
 		} catch (e) {
 			return 'Other';
 		}
