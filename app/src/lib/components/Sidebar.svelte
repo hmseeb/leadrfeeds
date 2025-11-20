@@ -147,12 +147,12 @@
 
 <div class="w-64 bg-[#1a1a1a] flex flex-col h-screen text-gray-200">
 	<!-- Header -->
-	<div class="p-4 flex items-center justify-between border-b border-gray-800">
+	<div class="p-4 flex items-center justify-between border-b border-gray-800 flex-shrink-0">
 		<h1 class="text-lg font-semibold">LeadrFeeds</h1>
 	</div>
 
 	<!-- Navigation -->
-	<nav class="flex-1 overflow-y-auto">
+	<nav class="flex-1 overflow-y-auto scrollbar-thin">
 		<!-- Main Navigation -->
 		<div class="px-2 py-3 space-y-0.5">
 			<a
@@ -202,16 +202,11 @@
 					{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0)}
 					<div>
 						<!-- Main Feed Item -->
-						<a
-							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
-							onclick={(e) => {
-								if (isMultiFeedCategory) {
-									e.preventDefault();
-									toggleFeedCategory(feed.feed_id);
-								}
-							}}
-							class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors cursor-pointer {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
-						>
+						<div class="flex items-center gap-2 group">
+							<a
+								href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
+								class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800' : ''}"
+							>
 								{#if feed.feed_image}
 									<img
 										src={feed.feed_image}
@@ -240,27 +235,34 @@
 										<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
 									</div>
 								{/if}
-							<div class="flex-1 min-w-0">
-								<div class="truncate text-sm">
-									{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
+								<div class="flex-1 min-w-0">
+									<div class="truncate text-sm">
+										{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
+									</div>
 								</div>
-								{#if isMultiFeedCategory}
-									<div class="text-xs text-gray-500 truncate">{categoryFeeds.length} feeds</div>
-								{/if}
-							</div>
 
-							<!-- Show chevron for multi-feed categories, badge for single feeds -->
+								<!-- Badge for single feeds -->
+								{#if !isMultiFeedCategory && feed.unread_count > 0}
+									<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+										{feed.unread_count}
+									</span>
+								{/if}
+							</a>
+
+							<!-- Chevron button for multi-feed categories -->
 							{#if isMultiFeedCategory}
-								<ChevronDown
-									size={16}
-									class="text-gray-400 flex-shrink-0 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}"
-								/>
-							{:else if feed.unread_count > 0}
-								<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
-									{feed.unread_count}
-								</span>
+								<button
+									onclick={() => toggleFeedCategory(feed.feed_id)}
+									class="p-2 hover:bg-gray-800 rounded-md transition-colors"
+									aria-label="Expand category"
+								>
+									<ChevronDown
+										size={16}
+										class="text-gray-400 flex-shrink-0 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}"
+									/>
+								</button>
 							{/if}
-						</a>
+						</div>
 
 						<!-- Expanded Category Feeds -->
 						{#if expandedFeeds.has(feed.feed_id)}
@@ -317,7 +319,7 @@
 	</nav>
 
 	<!-- Footer -->
-	<div class="p-2 border-t border-gray-800 space-y-0.5">
+	<div class="p-2 border-t border-gray-800 space-y-0.5 flex-shrink-0">
 		<a
 			href="/settings"
 			class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
@@ -335,3 +337,28 @@
 		</button>
 	</div>
 </div>
+
+<style>
+	/* Custom scrollbar for dark theme */
+	.scrollbar-thin {
+		scrollbar-width: thin;
+		scrollbar-color: #374151 #1a1a1a;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-track {
+		background: #1a1a1a;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-thumb {
+		background: #374151;
+		border-radius: 3px;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+		background: #4b5563;
+	}
+</style>
