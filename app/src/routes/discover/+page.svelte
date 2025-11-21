@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { Search, Plus, Check } from 'lucide-svelte';
 	import SuggestFeedModal from '$lib/components/SuggestFeedModal.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { Database } from '$lib/types/database';
 
 	type DiscoveryFeed = Database['public']['Functions']['get_discovery_feeds']['Returns'][0];
@@ -174,8 +175,24 @@
 
 		<!-- Feeds Grid -->
 		{#if loading}
-			<div class="text-center py-12">
-				<p class="text-muted-foreground">Loading feeds...</p>
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				{#each Array(9) as _, i}
+					<div class="bg-card border border-border rounded-lg p-6">
+						<div class="flex items-start justify-between mb-4">
+							<div class="flex-1 space-y-3">
+								<Skeleton variant="rectangular" width="48px" height="48px" />
+								<Skeleton width="70%" height="20px" />
+								<div class="flex items-center gap-2">
+									<Skeleton width="60px" height="16px" />
+									<Skeleton width="80px" height="16px" />
+								</div>
+							</div>
+						</div>
+						<Skeleton width="100%" height="16px" class="mb-2" />
+						<Skeleton width="90%" height="16px" class="mb-4" />
+						<Skeleton width="100%" height="40px" />
+					</div>
+				{/each}
 			</div>
 		{:else if feeds.length === 0}
 			<div class="text-center py-12">

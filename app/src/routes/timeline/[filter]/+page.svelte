@@ -7,6 +7,7 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import EntryCard from '$lib/components/EntryCard.svelte';
 	import AIChat from '$lib/components/AIChat.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { Database } from '$lib/types/database';
 
 	type TimelineEntry = Database['public']['Functions']['get_user_timeline']['Returns'][0];
@@ -325,8 +326,24 @@
 
 				<!-- Entries -->
 				{#if loading && entries.length === 0}
-					<div class="text-center py-12">
-						<p class="text-muted-foreground">Loading posts...</p>
+					<div class="space-y-2">
+						{#each Array(5) as _, i}
+							<div class="bg-card border border-border rounded-lg p-4">
+								<div class="flex items-start gap-4">
+									<Skeleton variant="circular" width="40px" height="40px" />
+									<div class="flex-1 space-y-3">
+										<Skeleton width="70%" height="20px" />
+										<Skeleton width="100%" height="16px" />
+										<Skeleton width="90%" height="16px" />
+										<Skeleton width="60%" height="16px" />
+										<div class="flex gap-2 mt-4">
+											<Skeleton width="80px" height="32px" />
+											<Skeleton width="80px" height="32px" />
+										</div>
+									</div>
+								</div>
+							</div>
+						{/each}
 					</div>
 				{:else if entries.length === 0}
 					<div class="text-center py-12">
