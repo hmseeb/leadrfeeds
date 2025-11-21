@@ -737,7 +737,23 @@ ${customPrompt}`
 					);
 				}
 			} else if (context.type === 'view' && context.label === 'Starred') {
-				contextParts.push(`## Context: User is viewing their starred/saved posts`);
+				// Include starred posts with content (similar to All view)
+				if (timelineEntries.length > 0) {
+					const entrySummaries = timelineEntries
+						.slice(0, 8)
+						.map((entry) => {
+							const rawContent = entry.entry_content || entry.entry_description || 'No content';
+							const content = stripHtml(rawContent);
+							return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
+						})
+						.join('\n\n');
+
+					contextParts.push(
+						`## Starred Posts (${timelineEntries.length} visible entries, showing first 8):\n${entrySummaries}`
+					);
+				} else {
+					contextParts.push(`## Context: User is viewing their starred/saved posts (none visible)`);
+				}
 			} else if (context.type === 'category') {
 				// Include posts from specific category (using domain-based categories)
 				const categoryPosts = timelineEntries.filter((e) => {
