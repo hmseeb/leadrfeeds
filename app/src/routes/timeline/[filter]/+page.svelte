@@ -23,7 +23,7 @@
 	let selectedEntry = $state<TimelineEntry | null>(null);
 	let feeds = $state<any[]>([]);
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
-	let loadMoreElement: HTMLElement;
+	let loadMoreElement = $state<HTMLElement | null>(null);
 	let isSidebarCollapsed = $state(false);
 
 	onMount(async () => {
