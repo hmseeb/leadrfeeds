@@ -11,6 +11,7 @@
 	let { isOpen = $bindable(), onSuccess }: Props = $props();
 
 	let feedUrl = $state('');
+	let importance = $state(5);
 	let submitting = $state(false);
 	let errorMessage = $state('');
 	let successMessage = $state('');
@@ -41,7 +42,7 @@
 				p_feed_url: feedUrl.trim(),
 				p_feed_title: null,
 				p_feed_description: null,
-				p_reason: null
+				p_reason: `Importance: ${importance}/10`
 			});
 
 			if (error) throw error;
@@ -51,6 +52,7 @@
 			// Reset form after short delay
 			setTimeout(() => {
 				feedUrl = '';
+				importance = 5;
 				successMessage = '';
 				isOpen = false;
 				onSuccess?.();
@@ -75,6 +77,7 @@
 	$effect(() => {
 		if (isOpen) {
 			feedUrl = '';
+			importance = 5;
 			errorMessage = '';
 			successMessage = '';
 		}
@@ -133,6 +136,29 @@
 						<p class="mt-1 text-xs text-muted-foreground">
 							Enter the RSS/URL you'd like to suggest
 						</p>
+					</div>
+
+					<!-- Importance Rating -->
+					<div>
+						<label for="importance" class="block text-sm font-medium text-foreground mb-2">
+							How important is this to you? (1-10)
+						</label>
+						<div class="flex items-center gap-4">
+							<input
+								id="importance"
+								type="range"
+								min="1"
+								max="10"
+								bind:value={importance}
+								disabled={submitting}
+								class="flex-1 h-2 bg-background rounded-lg appearance-none cursor-pointer accent-primary"
+							/>
+							<span
+								class="text-lg font-semibold text-foreground min-w-[3ch] text-center"
+							>
+								{importance}
+							</span>
+						</div>
 					</div>
 
 					<!-- Success Message -->
