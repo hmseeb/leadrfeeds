@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
@@ -28,8 +29,10 @@
 
 	let feeds = $state<FeedWithUnread[]>([]);
 	let totalUnread = $state(0);
-	let currentPath = $state('');
 	let expandedFeeds = $state<Set<string>>(new Set());
+
+	// Reactive current path from page store
+	const currentPath = $derived($page.url.pathname);
 
 	function getDomainCategory(url: string | null): string {
 		if (!url) return 'Other';
@@ -62,7 +65,6 @@
 			return;
 		}
 
-		currentPath = window.location.pathname;
 		await loadFeeds();
 
 		// Reload feeds every 30 seconds
