@@ -11,7 +11,7 @@
   let { isOpen = $bindable(), onSuccess }: Props = $props();
 
   let feedUrl = $state("");
-  let importance = $state(5);
+  let reason = $state("");
   let submitting = $state(false);
   let errorMessage = $state("");
   let successMessage = $state("");
@@ -43,7 +43,7 @@
         p_feed_url: feedUrl.trim(),
         p_feed_title: null,
         p_feed_description: null,
-        p_reason: `Importance: ${importance}/10`,
+        p_reason: reason.trim() || null,
       });
 
       if (error) throw error;
@@ -53,7 +53,7 @@
       // Reset form after short delay
       setTimeout(() => {
         feedUrl = "";
-        importance = 5;
+        reason = "";
         successMessage = "";
         isOpen = false;
         onSuccess?.();
@@ -78,7 +78,7 @@
   $effect(() => {
     if (isOpen) {
       feedUrl = "";
-      importance = 5;
+      reason = "";
       errorMessage = "";
       successMessage = "";
     }
@@ -142,30 +142,25 @@
             </p>
           </div>
 
-          <!-- Importance Rating -->
+          <!-- Reason (Optional) -->
           <div>
             <label
-              for="importance"
+              for="reason"
               class="block text-sm font-medium text-foreground mb-2"
             >
-              How important is this to you? (1-10)
+              Why should we add this feed? (Optional)
             </label>
-            <div class="flex items-center gap-4">
-              <input
-                id="importance"
-                type="range"
-                min="1"
-                max="10"
-                bind:value={importance}
-                disabled={submitting}
-                class="flex-1 h-2 bg-background rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-              <span
-                class="text-lg font-semibold text-foreground min-w-[3ch] text-center"
-              >
-                {importance}
-              </span>
-            </div>
+            <textarea
+              id="reason"
+              bind:value={reason}
+              rows="3"
+              placeholder="Tell us why this feed would be valuable..."
+              disabled={submitting}
+              class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            ></textarea>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Providing a reason for the feed is highly likely to be approved
+            </p>
           </div>
 
           <!-- Success Message -->
