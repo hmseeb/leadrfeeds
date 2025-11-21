@@ -119,6 +119,7 @@
 		const unreadMap = new Map(unreadData?.map(u => [u.feed_id, u.unread_count]) || []);
 
 		// Build feeds list with domain-based categories
+		// Filter out feeds that are pending sync (no title from database)
 		feeds = userFeeds
 			.filter(uf => uf.feeds)
 			.map(uf => {
@@ -132,9 +133,11 @@
 					feed_url: feedUrl,
 					feed_image: feed.image?.replace(/\/+$/, '') || null,
 					feed_site_url: feed.site_url || null,
-					unread_count: unreadMap.get(feed.id) || 0
+					unread_count: unreadMap.get(feed.id) || 0,
+					_hasRealTitle: !!feed.title // Track if feed has a real title from DB
 				};
-			});
+			})
+			.filter(f => f._hasRealTitle); // Hide feeds pending sync
 
 		totalUnread = feeds.reduce((sum, f) => sum + f.unread_count, 0);
 	}

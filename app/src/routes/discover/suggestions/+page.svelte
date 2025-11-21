@@ -246,10 +246,11 @@
 				return;
 			}
 
-			// First, link the feed ID to the waitlist
+			// First, link the feed ID to the waitlist (with title from suggestion)
 			const { error: linkError } = await supabase.rpc('link_feed_to_waitlist', {
 				p_feed_url: suggestion.feed_url,
-				p_feed_id: approvalFeedIdInput.trim()
+				p_feed_id: approvalFeedIdInput.trim(),
+				p_feed_title: suggestion.feed_title || null
 			});
 
 			if (linkError) throw linkError;
@@ -375,7 +376,8 @@
 
 			const { data, error } = await supabase.rpc('link_feed_to_waitlist', {
 				p_feed_url: suggestion.feed_url,
-				p_feed_id: feedIdInput.trim()
+				p_feed_id: feedIdInput.trim(),
+				p_feed_title: suggestion.feed_title || null
 			});
 
 			if (error) throw error;

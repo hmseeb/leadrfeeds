@@ -14,6 +14,7 @@
 	let subscribedFeedIds = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
 	let selectedCategory = $state<string>('');
+	let showSubscribedOnly = $state(false);
 	let categories = $state<string[]>([]);
 	let allCategories = $state<string[]>([]); // Store all categories regardless of filters
 	let loading = $state(true);
@@ -21,6 +22,15 @@
 
 	// Suggestion feature
 	let suggestModalOpen = $state(false);
+
+	// Filtered feeds based on filters
+	const displayedFeeds = $derived.by(() => {
+		let result = feeds;
+		if (showSubscribedOnly) {
+			result = result.filter(f => subscribedFeedIds.has(f.feed_id));
+		}
+		return result;
+	});
 
 	// Get a readable feed title from URL if no title exists
 	function getFeedTitle(feed: DiscoveryFeed): string {
@@ -33,12 +43,36 @@
 			const urlObj = new URL(url);
 			let domain = urlObj.hostname.replace('www.', '');
 
-			// Map common domains to readable names
-			if (domain.includes('youtube.com')) return 'YouTube';
-			if (domain.includes('reddit.com')) return 'Reddit';
-			if (domain.includes('github.com')) return 'GitHub';
+			// For YouTube, try to extract channel info from the URL
+			if (domain.includes('youtube.com')) {
+				const path = urlObj.pathname;
+				// Check for /channel/, /@username, or /c/ patterns
+				const channelMatch = path.match(/\/@([^\/]+)|\/channel\/([^\/]+)|\/c\/([^\/]+)/);
+				if (channelMatch) {
+					const channelName = channelMatch[1] || channelMatch[2] || channelMatch[3];
+					return channelName;
+				}
+				return 'YouTube Channel';
+			}
+			if (domain.includes('reddit.com')) {
+				const subredditMatch = urlObj.pathname.match(/\/r\/([^\/]+)/);
+				if (subredditMatch) return `r/${subredditMatch[1]}`;
+				return 'Reddit';
+			}
+			if (domain.includes('github.com')) {
+				const repoMatch = urlObj.pathname.match(/\/([^\/]+)/);
+				if (repoMatch) return repoMatch[1];
+				return 'GitHub';
+			}
 			if (domain.includes('medium.com')) return 'Medium';
-			if (domain.includes('substack.com')) return 'Substack';
+			if (domain.includes('substack.com')) {
+				// Try to get subdomain for Substack
+				const subdomain = urlObj.hostname.split('.')[0];
+				if (subdomain !== 'www' && subdomain !== 'substack') {
+					return subdomain.charAt(0).toUpperCase() + subdomain.slice(1);
+				}
+				return 'Substack';
+			}
 			if (domain.includes('twitter.com') || domain.includes('x.com')) return 'Twitter/X';
 			if (domain.includes('linkedin.com')) return 'LinkedIn';
 			if (domain.includes('techcrunch.com')) return 'TechCrunch';
@@ -98,13 +132,13 @@
 
 		// Load user's subscriptions
 		if ($user) {
-			const { data: subs } = await supabase
+			const { data: subsData } = await supabase
 				.from('user_subscriptions')
 				.select('feed_id')
 				.eq('user_id', $user.id);
 
-			if (subs) {
-				subscribedFeedIds = new Set(subs.map(s => s.feed_id));
+			if (subsData) {
+				subscribedFeedIds = new Set(subsData.map(s => s.feed_id));
 			}
 		}
 
@@ -184,27 +218,47 @@
 			</form>
 		</div>
 
-		<!-- Categories -->
-		{#if allCategories.length > 0}
-			<div class="mb-8">
-				<div class="flex flex-wrap gap-2">
+		<!-- Filters -->
+		<div class="mb-8">
+			<div class="flex flex-wrap gap-2">
+				<!-- Subscribed filter -->
+				<button
+					onclick={() => {
+						showSubscribedOnly = !showSubscribedOnly;
+						if (showSubscribedOnly) {
+							selectedCategory = '';
+						}
+					}}
+					class="px-4 py-2 rounded-full text-sm font-medium transition-colors {showSubscribedOnly ? 'bg-accent text-accent-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
+				>
+					Subscribed ({subscribedFeedIds.size})
+				</button>
+
+				<span class="border-l border-border mx-1"></span>
+
+				<!-- Category filters -->
+				<button
+					onclick={() => {
+						filterByCategory('');
+						showSubscribedOnly = false;
+					}}
+					class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory === '' && !showSubscribedOnly ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
+				>
+					All
+				</button>
+				{#each allCategories as category}
 					<button
-						onclick={() => filterByCategory('')}
-						class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory === '' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
+						onclick={() => {
+							filterByCategory(category);
+							showSubscribedOnly = false;
+						}}
+						class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory === category ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
 					>
-						All
+						{category}
 					</button>
-					{#each allCategories as category}
-						<button
-							onclick={() => filterByCategory(category)}
-							class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory === category ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
-						>
-							{category}
-						</button>
-					{/each}
-				</div>
+				{/each}
 			</div>
-		{/if}
+		</div>
 
 		<!-- Feeds Grid -->
 		{#if loading}
@@ -227,13 +281,19 @@
 					</div>
 				{/each}
 			</div>
-		{:else if feeds.length === 0}
+		{:else if displayedFeeds.length === 0}
 			<div class="text-center py-12">
-				<p class="text-muted-foreground">No feeds found</p>
+				<p class="text-muted-foreground">
+					{#if showSubscribedOnly}
+						No subscribed feeds yet
+					{:else}
+						No feeds found
+					{/if}
+				</p>
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				{#each feeds as feed}
+				{#each displayedFeeds as feed}
 					<div class="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors flex flex-col select-none">
 						<div class="flex items-start justify-between mb-4">
 							<div class="flex-1 min-w-0">
@@ -274,7 +334,7 @@
 								<h3 class="font-semibold text-foreground mb-1 truncate">
 									{getFeedTitle(feed)}
 								</h3>
-								<div class="flex items-center gap-2 text-xs text-muted-foreground">
+								<div class="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
 									<span class="px-2 py-0.5 bg-accent/10 text-accent rounded">
 										{feed.feed_category || 'Other'}
 									</span>
@@ -292,14 +352,14 @@
 								</p>
 							{/if}
 
-							{#if feed.feed_site_url}
+							{#if feed.feed_site_url || feed.feed_url}
 								<a
-									href={feed.feed_site_url}
+									href={feed.feed_site_url || feed.feed_url}
 									target="_blank"
 									rel="noopener noreferrer"
 									class="text-xs text-primary hover:text-primary/90 mb-4 block truncate"
 								>
-									{feed.feed_site_url}
+									{feed.feed_site_url || feed.feed_url}
 								</a>
 							{/if}
 						</div>
