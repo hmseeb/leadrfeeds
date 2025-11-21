@@ -153,14 +153,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to approve a suggestion and create the feed
+-- Function to approve a suggestion (feed creation handled by n8n backend)
 CREATE OR REPLACE FUNCTION approve_feed_suggestion(
     p_suggestion_id UUID
 )
 RETURNS UUID AS $$
 DECLARE
-    v_feed_id UUID;
-    v_suggestion RECORD;
     v_user_email TEXT;
 BEGIN
     -- Check if user is owner
@@ -172,49 +170,19 @@ BEGIN
         RAISE EXCEPTION 'Only owner can approve suggestions';
     END IF;
 
-    -- Get suggestion details
-    SELECT * INTO v_suggestion
-    FROM feed_suggestions
-    WHERE id = p_suggestion_id AND status = 'pending';
-
-    IF v_suggestion IS NULL THEN
-        RAISE EXCEPTION 'Suggestion not found or already processed';
-    END IF;
-
-    -- Check if feed with this URL already exists
-    SELECT id INTO v_feed_id FROM feeds WHERE url = v_suggestion.feed_url;
-
-    IF v_feed_id IS NOT NULL THEN
-        RAISE EXCEPTION 'A feed with this URL already exists';
-    END IF;
-
-    -- Generate new feed ID
-    v_feed_id := gen_random_uuid();
-
-    -- Create the feed
-    INSERT INTO feeds (
-        id,
-        url,
-        title,
-        description,
-        category
-    ) VALUES (
-        v_feed_id,
-        v_suggestion.feed_url,
-        COALESCE(v_suggestion.feed_title, 'Untitled Feed'),
-        v_suggestion.feed_description,
-        extract_category(v_suggestion.feed_url)
-    );
-
     -- Update suggestion status
     UPDATE feed_suggestions
     SET
         status = 'approved',
         reviewed_at = NOW(),
         reviewed_by_email = v_user_email
-    WHERE id = p_suggestion_id;
+    WHERE id = p_suggestion_id AND status = 'pending';
 
-    RETURN v_feed_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Suggestion not found or already processed';
+    END IF;
+
+    RETURN p_suggestion_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
