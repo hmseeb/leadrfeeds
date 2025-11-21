@@ -25,6 +25,39 @@
 			: suggestions.filter((s) => s.status === selectedFilter)
 	);
 
+	// Get a readable feed title from URL if no title exists
+	function getFeedTitle(suggestion: any): string {
+		if (suggestion.feed_title) return suggestion.feed_title;
+
+		const url = suggestion.feed_url;
+		if (!url) return 'Feed';
+
+		try {
+			const urlObj = new URL(url);
+			let domain = urlObj.hostname.replace('www.', '');
+
+			// Map common domains to readable names
+			if (domain.includes('youtube.com')) return 'YouTube';
+			if (domain.includes('reddit.com')) return 'Reddit';
+			if (domain.includes('github.com')) return 'GitHub';
+			if (domain.includes('medium.com')) return 'Medium';
+			if (domain.includes('substack.com')) return 'Substack';
+			if (domain.includes('twitter.com') || domain.includes('x.com')) return 'Twitter/X';
+			if (domain.includes('linkedin.com')) return 'LinkedIn';
+			if (domain.includes('techcrunch.com')) return 'TechCrunch';
+			if (domain.includes('theverge.com')) return 'The Verge';
+			if (domain.includes('arstechnica.com')) return 'Ars Technica';
+			if (domain.includes('hackernews') || domain.includes('ycombinator.com')) return 'Hacker News';
+
+			// Extract main domain name and capitalize
+			const parts = domain.split('.');
+			const mainDomain = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+			return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+		} catch {
+			return 'Feed';
+		}
+	}
+
 	onMount(async () => {
 		if (!$user) {
 			goto('/auth/login');
@@ -253,7 +286,7 @@
 							<div class="flex-1 min-w-0">
 								<div class="flex items-center gap-2 mb-2">
 									<h3 class="font-semibold text-foreground text-lg">
-										{suggestion.feed_title || 'Untitled Feed'}
+										{getFeedTitle(suggestion)}
 									</h3>
 									<span
 										class="px-2 py-0.5 text-xs rounded-full font-medium {suggestion.status ===

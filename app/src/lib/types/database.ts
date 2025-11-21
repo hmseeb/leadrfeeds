@@ -200,6 +200,7 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          article_panel_width: number | null
           created_at: string | null
           openrouter_api_key: string | null
           preferred_model: string | null
@@ -208,6 +209,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          article_panel_width?: number | null
           created_at?: string | null
           openrouter_api_key?: string | null
           preferred_model?: string | null
@@ -216,6 +218,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          article_panel_width?: number | null
           created_at?: string | null
           openrouter_api_key?: string | null
           preferred_model?: string | null

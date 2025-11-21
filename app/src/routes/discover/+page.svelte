@@ -22,6 +22,39 @@
 	// Suggestion feature
 	let suggestModalOpen = $state(false);
 
+	// Get a readable feed title from URL if no title exists
+	function getFeedTitle(feed: DiscoveryFeed): string {
+		if (feed.feed_title) return feed.feed_title;
+
+		const url = feed.feed_site_url || feed.feed_url;
+		if (!url) return 'Feed';
+
+		try {
+			const urlObj = new URL(url);
+			let domain = urlObj.hostname.replace('www.', '');
+
+			// Map common domains to readable names
+			if (domain.includes('youtube.com')) return 'YouTube';
+			if (domain.includes('reddit.com')) return 'Reddit';
+			if (domain.includes('github.com')) return 'GitHub';
+			if (domain.includes('medium.com')) return 'Medium';
+			if (domain.includes('substack.com')) return 'Substack';
+			if (domain.includes('twitter.com') || domain.includes('x.com')) return 'Twitter/X';
+			if (domain.includes('linkedin.com')) return 'LinkedIn';
+			if (domain.includes('techcrunch.com')) return 'TechCrunch';
+			if (domain.includes('theverge.com')) return 'The Verge';
+			if (domain.includes('arstechnica.com')) return 'Ars Technica';
+			if (domain.includes('hackernews') || domain.includes('ycombinator.com')) return 'Hacker News';
+
+			// Extract main domain name and capitalize
+			const parts = domain.split('.');
+			const mainDomain = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+			return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+		} catch {
+			return 'Feed';
+		}
+	}
+
 	onMount(async () => {
 		if (!$user) {
 			goto('/auth/login');
@@ -201,7 +234,7 @@
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each feeds as feed}
-					<div class="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors flex flex-col">
+					<div class="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors flex flex-col select-none">
 						<div class="flex items-start justify-between mb-4">
 							<div class="flex-1 min-w-0">
 								{#if feed.feed_image}
@@ -239,7 +272,7 @@
 									</div>
 								{/if}
 								<h3 class="font-semibold text-foreground mb-1 truncate">
-									{feed.feed_title || 'Untitled Feed'}
+									{getFeedTitle(feed)}
 								</h3>
 								<div class="flex items-center gap-2 text-xs text-muted-foreground">
 									<span class="px-2 py-0.5 bg-accent/10 text-accent rounded">

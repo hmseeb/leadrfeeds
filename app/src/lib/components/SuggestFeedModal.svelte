@@ -16,6 +16,43 @@
   let errorMessage = $state("");
   let successMessage = $state("");
 
+  // Extract a readable title from the URL
+  function getTitleFromUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      let domain = urlObj.hostname.replace("www.", "");
+
+      // Map common domains to readable names
+      if (domain.includes("youtube.com")) return "YouTube";
+      if (domain.includes("reddit.com")) return "Reddit";
+      if (domain.includes("github.com")) return "GitHub";
+      if (domain.includes("medium.com")) return "Medium";
+      if (domain.includes("substack.com")) return "Substack";
+      if (domain.includes("twitter.com") || domain.includes("x.com"))
+        return "Twitter/X";
+      if (domain.includes("linkedin.com")) return "LinkedIn";
+      if (domain.includes("techcrunch.com")) return "TechCrunch";
+      if (domain.includes("theverge.com")) return "The Verge";
+      if (domain.includes("arstechnica.com")) return "Ars Technica";
+      if (domain.includes("hackernews") || domain.includes("ycombinator.com"))
+        return "Hacker News";
+      if (domain.includes("bbc.com") || domain.includes("bbc.co.uk"))
+        return "BBC";
+      if (domain.includes("nytimes.com")) return "NY Times";
+      if (domain.includes("washingtonpost.com")) return "Washington Post";
+      if (domain.includes("cnn.com")) return "CNN";
+      if (domain.includes("reuters.com")) return "Reuters";
+      if (domain.includes("bloomberg.com")) return "Bloomberg";
+
+      // Extract main domain name and capitalize
+      const parts = domain.split(".");
+      const mainDomain = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+      return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+    } catch {
+      return "Feed";
+    }
+  }
+
   async function handleSubmit() {
     if (!$user) return;
 
@@ -39,9 +76,12 @@
     successMessage = "";
 
     try {
+      // Extract title from URL
+      const extractedTitle = getTitleFromUrl(feedUrl.trim());
+
       const { error } = await supabase.rpc("submit_feed_suggestion" as any, {
         p_feed_url: feedUrl.trim(),
-        p_feed_title: null,
+        p_feed_title: extractedTitle,
         p_feed_description: null,
         p_reason: reason.trim() || null,
       });

@@ -51,7 +51,7 @@
 
 <article
 	onclick={handleClick}
-	class="bg-card border rounded-lg hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer backdrop-blur-sm {isSelected ? 'border-primary border-2 shadow-lg shadow-primary/10 ring-1 ring-primary/20 p-3' : !entry.is_read ? 'border-l-[3px] border-l-primary border-border shadow-md shadow-primary/5 p-4' : 'border-border shadow-sm shadow-black/5 p-4'}"
+	class="bg-card border rounded-lg hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer backdrop-blur-sm select-none {isSelected ? 'border-primary border-2 shadow-lg shadow-primary/10 ring-1 ring-primary/20 p-3' : !entry.is_read ? 'border-l-[3px] border-l-primary border-border shadow-md shadow-primary/5 p-4' : 'border-border shadow-sm shadow-black/5 p-4'}"
 >
 	<!-- Feed Info -->
 	<div class="flex items-center gap-2 mb-2">
@@ -90,7 +90,7 @@
 			</div>
 		{/if}
 		<div class="flex-1 min-w-0 flex items-center gap-2">
-			<span class="text-sm font-medium text-foreground truncate">
+			<span class="text-sm font-medium text-foreground truncate break-words">
 				{entry.feed_title}
 			</span>
 			<span class="px-2 py-0.5 text-xs bg-accent/20 text-accent font-medium rounded-full border border-accent/30">
@@ -109,13 +109,13 @@
 	</div>
 
 	<!-- Title -->
-	<h2 class="text-lg font-semibold text-foreground mb-2 leading-tight {!entry.is_read ? 'font-bold' : 'font-medium'} {isSelected ? 'truncate' : ''}">
+	<h2 class="text-lg font-semibold text-foreground mb-2 leading-tight break-words {!entry.is_read ? 'font-bold' : 'font-medium'}">
 		{entry.entry_title || 'Untitled Post'}
 	</h2>
 
 	<!-- Description -->
 	{#if entry.entry_description}
-		<p class="text-sm text-muted-foreground mb-2 leading-relaxed {isSelected ? 'truncate' : 'line-clamp-2'}">
+		<p class="text-sm text-muted-foreground mb-2 leading-relaxed break-words line-clamp-2">
 			{entry.entry_description}
 		</p>
 	{/if}

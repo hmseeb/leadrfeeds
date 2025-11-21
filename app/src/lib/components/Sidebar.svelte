@@ -30,6 +30,7 @@
 	let feeds = $state<FeedWithUnread[]>([]);
 	let totalUnread = $state(0);
 	let expandedFeeds = $state<Set<string>>(new Set());
+	let pendingSuggestionsCount = $state(0);
 
 	// Reactive current path from page store
 	const currentPath = $derived($page.url.pathname);
@@ -66,9 +67,17 @@
 		}
 
 		await loadFeeds();
+		if (isOwner) {
+			await loadPendingSuggestionsCount();
+		}
 
 		// Reload feeds every 30 seconds
-		const interval = setInterval(loadFeeds, 30000);
+		const interval = setInterval(async () => {
+			await loadFeeds();
+			if (isOwner) {
+				await loadPendingSuggestionsCount();
+			}
+		}, 30000);
 		return () => clearInterval(interval);
 	});
 
@@ -115,10 +124,11 @@
 			.map(uf => {
 				const feed = Array.isArray(uf.feeds) ? uf.feeds[0] : uf.feeds;
 				const feedUrl = feed.url || feed.site_url;
+				const domainCategory = getDomainCategory(feedUrl);
 				return {
 					feed_id: feed.id,
-					feed_title: feed.title || 'Untitled Feed',
-					feed_category: getDomainCategory(feedUrl),
+					feed_title: feed.title || domainCategory,
+					feed_category: domainCategory,
 					feed_url: feedUrl,
 					feed_image: feed.image?.replace(/\/+$/, '') || null,
 					feed_site_url: feed.site_url || null,
@@ -127,6 +137,19 @@
 			});
 
 		totalUnread = feeds.reduce((sum, f) => sum + f.unread_count, 0);
+	}
+
+	async function loadPendingSuggestionsCount() {
+		if (!$user || !isOwner) return;
+
+		const { data, error } = await supabase.rpc('get_pending_suggestions_count');
+
+		if (error) {
+			console.error('Error loading pending suggestions count:', error);
+			return;
+		}
+
+		pendingSuggestionsCount = data || 0;
 	}
 
 	async function handleSignOut() {
@@ -164,7 +187,7 @@
 	<!-- Toggle Button -->
 	<button
 		onclick={() => isCollapsed = !isCollapsed}
-		class="absolute -right-3 top-1/2 -translate-y-1/2 z-50 bg-gray-800 hover:bg-gray-700 rounded-full p-1.5 shadow-lg transition-colors border border-gray-700"
+		class="absolute -right-3 top-1/2 -translate-y-1/2 z-[60] bg-gray-800 hover:bg-gray-700 rounded-full p-1.5 shadow-lg transition-colors border border-gray-700"
 		title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 	>
 		{#if isCollapsed}
@@ -237,6 +260,11 @@
 					<Lightbulb size={18} class="{currentPath.includes('/discover/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
 					{#if !isCollapsed}
 						<span class="flex-1 min-w-0 truncate">Suggestions</span>
+						{#if pendingSuggestionsCount > 0}
+							<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-400 flex-shrink-0">
+								{pendingSuggestionsCount}
+							</span>
+						{/if}
 					{/if}
 				</a>
 			{/if}

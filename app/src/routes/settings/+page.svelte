@@ -131,7 +131,7 @@
 	<div class="flex-1 overflow-y-auto">
 		<div class="max-w-3xl mx-auto p-6">
 			<!-- Header -->
-			<div class="mb-8">
+			<div class="mb-8 select-none">
 				<h1 class="text-3xl font-bold text-foreground mb-2">Settings</h1>
 				<p class="text-muted-foreground">Manage your account and preferences</p>
 			</div>
@@ -144,7 +144,7 @@
 				<div class="space-y-6">
 					<!-- OpenRouter API Key -->
 					<div class="bg-card border border-border rounded-lg p-6">
-						<h2 class="text-lg font-semibold text-foreground mb-4">OpenRouter API Configuration</h2>
+						<h2 class="text-lg font-semibold text-foreground mb-4 select-none">OpenRouter API Configuration</h2>
 
 						<div class="space-y-4">
 							<div>
@@ -235,7 +235,7 @@
 
 					<!-- Appearance -->
 					<div class="bg-card border border-border rounded-lg p-6">
-						<h2 class="text-lg font-semibold text-foreground mb-4">Appearance</h2>
+						<h2 class="text-lg font-semibold text-foreground mb-4 select-none">Appearance</h2>
 
 						<div>
 							<label for="theme" class="block text-sm font-medium text-foreground mb-2">
@@ -257,9 +257,9 @@
 
 					<!-- Account -->
 					<div class="bg-card border border-border rounded-lg p-6">
-						<h2 class="text-lg font-semibold text-foreground mb-4">Account</h2>
+						<h2 class="text-lg font-semibold text-foreground mb-4 select-none">Account</h2>
 
-						<div class="space-y-2 text-sm">
+						<div class="space-y-2 text-sm select-none">
 							<div class="flex justify-between">
 								<span class="text-muted-foreground">Email:</span>
 								<span class="text-foreground">{$user?.email}</span>

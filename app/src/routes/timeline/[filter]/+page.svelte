@@ -8,6 +8,7 @@
 	import EntryCard from '$lib/components/EntryCard.svelte';
 	import AIChat from '$lib/components/AIChat.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import { Maximize, Minimize } from 'lucide-svelte';
 	import type { Database } from '$lib/types/database';
 
 	type TimelineEntry = Database['public']['Functions']['get_user_timeline']['Returns'][0];
@@ -26,6 +27,9 @@
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
 	let loadMoreElement = $state<HTMLElement | null>(null);
 	let isSidebarCollapsed = $state(false);
+	let articleWidth = $state(650); // Default width in pixels
+	let isResizing = $state(false);
+	let isArticleFullscreen = $state(false);
 
 	onMount(async () => {
 		if (!$user) {
@@ -35,6 +39,7 @@
 
 		filter = $page.params.filter;
 		await loadFeeds();
+		await loadUserSettings();
 		await loadEntries();
 	});
 
@@ -69,6 +74,61 @@
 		if (!error && data) {
 			feeds = data.map((sub: any) => sub.feeds).filter(Boolean);
 		}
+	}
+
+	async function loadUserSettings() {
+		if (!$user) return;
+
+		const { data, error } = await supabase
+			.from('user_settings')
+			.select('article_panel_width')
+			.eq('user_id', $user.id)
+			.single();
+
+		if (!error && data && data.article_panel_width) {
+			articleWidth = data.article_panel_width;
+		}
+	}
+
+	async function saveArticleWidth(width: number) {
+		if (!$user) return;
+
+		await supabase
+			.from('user_settings')
+			.upsert({
+				user_id: $user.id,
+				article_panel_width: width
+			}, {
+				onConflict: 'user_id'
+			});
+	}
+
+	function handleResizeStart(e: PointerEvent) {
+		isResizing = true;
+		e.preventDefault();
+
+		const startX = e.clientX;
+		const startWidth = articleWidth;
+
+		function handleResize(e: PointerEvent) {
+			if (!isResizing) return;
+
+			const deltaX = startX - e.clientX;
+			const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
+			articleWidth = newWidth;
+		}
+
+		function handleResizeEnd() {
+			if (isResizing) {
+				isResizing = false;
+				saveArticleWidth(articleWidth);
+				document.removeEventListener('pointermove', handleResize);
+				document.removeEventListener('pointerup', handleResizeEnd);
+			}
+		}
+
+		document.addEventListener('pointermove', handleResize);
+		document.addEventListener('pointerup', handleResizeEnd);
 	}
 
 	function getDomainCategory(url: string | null, siteUrl: string | null): string {
@@ -289,6 +349,11 @@
 
 	function closeEntryDetail() {
 		selectedEntry = null;
+		isArticleFullscreen = false;
+	}
+
+	function toggleArticleFullscreen() {
+		isArticleFullscreen = !isArticleFullscreen;
 	}
 
 	async function loadMore() {
@@ -396,15 +461,39 @@
 
 		<!-- Entry Detail Panel -->
 		{#if selectedEntry}
-			<div class="{isSidebarCollapsed ? 'w-[850px]' : 'w-[650px]'} border-l border-border bg-card overflow-y-auto flex-shrink-0 transition-all duration-300">
+			<div class="relative border-l border-border bg-card overflow-y-auto flex-shrink-0 transition-all duration-300 {isArticleFullscreen ? 'fixed inset-0 z-50 w-full' : ''}" style:width="{isArticleFullscreen ? '100%' : `${articleWidth}px`}">
+				<!-- Resize Handle (hidden in fullscreen) -->
+				{#if !isArticleFullscreen}
+					<div
+						onpointerdown={handleResizeStart}
+						class="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/50 active:bg-primary transition-colors z-20 {isResizing ? 'bg-primary' : ''}"
+						role="separator"
+						aria-label="Resize article panel"
+					></div>
+				{/if}
+
 				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10">
 					<h2 class="font-semibold text-lg text-foreground">Article</h2>
-					<button
-						onclick={closeEntryDetail}
-						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all"
-					>
-						✕
-					</button>
+					<div class="flex items-center gap-2">
+						<button
+							onclick={toggleArticleFullscreen}
+							class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all"
+							title={isArticleFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+						>
+							{#if isArticleFullscreen}
+								<Minimize size={18} />
+							{:else}
+								<Maximize size={18} />
+							{/if}
+						</button>
+						<button
+							onclick={closeEntryDetail}
+							class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all"
+							title="Close"
+						>
+							✕
+						</button>
+					</div>
 				</div>
 
 				<div class="p-6">
@@ -489,7 +578,7 @@
 					</div>
 
 					<!-- Content -->
-					<div class="prose prose-invert max-w-none">
+					<div class="prose prose-invert max-w-none article-content">
 						{#if selectedEntry.entry_content}
 							{@html selectedEntry.entry_content}
 						{:else if selectedEntry.entry_description}
@@ -524,3 +613,63 @@
 		/>
 	</div>
 </div>
+
+<style>
+	/* Override float styles on images in article content to display in normal flow */
+	:global(.article-content img) {
+		float: none !important;
+		display: block !important;
+		margin-left: auto !important;
+		margin-right: auto !important;
+		margin-top: 1rem !important;
+		margin-bottom: 1rem !important;
+		max-width: 100% !important;
+		height: auto !important;
+	}
+
+	/* Also handle images that might be wrapped in align attributes */
+	:global(.article-content [align]) {
+		text-align: left !important;
+	}
+
+	/* Convert tables used for layout to block elements */
+	:global(.article-content table) {
+		display: block !important;
+		width: 100% !important;
+		float: none !important;
+	}
+
+	:global(.article-content tbody),
+	:global(.article-content thead),
+	:global(.article-content tfoot) {
+		display: block !important;
+	}
+
+	:global(.article-content tr) {
+		display: block !important;
+	}
+
+	:global(.article-content td),
+	:global(.article-content th) {
+		display: block !important;
+		width: 100% !important;
+		float: none !important;
+	}
+
+	:global(.article-content table img) {
+		float: none !important;
+		display: block !important;
+	}
+
+	/* Handle figure elements that might contain floated images */
+	:global(.article-content figure) {
+		float: none !important;
+		margin-left: auto !important;
+		margin-right: auto !important;
+	}
+
+	/* Handle divs with inline styles for alignment */
+	:global(.article-content div) {
+		float: none !important;
+	}
+</style>
