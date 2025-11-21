@@ -3,7 +3,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Search, Plus, Check, ThumbsUp, ThumbsDown } from 'lucide-svelte';
+	import { Search, Plus, Check } from 'lucide-svelte';
 	import SuggestFeedModal from '$lib/components/SuggestFeedModal.svelte';
 	import type { Database } from '$lib/types/database';
 
@@ -19,15 +19,7 @@
 	let subscribingIds = $state<Set<string>>(new Set());
 
 	// Suggestion feature
-	let activeTab = $state<'feeds' | 'suggestions'>('feeds');
-	let suggestions = $state<any[]>([]);
 	let suggestModalOpen = $state(false);
-	let pendingSuggestionsCount = $state(0);
-	let approvingIds = $state<Set<string>>(new Set());
-	let rejectingIds = $state<Set<string>>(new Set());
-
-	// Check if current user is owner
-	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
 
 	onMount(async () => {
 		if (!$user) {
@@ -36,12 +28,6 @@
 		}
 
 		await loadFeeds();
-
-		// Load suggestions if owner
-		if (isOwner) {
-			await loadSuggestions();
-			await loadPendingSuggestionsCount();
-		}
 	});
 
 	async function loadFeeds() {
@@ -140,141 +126,17 @@
 		selectedCategory = category === selectedCategory ? '' : category;
 		await loadFeeds();
 	}
-
-	async function loadSuggestions() {
-		if (!isOwner) return;
-
-		const { data, error } = await supabase
-			.from('feed_suggestions')
-			.select('*')
-			.order('created_at', { ascending: false });
-
-		if (error) {
-			console.error('Error loading suggestions:', error);
-		} else if (data) {
-			suggestions = data;
-		}
-	}
-
-	async function loadPendingSuggestionsCount() {
-		if (!isOwner) return;
-
-		const { data, error } = await supabase.rpc('get_pending_suggestions_count');
-
-		if (!error && data !== null) {
-			pendingSuggestionsCount = data;
-		}
-	}
-
-	async function approveSuggestion(suggestionId: string) {
-		approvingIds = new Set(approvingIds).add(suggestionId);
-
-		try {
-			const { error } = await supabase.rpc('approve_feed_suggestion', {
-				p_suggestion_id: suggestionId
-			});
-
-			if (error) throw error;
-
-			// Reload both suggestions and feeds
-			await Promise.all([loadSuggestions(), loadPendingSuggestionsCount(), loadFeeds()]);
-		} catch (err: any) {
-			console.error('Error approving suggestion:', err);
-			alert('Failed to approve suggestion: ' + err.message);
-		} finally {
-			const newSet = new Set(approvingIds);
-			newSet.delete(suggestionId);
-			approvingIds = newSet;
-		}
-	}
-
-	async function rejectSuggestion(suggestionId: string) {
-		const reason = prompt('Reason for rejection (optional):');
-		if (reason === null) return; // User cancelled
-
-		rejectingIds = new Set(rejectingIds).add(suggestionId);
-
-		try {
-			const { error } = await supabase.rpc('reject_feed_suggestion', {
-				p_suggestion_id: suggestionId,
-				p_rejection_reason: reason || null
-			});
-
-			if (error) throw error;
-
-			// Reload suggestions
-			await Promise.all([loadSuggestions(), loadPendingSuggestionsCount()]);
-		} catch (err: any) {
-			console.error('Error rejecting suggestion:', err);
-			alert('Failed to reject suggestion: ' + err.message);
-		} finally {
-			const newSet = new Set(rejectingIds);
-			newSet.delete(suggestionId);
-			rejectingIds = newSet;
-		}
-	}
-
-	function handleSuggestionSuccess() {
-		// Show success message (modal already shows success state)
-	}
 </script>
 
 <div class="min-h-screen bg-background">
 	<div class="max-w-7xl mx-auto px-4 py-8">
 		<!-- Header -->
 		<div class="mb-8">
-			<div class="flex items-start justify-between">
-				<div>
-					<h1 class="text-3xl font-bold text-foreground mb-2">Discover Feeds</h1>
-					<p class="text-muted-foreground">Browse and subscribe to RSS feeds</p>
-				</div>
-
-				<!-- Suggest Feed Button (for non-owners) -->
-				{#if !isOwner}
-					<button
-						onclick={() => (suggestModalOpen = true)}
-						class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
-					>
-						<Plus size={18} />
-						Suggest a Feed
-					</button>
-				{/if}
-			</div>
+			<h1 class="text-3xl font-bold text-foreground mb-2">Discover Feeds</h1>
+			<p class="text-muted-foreground">Browse and subscribe to RSS feeds</p>
 		</div>
 
-		<!-- Tabs (Owner only sees Suggestions tab) -->
-		{#if isOwner}
-			<div class="mb-6 flex items-center gap-4 border-b border-border">
-				<button
-					onclick={() => (activeTab = 'feeds')}
-					class="px-4 py-2 -mb-px border-b-2 transition-colors {activeTab === 'feeds'
-						? 'border-primary text-primary font-medium'
-						: 'border-transparent text-muted-foreground hover:text-foreground'}"
-				>
-					Feeds
-				</button>
-				<button
-					onclick={() => (activeTab = 'suggestions')}
-					class="px-4 py-2 -mb-px border-b-2 transition-colors relative {activeTab ===
-					'suggestions'
-						? 'border-primary text-primary font-medium'
-						: 'border-transparent text-muted-foreground hover:text-foreground'}"
-				>
-					Suggestions
-					{#if pendingSuggestionsCount > 0}
-						<span
-							class="absolute -top-1 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-						>
-							{pendingSuggestionsCount}
-						</span>
-					{/if}
-				</button>
-			</div>
-		{/if}
-
-		<!-- Feeds Tab Content -->
-		{#if activeTab === 'feeds'}
-			<!-- Search -->
+		<!-- Search -->
 		<div class="mb-6">
 			<form onsubmit={(e) => { e.preventDefault(); handleSearch(); }} class="relative">
 				<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
@@ -416,6 +278,18 @@
 			</div>
 		{/if}
 
+		<!-- Can't find feed message -->
+		<div class="mt-8 text-center py-8 border-t border-border">
+			<p class="text-muted-foreground mb-3">Can't see the feed you're looking for?</p>
+			<button
+				onclick={() => (suggestModalOpen = true)}
+				class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+			>
+				<Plus size={20} />
+				Suggest a Feed
+			</button>
+		</div>
+
 		<!-- Navigation to Timeline -->
 		{#if subscribedFeedIds.size > 0}
 			<div class="fixed bottom-8 right-8">
@@ -427,160 +301,8 @@
 				</a>
 			</div>
 		{/if}
-		{:else if activeTab === 'suggestions'}
-			<!-- Suggestions Management (Owner only) -->
-			<div class="space-y-4">
-				{#if loading}
-					<div class="text-center py-12">
-						<p class="text-muted-foreground">Loading suggestions...</p>
-					</div>
-				{:else if suggestions.length === 0}
-					<div class="text-center py-12">
-						<p class="text-muted-foreground">No feed suggestions yet</p>
-					</div>
-				{:else}
-					{#each suggestions as suggestion}
-						<div class="bg-card border border-border rounded-lg p-6">
-							<div class="flex items-start justify-between gap-4">
-								<!-- Suggestion Details -->
-								<div class="flex-1 min-w-0">
-									<div class="flex items-center gap-2 mb-2">
-										<h3 class="font-semibold text-foreground">
-											{suggestion.feed_title || 'Untitled Feed'}
-										</h3>
-										<span
-											class="px-2 py-0.5 text-xs rounded-full {suggestion.status ===
-											'pending'
-												? 'bg-yellow-500/20 text-yellow-500'
-												: suggestion.status === 'approved'
-													? 'bg-green-500/20 text-green-500'
-													: 'bg-red-500/20 text-red-500'}"
-										>
-											{suggestion.status}
-										</span>
-									</div>
-
-									<a
-										href={suggestion.feed_url}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="text-sm text-primary hover:text-primary/90 break-all block mb-2"
-									>
-										{suggestion.feed_url}
-									</a>
-
-									{#if suggestion.feed_description}
-										<p class="text-sm text-muted-foreground mb-2">
-											{suggestion.feed_description}
-										</p>
-									{/if}
-
-									{#if suggestion.reason}
-										<div class="mt-2 p-3 bg-accent/10 rounded border-l-2 border-primary">
-											<p class="text-xs text-muted-foreground mb-1">Reason:</p>
-											<p class="text-sm text-foreground">{suggestion.reason}</p>
-										</div>
-									{/if}
-
-									<div class="mt-3 text-xs text-muted-foreground">
-										Suggested by: {suggestion.suggested_by_email} •
-										{new Date(suggestion.created_at).toLocaleDateString()}
-										{#if suggestion.reviewed_at}
-											• Reviewed by: {suggestion.reviewed_by_email} on {new Date(
-												suggestion.reviewed_at
-											).toLocaleDateString()}
-										{/if}
-									</div>
-
-									{#if suggestion.rejection_reason}
-										<div class="mt-2 p-2 bg-red-500/10 rounded">
-											<p class="text-xs text-red-500">
-												<strong>Rejection reason:</strong>
-												{suggestion.rejection_reason}
-											</p>
-										</div>
-									{/if}
-								</div>
-
-								<!-- Action Buttons (only for pending) -->
-								{#if suggestion.status === 'pending'}
-									<div class="flex gap-2 flex-shrink-0">
-										<button
-											onclick={() => approveSuggestion(suggestion.id)}
-											disabled={approvingIds.has(suggestion.id) ||
-												rejectingIds.has(suggestion.id)}
-											class="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-											title="Approve"
-										>
-											{#if approvingIds.has(suggestion.id)}
-												<svg
-													class="animate-spin h-4 w-4"
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-												>
-													<circle
-														class="opacity-25"
-														cx="12"
-														cy="12"
-														r="10"
-														stroke="currentColor"
-														stroke-width="4"
-													></circle>
-													<path
-														class="opacity-75"
-														fill="currentColor"
-														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-													></path>
-												</svg>
-											{:else}
-												<ThumbsUp size={16} />
-											{/if}
-											Approve
-										</button>
-										<button
-											onclick={() => rejectSuggestion(suggestion.id)}
-											disabled={approvingIds.has(suggestion.id) ||
-												rejectingIds.has(suggestion.id)}
-											class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-											title="Reject"
-										>
-											{#if rejectingIds.has(suggestion.id)}
-												<svg
-													class="animate-spin h-4 w-4"
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-												>
-													<circle
-														class="opacity-25"
-														cx="12"
-														cy="12"
-														r="10"
-														stroke="currentColor"
-														stroke-width="4"
-													></circle>
-													<path
-														class="opacity-75"
-														fill="currentColor"
-														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-													></path>
-												</svg>
-											{:else}
-												<ThumbsDown size={16} />
-											{/if}
-											Reject
-										</button>
-									</div>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				{/if}
-			</div>
-		{/if}
 	</div>
 </div>
 
 <!-- Suggest Feed Modal -->
-<SuggestFeedModal bind:isOpen={suggestModalOpen} onSuccess={handleSuggestionSuccess} />
+<SuggestFeedModal bind:isOpen={suggestModalOpen} />

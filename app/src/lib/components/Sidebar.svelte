@@ -3,7 +3,10 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Home, Star, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { Home, Star, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-svelte';
+
+	// Check if current user is owner
+	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
 
 	interface FeedWithUnread {
 		feed_id: string;
@@ -213,14 +216,28 @@
 
 			<a
 				href="/discover"
-				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' || currentPath.includes('/discover') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
 				title={isCollapsed ? 'Discover' : ''}
 			>
-				<Search size={18} class="{currentPath === '/discover' || currentPath.includes('/discover') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				<Search size={18} class="{currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">Discover</span>
 				{/if}
 			</a>
+
+			<!-- Suggestions Link (Owner Only) -->
+			{#if isOwner}
+				<a
+					href="/discover/suggestions"
+					class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath.includes('/discover/suggestions') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+					title={isCollapsed ? 'Suggestions' : ''}
+				>
+					<Lightbulb size={18} class="{currentPath.includes('/discover/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+					{#if !isCollapsed}
+						<span class="flex-1 min-w-0 truncate">Suggestions</span>
+					{/if}
+				</a>
+			{/if}
 		</div>
 
 		<!-- Divider -->
