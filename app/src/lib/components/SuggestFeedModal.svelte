@@ -130,9 +130,7 @@
 							disabled={submitting}
 							class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
 						/>
-						<p class="mt-1 text-xs text-muted-foreground">
-							Enter the RSS/Atom feed URL you'd like to suggest
-						</p>
+						<p class="mt-1 text-xs text-muted-foreground">RSS/URL</p>
 					</div>
 
 					<!-- Success Message -->
