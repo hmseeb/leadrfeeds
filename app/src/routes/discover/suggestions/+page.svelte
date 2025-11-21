@@ -13,7 +13,7 @@
 	let rejectingWithReasonId = $state<string | null>(null);
 	let rejectionReason = $state('');
 	let deletingConfirmId = $state<string | null>(null);
-	let selectedFilter = $state<'all' | 'pending' | 'approved' | 'rejected'>('all');
+	let selectedFilter = $state<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
 	// Check if current user is owner
 	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
