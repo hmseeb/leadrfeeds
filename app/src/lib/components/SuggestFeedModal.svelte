@@ -11,9 +11,6 @@
 	let { isOpen = $bindable(), onSuccess }: Props = $props();
 
 	let feedUrl = $state('');
-	let feedTitle = $state('');
-	let feedDescription = $state('');
-	let reason = $state('');
 	let submitting = $state(false);
 	let errorMessage = $state('');
 	let successMessage = $state('');
@@ -40,11 +37,11 @@
 		successMessage = '';
 
 		try {
-			const { error } = await supabase.rpc('submit_feed_suggestion', {
+			const { error } = await supabase.rpc('submit_feed_suggestion' as any, {
 				p_feed_url: feedUrl.trim(),
-				p_feed_title: feedTitle.trim() || null,
-				p_feed_description: feedDescription.trim() || null,
-				p_reason: reason.trim() || null
+				p_feed_title: null,
+				p_feed_description: null,
+				p_reason: null
 			});
 
 			if (error) throw error;
@@ -54,9 +51,6 @@
 			// Reset form after short delay
 			setTimeout(() => {
 				feedUrl = '';
-				feedTitle = '';
-				feedDescription = '';
-				reason = '';
 				successMessage = '';
 				isOpen = false;
 				onSuccess?.();
@@ -81,9 +75,6 @@
 	$effect(() => {
 		if (isOpen) {
 			feedUrl = '';
-			feedTitle = '';
-			feedDescription = '';
-			reason = '';
 			errorMessage = '';
 			successMessage = '';
 		}
@@ -140,53 +131,8 @@
 							class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
 						/>
 						<p class="mt-1 text-xs text-muted-foreground">
-							The RSS/Atom feed URL (usually ends with .xml or /feed)
+							Enter the RSS/Atom feed URL you'd like to suggest
 						</p>
-					</div>
-
-					<!-- Feed Title (Optional) -->
-					<div>
-						<label for="feedTitle" class="block text-sm font-medium text-foreground mb-2">
-							Feed Title <span class="text-xs text-muted-foreground">(optional)</span>
-						</label>
-						<input
-							id="feedTitle"
-							type="text"
-							bind:value={feedTitle}
-							placeholder="e.g., Tech News Daily"
-							disabled={submitting}
-							class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-						/>
-					</div>
-
-					<!-- Feed Description (Optional) -->
-					<div>
-						<label for="feedDescription" class="block text-sm font-medium text-foreground mb-2">
-							Description <span class="text-xs text-muted-foreground">(optional)</span>
-						</label>
-						<textarea
-							id="feedDescription"
-							bind:value={feedDescription}
-							placeholder="Brief description of the feed..."
-							rows="3"
-							disabled={submitting}
-							class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none disabled:opacity-50"
-						></textarea>
-					</div>
-
-					<!-- Reason for Suggestion (Optional) -->
-					<div>
-						<label for="reason" class="block text-sm font-medium text-foreground mb-2">
-							Why suggest this feed? <span class="text-xs text-muted-foreground">(optional)</span>
-						</label>
-						<textarea
-							id="reason"
-							bind:value={reason}
-							placeholder="Tell us why this feed would be a good addition..."
-							rows="3"
-							disabled={submitting}
-							class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none disabled:opacity-50"
-						></textarea>
 					</div>
 
 					<!-- Success Message -->

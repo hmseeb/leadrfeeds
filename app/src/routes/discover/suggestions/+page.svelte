@@ -9,9 +9,17 @@
 	let loading = $state(true);
 	let approvingIds = $state<Set<string>>(new Set());
 	let rejectingIds = $state<Set<string>>(new Set());
+	let selectedFilter = $state<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
 	// Check if current user is owner
 	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
+
+	// Filter suggestions based on selected filter
+	const filteredSuggestions = $derived(
+		selectedFilter === 'all'
+			? suggestions
+			: suggestions.filter((s) => s.status === selectedFilter)
+	);
 
 	onMount(async () => {
 		if (!$user) {
@@ -104,11 +112,11 @@
 		<!-- Header -->
 		<div class="mb-8">
 			<a
-				href="/discover"
+				href="/timeline/all"
 				class="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
 			>
 				<ArrowLeft size={20} />
-				Back to Discover
+				Back to Timeline
 			</a>
 			<div class="flex items-center justify-between">
 				<div>
@@ -128,22 +136,38 @@
 		<!-- Filter tabs -->
 		<div class="mb-6 flex gap-2">
 			<button
-				class="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground"
+				onclick={() => (selectedFilter = 'all')}
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {selectedFilter ===
+				'all'
+					? 'bg-primary text-primary-foreground'
+					: 'bg-card text-foreground hover:bg-accent'}"
 			>
 				All ({suggestions.length})
 			</button>
 			<button
-				class="px-4 py-2 rounded-lg text-sm font-medium bg-card text-foreground hover:bg-accent transition-colors"
+				onclick={() => (selectedFilter = 'pending')}
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {selectedFilter ===
+				'pending'
+					? 'bg-primary text-primary-foreground'
+					: 'bg-card text-foreground hover:bg-accent'}"
 			>
 				Pending ({pendingCount})
 			</button>
 			<button
-				class="px-4 py-2 rounded-lg text-sm font-medium bg-card text-foreground hover:bg-accent transition-colors"
+				onclick={() => (selectedFilter = 'approved')}
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {selectedFilter ===
+				'approved'
+					? 'bg-primary text-primary-foreground'
+					: 'bg-card text-foreground hover:bg-accent'}"
 			>
 				Approved ({suggestions.filter((s) => s.status === 'approved').length})
 			</button>
 			<button
-				class="px-4 py-2 rounded-lg text-sm font-medium bg-card text-foreground hover:bg-accent transition-colors"
+				onclick={() => (selectedFilter = 'rejected')}
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {selectedFilter ===
+				'rejected'
+					? 'bg-primary text-primary-foreground'
+					: 'bg-card text-foreground hover:bg-accent'}"
 			>
 				Rejected ({suggestions.filter((s) => s.status === 'rejected').length})
 			</button>
@@ -155,15 +179,23 @@
 				<div class="text-center py-12">
 					<p class="text-muted-foreground">Loading suggestions...</p>
 				</div>
-			{:else if suggestions.length === 0}
+			{:else if filteredSuggestions.length === 0}
 				<div class="text-center py-12">
-					<p class="text-muted-foreground">No feed suggestions yet</p>
-					<p class="text-sm text-muted-foreground mt-2">
-						Users can suggest new feeds from the Discover page
+					<p class="text-muted-foreground">
+						{#if selectedFilter === 'all'}
+							No feed suggestions yet
+						{:else}
+							No {selectedFilter} suggestions
+						{/if}
 					</p>
+					{#if selectedFilter === 'all'}
+						<p class="text-sm text-muted-foreground mt-2">
+							Users can suggest new feeds from the Discover page
+						</p>
+					{/if}
 				</div>
 			{:else}
-				{#each suggestions as suggestion}
+				{#each filteredSuggestions as suggestion}
 					<div class="bg-card border border-border rounded-lg p-6">
 						<div class="flex items-start justify-between gap-4">
 							<!-- Suggestion Details -->
