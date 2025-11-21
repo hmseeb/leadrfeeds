@@ -52,16 +52,69 @@
     try {
       const urlObj = new URL(url);
       let domain = urlObj.hostname.replace("www.", "");
+      const path = urlObj.pathname;
 
-      // Map common domains to readable names
-      if (domain.includes("youtube.com")) return "YouTube";
-      if (domain.includes("reddit.com")) return "Reddit";
-      if (domain.includes("github.com")) return "GitHub";
-      if (domain.includes("medium.com")) return "Medium";
-      if (domain.includes("substack.com")) return "Substack";
-      if (domain.includes("twitter.com") || domain.includes("x.com"))
+      // YouTube - extract channel name
+      if (domain.includes("youtube.com")) {
+        const channelMatch = path.match(/\/@([^\/]+)|\/channel\/([^\/]+)|\/c\/([^\/]+)|\/user\/([^\/]+)/);
+        if (channelMatch) {
+          return channelMatch[1] || channelMatch[2] || channelMatch[3] || channelMatch[4];
+        }
+        return "YouTube Channel";
+      }
+
+      // GitHub - extract username/repo
+      if (domain.includes("github.com")) {
+        const ghMatch = path.match(/^\/([^\/]+)(?:\/([^\/]+))?/);
+        if (ghMatch) {
+          if (ghMatch[2]) {
+            return `${ghMatch[1]}/${ghMatch[2]}`; // user/repo
+          }
+          return ghMatch[1]; // just username
+        }
+        return "GitHub";
+      }
+
+      // Reddit - extract subreddit
+      if (domain.includes("reddit.com")) {
+        const subredditMatch = path.match(/\/r\/([^\/]+)/);
+        if (subredditMatch) {
+          return `r/${subredditMatch[1]}`;
+        }
+        return "Reddit";
+      }
+
+      // Medium - extract username or publication
+      if (domain.includes("medium.com")) {
+        const mediumMatch = path.match(/^\/@([^\/]+)|^\/([^\/]+)/);
+        if (mediumMatch) {
+          return mediumMatch[1] || mediumMatch[2];
+        }
+        return "Medium";
+      }
+
+      // Substack - extract from subdomain
+      if (domain.includes("substack.com")) {
+        const subdomain = domain.split(".")[0];
+        if (subdomain !== "substack") {
+          return subdomain.charAt(0).toUpperCase() + subdomain.slice(1);
+        }
+        return "Substack";
+      }
+
+      // Twitter/X
+      if (domain.includes("twitter.com") || domain.includes("x.com")) {
+        const twitterMatch = path.match(/^\/([^\/]+)/);
+        if (twitterMatch && !["home", "explore", "search"].includes(twitterMatch[1])) {
+          return `@${twitterMatch[1]}`;
+        }
         return "Twitter/X";
+      }
+
+      // LinkedIn
       if (domain.includes("linkedin.com")) return "LinkedIn";
+
+      // News sites
       if (domain.includes("techcrunch.com")) return "TechCrunch";
       if (domain.includes("theverge.com")) return "The Verge";
       if (domain.includes("arstechnica.com")) return "Ars Technica";

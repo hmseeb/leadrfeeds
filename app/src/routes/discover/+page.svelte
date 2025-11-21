@@ -26,6 +26,8 @@
 	// Filtered feeds based on filters
 	const displayedFeeds = $derived.by(() => {
 		let result = feeds;
+		// Hide feeds with no posts (last_entry_at is null means no posts synced yet)
+		result = result.filter(f => f.last_entry_at !== null);
 		if (showSubscribedOnly) {
 			result = result.filter(f => subscribedFeedIds.has(f.feed_id));
 		}

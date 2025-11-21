@@ -119,13 +119,19 @@
 		const unreadMap = new Map(unreadData?.map(u => [u.feed_id, u.unread_count]) || []);
 
 		// Build feeds list with domain-based categories
-		// Filter out feeds that are pending sync (no title from database)
+		// Filter out feeds that are pending sync (no image from Folo sync)
+		const genericTitles = ['YouTube', 'GitHub', 'Reddit', 'Medium', 'Substack', 'Twitter/X', 'LinkedIn', 'Feed'];
+
 		feeds = userFeeds
 			.filter(uf => uf.feeds)
 			.map(uf => {
 				const feed = Array.isArray(uf.feeds) ? uf.feeds[0] : uf.feeds;
 				const feedUrl = feed.url || feed.site_url;
 				const domainCategory = getDomainCategory(feedUrl);
+				const hasGenericTitle = !feed.title || genericTitles.includes(feed.title);
+				const hasImage = !!feed.image;
+				// Feed is pending sync if it has a generic title and no image (Folo sets image when syncing)
+				const isPendingSync = hasGenericTitle && !hasImage;
 				return {
 					feed_id: feed.id,
 					feed_title: feed.title || domainCategory,
@@ -134,10 +140,10 @@
 					feed_image: feed.image?.replace(/\/+$/, '') || null,
 					feed_site_url: feed.site_url || null,
 					unread_count: unreadMap.get(feed.id) || 0,
-					_hasRealTitle: !!feed.title // Track if feed has a real title from DB
+					_isPendingSync: isPendingSync
 				};
 			})
-			.filter(f => f._hasRealTitle); // Hide feeds pending sync
+			.filter(f => !f._isPendingSync); // Hide feeds pending Folo sync
 
 		totalUnread = feeds.reduce((sum, f) => sum + f.unread_count, 0);
 	}
