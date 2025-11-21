@@ -10,6 +10,9 @@
 	let approvingIds = $state<Set<string>>(new Set());
 	let rejectingIds = $state<Set<string>>(new Set());
 	let deletingIds = $state<Set<string>>(new Set());
+	let rejectingWithReasonId = $state<string | null>(null);
+	let rejectionReason = $state('');
+	let deletingConfirmId = $state<string | null>(null);
 	let selectedFilter = $state<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
 	// Check if current user is owner
@@ -78,7 +81,6 @@
 			await loadSuggestions();
 		} catch (err: any) {
 			console.error('Error approving suggestion:', err);
-			alert('Failed to approve suggestion: ' + err.message);
 		} finally {
 			const newSet = new Set(approvingIds);
 			newSet.delete(suggestionId);
@@ -86,25 +88,33 @@
 		}
 	}
 
-	async function rejectSuggestion(suggestionId: string) {
-		const reason = prompt('Reason for rejection (optional):');
-		if (reason === null) return; // User cancelled
+	function showRejectForm(suggestionId: string) {
+		rejectingWithReasonId = suggestionId;
+		rejectionReason = '';
+	}
 
+	function cancelReject() {
+		rejectingWithReasonId = null;
+		rejectionReason = '';
+	}
+
+	async function confirmReject(suggestionId: string) {
 		rejectingIds = new Set(rejectingIds).add(suggestionId);
 
 		try {
 			const { error } = await supabase.rpc('reject_feed_suggestion', {
 				p_suggestion_id: suggestionId,
-				p_rejection_reason: reason || null
+				p_rejection_reason: rejectionReason.trim() || null
 			});
 
 			if (error) throw error;
 
 			// Reload suggestions
 			await loadSuggestions();
+			rejectingWithReasonId = null;
+			rejectionReason = '';
 		} catch (err: any) {
 			console.error('Error rejecting suggestion:', err);
-			alert('Failed to reject suggestion: ' + err.message);
 		} finally {
 			const newSet = new Set(rejectingIds);
 			newSet.delete(suggestionId);
@@ -112,9 +122,15 @@
 		}
 	}
 
-	async function deleteSuggestion(suggestionId: string) {
-		if (!confirm('Are you sure you want to delete this suggestion?')) return;
+	function showDeleteConfirm(suggestionId: string) {
+		deletingConfirmId = suggestionId;
+	}
 
+	function cancelDelete() {
+		deletingConfirmId = null;
+	}
+
+	async function confirmDelete(suggestionId: string) {
 		deletingIds = new Set(deletingIds).add(suggestionId);
 
 		try {
@@ -126,9 +142,9 @@
 
 			// Reload suggestions
 			await loadSuggestions();
+			deletingConfirmId = null;
 		} catch (err: any) {
 			console.error('Error deleting suggestion:', err);
-			alert('Failed to delete suggestion: ' + err.message);
 		} finally {
 			const newSet = new Set(deletingIds);
 			newSet.delete(suggestionId);
@@ -336,9 +352,10 @@
 										Approve
 									</button>
 									<button
-										onclick={() => rejectSuggestion(suggestion.id)}
+										onclick={() => showRejectForm(suggestion.id)}
 										disabled={approvingIds.has(suggestion.id) ||
-											rejectingIds.has(suggestion.id)}
+											rejectingIds.has(suggestion.id) ||
+											rejectingWithReasonId === suggestion.id}
 										class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
 										title="Reject suggestion"
 									>
@@ -372,8 +389,9 @@
 
 								<!-- Delete Button (always visible) -->
 								<button
-									onclick={() => deleteSuggestion(suggestion.id)}
-									disabled={deletingIds.has(suggestion.id)}
+									onclick={() => showDeleteConfirm(suggestion.id)}
+									disabled={deletingIds.has(suggestion.id) ||
+										deletingConfirmId === suggestion.id}
 									class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
 									title="Delete suggestion"
 								>
@@ -405,6 +423,111 @@
 								</button>
 							</div>
 						</div>
+
+						<!-- Inline Rejection Form -->
+						{#if rejectingWithReasonId === suggestion.id}
+							<div class="mt-4 p-4 bg-red-500/5 rounded-lg border border-red-500/20">
+								<label class="block text-sm font-medium text-foreground mb-2">
+									Rejection Reason (optional)
+								</label>
+								<textarea
+									bind:value={rejectionReason}
+									rows="3"
+									placeholder="Why are you rejecting this suggestion?"
+									class="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+								/>
+								<div class="flex gap-2 mt-3">
+									<button
+										onclick={() => confirmReject(suggestion.id)}
+										disabled={rejectingIds.has(suggestion.id)}
+										class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+									>
+										{#if rejectingIds.has(suggestion.id)}
+											<svg
+												class="animate-spin h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													class="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													stroke-width="4"
+												></circle>
+												<path
+													class="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												></path>
+											</svg>
+											Rejecting...
+										{:else}
+											Confirm Reject
+										{/if}
+									</button>
+									<button
+										onclick={cancelReject}
+										disabled={rejectingIds.has(suggestion.id)}
+										class="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+									>
+										Cancel
+									</button>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Inline Delete Confirmation -->
+						{#if deletingConfirmId === suggestion.id}
+							<div class="mt-4 p-4 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
+								<p class="text-sm font-medium text-foreground mb-3">
+									Are you sure you want to delete this suggestion? This action cannot be undone.
+								</p>
+								<div class="flex gap-2">
+									<button
+										onclick={() => confirmDelete(suggestion.id)}
+										disabled={deletingIds.has(suggestion.id)}
+										class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+									>
+										{#if deletingIds.has(suggestion.id)}
+											<svg
+												class="animate-spin h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													class="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													stroke-width="4"
+												></circle>
+												<path
+													class="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												></path>
+											</svg>
+											Deleting...
+										{:else}
+											<Trash2 size={16} />
+											Yes, Delete
+										{/if}
+									</button>
+									<button
+										onclick={cancelDelete}
+										disabled={deletingIds.has(suggestion.id)}
+										class="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+									>
+										Cancel
+									</button>
+								</div>
+							</div>
+						{/if}
 					</div>
 				{/each}
 			{/if}
