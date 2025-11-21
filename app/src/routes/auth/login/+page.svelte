@@ -1,11 +1,19 @@
 <script lang="ts">
-	import { signIn } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
+	import { signIn, user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
 	let loading = $state(false);
+
+	// Redirect if already logged in
+	onMount(() => {
+		if ($user) {
+			goto('/timeline/all');
+		}
+	});
 
 	async function handleLogin() {
 		if (!email || !password) {

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { supabase } from "$lib/services/supabase";
   import { user } from "$lib/stores/auth";
-  import { X } from "lucide-svelte";
+  import { X, PartyPopper } from "lucide-svelte";
+  import confetti from "canvas-confetti";
 
   interface Props {
     isOpen: boolean;
@@ -15,6 +16,36 @@
   let submitting = $state(false);
   let errorMessage = $state("");
   let successMessage = $state("");
+  let showSuccessState = $state(false);
+
+  function triggerConfetti() {
+    // Fire confetti from both sides
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    const colors = ["#22c55e", "#3b82f6", "#a855f7", "#f59e0b"];
+
+    (function frame() {
+      confetti({
+        particleCount: 4,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.7 },
+        colors: colors,
+      });
+      confetti({
+        particleCount: 4,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.7 },
+        colors: colors,
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    })();
+  }
 
   // Extract a readable title from the URL
   function getTitleFromUrl(url: string): string {
@@ -88,16 +119,9 @@
 
       if (error) throw error;
 
-      successMessage = "Feed suggestion submitted successfully!";
-
-      // Reset form after short delay
-      setTimeout(() => {
-        feedUrl = "";
-        reason = "";
-        successMessage = "";
-        isOpen = false;
-        onSuccess?.();
-      }, 1500);
+      // Show success state with confetti
+      showSuccessState = true;
+      triggerConfetti();
     } catch (err: any) {
       console.error("Error submitting suggestion:", err);
       errorMessage = err.message || "Failed to submit suggestion";
@@ -114,6 +138,14 @@
     }
   }
 
+  function closeSuccess() {
+    feedUrl = "";
+    reason = "";
+    showSuccessState = false;
+    isOpen = false;
+    onSuccess?.();
+  }
+
   // Reset form when modal opens
   $effect(() => {
     if (isOpen) {
@@ -121,6 +153,7 @@
       reason = "";
       errorMessage = "";
       successMessage = "";
+      showSuccessState = false;
     }
   });
 </script>
@@ -139,11 +172,15 @@
     >
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
-        <h2 id="suggest-feed-title" class="text-2xl font-bold text-foreground">
-          Suggest a Feed
-        </h2>
+        {#if !showSuccessState}
+          <h2 id="suggest-feed-title" class="text-2xl font-bold text-foreground">
+            Suggest a Feed
+          </h2>
+        {:else}
+          <div></div>
+        {/if}
         <button
-          onclick={closeModal}
+          onclick={showSuccessState ? closeSuccess : closeModal}
           disabled={submitting}
           class="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           aria-label="Close modal"
@@ -152,133 +189,142 @@
         </button>
       </div>
 
-      <!-- Form -->
-      <form
-        onsubmit={(e) => {
-          e.preventDefault();
-          handleSubmit();
-        }}
-      >
-        <div class="space-y-4">
-          <!-- Feed URL (Required) -->
-          <div>
-            <label
-              for="feedUrl"
-              class="block text-sm font-medium text-foreground mb-2"
-            >
-              Feed URL <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="feedUrl"
-              type="url"
-              bind:value={feedUrl}
-              placeholder="https://example.com/feed"
-              required
-              disabled={submitting}
-              class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            />
-            <p class="mt-1 text-xs text-muted-foreground">
-              Enter the RSS/URL you'd like to suggest
-            </p>
+      <!-- Success State -->
+      {#if showSuccessState}
+        <div class="text-center py-6">
+          <div class="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20">
+            <PartyPopper size={32} class="text-green-500" />
           </div>
-
-          <!-- Reason (Optional) -->
-          <div>
-            <label
-              for="reason"
-              class="block text-sm font-medium text-foreground mb-2"
-            >
-              Why should we add this feed? (Optional)
-            </label>
-            <textarea
-              id="reason"
-              bind:value={reason}
-              rows="3"
-              placeholder="Tell us why this feed would be valuable..."
-              disabled={submitting}
-              class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            ></textarea>
-            <p class="mt-1 text-xs text-muted-foreground">
-              Providing a reason for the feed is highly likely to be approved
+          <h3 class="text-xl font-bold text-foreground mb-2">
+            Suggestion Submitted!
+          </h3>
+          <p class="text-muted-foreground mb-4">
+            You'll be automatically subscribed to this feed as soon as it's available.
+          </p>
+          <div class="bg-primary/10 border border-primary/30 rounded-lg p-4 text-left">
+            <p class="text-sm text-foreground">
+              <span class="font-medium">What happens next?</span>
             </p>
-          </div>
-
-          <!-- Success Message -->
-          {#if successMessage}
-            <div
-              class="bg-green-500/10 border border-green-500/50 rounded-lg p-3"
-            >
-              <p class="text-sm text-green-500 flex items-center gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-                {successMessage}
-              </p>
-            </div>
-          {/if}
-
-          <!-- Error Message -->
-          {#if errorMessage}
-            <div class="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
-              <p class="text-sm text-red-500">{errorMessage}</p>
-            </div>
-          {/if}
-
-          <!-- Buttons -->
-          <div class="flex gap-3 pt-2">
-            <button
-              type="button"
-              onclick={closeModal}
-              disabled={submitting}
-              class="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || !feedUrl.trim()}
-              class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {#if submitting}
-                <svg
-                  class="animate-spin h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Submitting...
-              {:else}
-                Submit Suggestion
-              {/if}
-            </button>
+            <ul class="mt-2 text-sm text-muted-foreground space-y-1">
+              <li class="flex items-start gap-2">
+                <span class="text-primary mt-0.5">1.</span>
+                <span>We'll review your suggestion</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-primary mt-0.5">2.</span>
+                <span>Once approved, the feed will be added</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-primary mt-0.5">3.</span>
+                <span>You'll be subscribed automatically - no action needed!</span>
+              </li>
+            </ul>
           </div>
         </div>
-      </form>
+      {:else}
+        <!-- Form -->
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <div class="space-y-4">
+            <!-- Feed URL (Required) -->
+            <div>
+              <label
+                for="feedUrl"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Feed URL <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="feedUrl"
+                type="url"
+                bind:value={feedUrl}
+                placeholder="https://example.com/feed"
+                required
+                disabled={submitting}
+                class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              />
+              <p class="mt-1 text-xs text-muted-foreground">
+                Enter the RSS/URL you'd like to suggest
+              </p>
+            </div>
+
+            <!-- Reason (Optional) -->
+            <div>
+              <label
+                for="reason"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Why should we add this feed? (Optional)
+              </label>
+              <textarea
+                id="reason"
+                bind:value={reason}
+                rows="3"
+                placeholder="Tell us why this feed would be valuable..."
+                disabled={submitting}
+                class="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              ></textarea>
+              <p class="mt-1 text-xs text-muted-foreground">
+                Providing a reason for the feed is highly likely to be approved
+              </p>
+            </div>
+
+            <!-- Error Message -->
+            {#if errorMessage}
+              <div class="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
+                <p class="text-sm text-red-500">{errorMessage}</p>
+              </div>
+            {/if}
+
+            <!-- Buttons -->
+            <div class="flex gap-3 pt-2">
+              <button
+                type="button"
+                onclick={closeModal}
+                disabled={submitting}
+                class="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !feedUrl.trim()}
+                class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {#if submitting}
+                  <svg
+                    class="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Submitting...
+                {:else}
+                  Submit Suggestion
+                {/if}
+              </button>
+            </div>
+          </div>
+        </form>
+      {/if}
     </div>
   </div>
 {/if}

@@ -3,7 +3,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { ThumbsUp, ThumbsDown, ArrowLeft, Trash2 } from 'lucide-svelte';
+	import { ThumbsUp, ThumbsDown, ArrowLeft, Trash2, Users, Link, Search, ChevronDown } from 'lucide-svelte';
 
 	let suggestions = $state<any[]>([]);
 	let loading = $state(true);
@@ -14,6 +14,47 @@
 	let rejectionReason = $state('');
 	let deletingConfirmId = $state<string | null>(null);
 	let selectedFilter = $state<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+
+	// Feed ID linking
+	let linkingFeedId = $state<string | null>(null);
+	let feedIdInput = $state('');
+	let linkingInProgress = $state(false);
+	let linkError = $state('');
+
+	// Approval with feed ID
+	let approvingWithFeedId = $state<string | null>(null);
+	let approvalFeedIdInput = $state('');
+	let approvalError = $state('');
+
+	// Existing feeds for dropdown
+	let existingFeeds = $state<{ id: string; title: string | null; url: string }[]>([]);
+
+	// Searchable dropdown state
+	let feedSearchQuery = $state('');
+	let dropdownOpen = $state(false);
+	let dropdownRef = $state<HTMLElement | null>(null);
+
+	// Close dropdown when clicking outside
+	function handleGlobalClick(event: MouseEvent) {
+		if (dropdownOpen && dropdownRef && !dropdownRef.contains(event.target as Node)) {
+			dropdownOpen = false;
+		}
+	}
+
+	// Filtered feeds based on search query
+	const filteredFeeds = $derived(
+		feedSearchQuery.trim()
+			? existingFeeds.filter(feed => {
+				const query = feedSearchQuery.toLowerCase();
+				return (feed.title?.toLowerCase().includes(query) ||
+					feed.url.toLowerCase().includes(query) ||
+					feed.id.toLowerCase().includes(query));
+			})
+			: existingFeeds
+	);
+
+	// Waitlist and feed status tracking
+	let feedStatusMap = $state<Map<string, { feedId: string | null; feedTitle: string | null; waitlistCount: number; subscribedCount: number; isFeedCreated: boolean }>>(new Map());
 
 	// Check if current user is owner
 	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
@@ -70,8 +111,27 @@
 			return;
 		}
 
+		// Add global click handler to close dropdown
+		document.addEventListener('click', handleGlobalClick);
+
 		await loadSuggestions();
+		await loadExistingFeeds();
+
+		return () => {
+			document.removeEventListener('click', handleGlobalClick);
+		};
 	});
+
+	async function loadExistingFeeds() {
+		const { data, error } = await supabase
+			.from('feeds')
+			.select('id, title, url')
+			.order('title', { ascending: true });
+
+		if (!error && data) {
+			existingFeeds = data;
+		}
+	}
 
 	async function loadSuggestions() {
 		loading = true;
@@ -85,35 +145,129 @@
 			console.error('Error loading suggestions:', error);
 		} else if (data) {
 			suggestions = data;
+			// Load feed status for each suggestion
+			await loadFeedStatuses(data);
 		}
 
 		loading = false;
 	}
 
-	async function approveSuggestion(suggestionId: string) {
+	async function loadFeedStatuses(suggestionsList: any[]) {
+		const newStatusMap = new Map<string, { feedId: string | null; feedTitle: string | null; waitlistCount: number; subscribedCount: number; isFeedCreated: boolean }>();
+
+		// Load status for each suggestion in parallel
+		await Promise.all(
+			suggestionsList.map(async (suggestion) => {
+				try {
+					const { data, error } = await supabase.rpc('get_suggestion_feed_status', {
+						p_suggestion_id: suggestion.id
+					});
+
+					if (!error && data && data.length > 0) {
+						newStatusMap.set(suggestion.id, {
+							feedId: data[0].feed_id,
+							feedTitle: data[0].feed_title,
+							waitlistCount: data[0].waitlist_count,
+							subscribedCount: data[0].subscribed_count,
+							isFeedCreated: data[0].is_feed_created ?? false
+						});
+					} else {
+						// Try to get just the waitlist count
+						const { data: countData } = await supabase.rpc('get_waitlist_count', {
+							p_feed_url: suggestion.feed_url
+						});
+						newStatusMap.set(suggestion.id, {
+							feedId: null,
+							feedTitle: null,
+							waitlistCount: countData || 0,
+							subscribedCount: 0,
+							isFeedCreated: false
+						});
+					}
+				} catch (err) {
+					console.error('Error loading feed status:', err);
+				}
+			})
+		);
+
+		feedStatusMap = newStatusMap;
+	}
+
+	function showApproveForm(suggestionId: string) {
+		approvingWithFeedId = suggestionId;
+		approvalFeedIdInput = '';
+		approvalError = '';
+		feedSearchQuery = '';
+		dropdownOpen = false;
+	}
+
+	function selectFeed(feedId: string) {
+		approvalFeedIdInput = feedId;
+		dropdownOpen = false;
+		feedSearchQuery = '';
+	}
+
+	function getSelectedFeedDisplay(): string {
+		if (!approvalFeedIdInput) return '';
+		const feed = existingFeeds.find(f => f.id === approvalFeedIdInput);
+		if (!feed) return approvalFeedIdInput;
+		return `${feed.title || feed.url} (${feed.id.slice(0, 8)}...)`;
+	}
+
+	function openFoloForFeed(feedUrl: string) {
+		window.open(
+			`https://app.folo.is/discover?type=rss&url=${encodeURIComponent(feedUrl)}`,
+			'_blank'
+		);
+	}
+
+	function cancelApprove() {
+		approvingWithFeedId = null;
+		approvalFeedIdInput = '';
+		approvalError = '';
+		feedSearchQuery = '';
+		dropdownOpen = false;
+	}
+
+	async function confirmApprove(suggestionId: string) {
+		if (!approvalFeedIdInput.trim()) {
+			approvalError = 'Feed ID is required before approving';
+			return;
+		}
+
 		approvingIds = new Set(approvingIds).add(suggestionId);
+		approvalError = '';
 
 		try {
+			// Find the suggestion to get the URL
+			const suggestion = suggestions.find((s) => s.id === suggestionId);
+			if (!suggestion) {
+				approvalError = 'Suggestion not found';
+				return;
+			}
+
+			// First, link the feed ID to the waitlist
+			const { error: linkError } = await supabase.rpc('link_feed_to_waitlist', {
+				p_feed_url: suggestion.feed_url,
+				p_feed_id: approvalFeedIdInput.trim()
+			});
+
+			if (linkError) throw linkError;
+
+			// Then approve the suggestion
 			const { error } = await supabase.rpc('approve_feed_suggestion', {
 				p_suggestion_id: suggestionId
 			});
 
 			if (error) throw error;
 
-			// Find the suggestion to get the URL
-			const suggestion = suggestions.find((s) => s.id === suggestionId);
-			if (suggestion?.feed_url) {
-				// Redirect to folo.is with the feed URL
-				window.open(
-					`https://app.folo.is/discover?type=rss&url=${encodeURIComponent(suggestion.feed_url)}`,
-					'_blank'
-				);
-			}
-
 			// Reload suggestions
 			await loadSuggestions();
+			approvingWithFeedId = null;
+			approvalFeedIdInput = '';
 		} catch (err: any) {
 			console.error('Error approving suggestion:', err);
+			approvalError = err.message || 'Failed to approve suggestion';
 		} finally {
 			const newSet = new Set(approvingIds);
 			newSet.delete(suggestionId);
@@ -189,6 +343,54 @@
 	const pendingCount = $derived(
 		suggestions.filter((s) => s.status === 'pending').length
 	);
+
+	function showLinkFeedForm(suggestionId: string) {
+		linkingFeedId = suggestionId;
+		feedIdInput = '';
+		linkError = '';
+	}
+
+	function cancelLinkFeed() {
+		linkingFeedId = null;
+		feedIdInput = '';
+		linkError = '';
+	}
+
+	async function confirmLinkFeed(suggestionId: string) {
+		if (!feedIdInput.trim()) {
+			linkError = 'Please enter a feed ID';
+			return;
+		}
+
+		linkingInProgress = true;
+		linkError = '';
+
+		try {
+			// Find the suggestion to get the URL
+			const suggestion = suggestions.find((s) => s.id === suggestionId);
+			if (!suggestion) {
+				linkError = 'Suggestion not found';
+				return;
+			}
+
+			const { data, error } = await supabase.rpc('link_feed_to_waitlist', {
+				p_feed_url: suggestion.feed_url,
+				p_feed_id: feedIdInput.trim()
+			});
+
+			if (error) throw error;
+
+			// Reload to show updated status
+			await loadSuggestions();
+			linkingFeedId = null;
+			feedIdInput = '';
+		} catch (err: any) {
+			console.error('Error linking feed:', err);
+			linkError = err.message || 'Failed to link feed';
+		} finally {
+			linkingInProgress = false;
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-background">
@@ -284,7 +486,7 @@
 						<div class="flex items-start justify-between gap-4">
 							<!-- Suggestion Details -->
 							<div class="flex-1 min-w-0">
-								<div class="flex items-center gap-2 mb-2">
+								<div class="flex items-center gap-2 mb-2 flex-wrap">
 									<h3 class="font-semibold text-foreground text-lg">
 										{getFeedTitle(suggestion)}
 									</h3>
@@ -298,6 +500,30 @@
 									>
 										{suggestion.status}
 									</span>
+									<!-- Waitlist count badge -->
+									{#if feedStatusMap.get(suggestion.id)?.waitlistCount}
+										<span class="px-2 py-0.5 text-xs rounded-full font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1">
+											<Users size={12} />
+											{feedStatusMap.get(suggestion.id)?.waitlistCount} waiting
+										</span>
+									{/if}
+									<!-- Linked/Feed status badge -->
+									{#if feedStatusMap.get(suggestion.id)?.feedId}
+										{#if feedStatusMap.get(suggestion.id)?.isFeedCreated}
+											<span class="px-2 py-0.5 text-xs rounded-full font-medium bg-green-500/20 text-green-400 flex items-center gap-1">
+												<Link size={12} />
+												Feed created
+												{#if feedStatusMap.get(suggestion.id)?.subscribedCount}
+													({feedStatusMap.get(suggestion.id)?.subscribedCount} subscribed)
+												{/if}
+											</span>
+										{:else}
+											<span class="px-2 py-0.5 text-xs rounded-full font-medium bg-purple-500/20 text-purple-400 flex items-center gap-1" title="Feed ID: {feedStatusMap.get(suggestion.id)?.feedId}">
+												<Link size={12} />
+												Linked (pending)
+											</span>
+										{/if}
+									{/if}
 								</div>
 
 								<a
@@ -352,11 +578,12 @@
 							<div class="flex gap-2 flex-shrink-0">
 								{#if suggestion.status === 'pending'}
 									<button
-										onclick={() => approveSuggestion(suggestion.id)}
+										onclick={() => showApproveForm(suggestion.id)}
 										disabled={approvingIds.has(suggestion.id) ||
-											rejectingIds.has(suggestion.id)}
+											rejectingIds.has(suggestion.id) ||
+											approvingWithFeedId === suggestion.id}
 										class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-										title="Approve and create feed"
+										title="Approve with feed ID"
 									>
 										{#if approvingIds.has(suggestion.id)}
 											<svg
@@ -420,6 +647,23 @@
 									</button>
 								{/if}
 
+								<!-- Link Feed Button (for approved suggestions - both new and edit) -->
+								{#if suggestion.status === 'approved' && !feedStatusMap.get(suggestion.id)?.isFeedCreated}
+									<button
+										onclick={() => {
+											linkingFeedId = suggestion.id;
+											feedIdInput = feedStatusMap.get(suggestion.id)?.feedId || '';
+											linkError = '';
+										}}
+										disabled={linkingFeedId === suggestion.id}
+										class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+										title={feedStatusMap.get(suggestion.id)?.feedId ? "Edit linked feed ID" : "Link feed ID"}
+									>
+										<Link size={16} />
+										{feedStatusMap.get(suggestion.id)?.feedId ? 'Edit Link' : 'Link Feed'}
+									</button>
+								{/if}
+
 								<!-- Delete Button (always visible) -->
 								<button
 									onclick={() => showDeleteConfirm(suggestion.id)}
@@ -456,6 +700,225 @@
 								</button>
 							</div>
 						</div>
+
+						<!-- Inline Approval Form with Feed ID -->
+						{#if approvingWithFeedId === suggestion.id}
+							<div class="mt-4 p-4 bg-green-500/5 rounded-lg border border-green-500/20">
+								<label class="block text-sm font-medium text-foreground mb-3">
+									Link to Feed
+								</label>
+
+								<!-- Option 1: Select from existing feeds -->
+								<div class="mb-4">
+									<p class="text-xs text-muted-foreground mb-2">Select from existing feeds:</p>
+									<div class="relative" bind:this={dropdownRef}>
+										<!-- Selected value display / trigger -->
+										<button
+											type="button"
+											onclick={() => dropdownOpen = !dropdownOpen}
+											class="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-between text-left"
+										>
+											<span class={approvalFeedIdInput ? 'text-foreground' : 'text-muted-foreground'}>
+												{approvalFeedIdInput ? getSelectedFeedDisplay() : 'Select a feed...'}
+											</span>
+											<ChevronDown size={16} class="text-muted-foreground transition-transform {dropdownOpen ? 'rotate-180' : ''}" />
+										</button>
+
+										<!-- Dropdown panel -->
+										{#if dropdownOpen}
+											<div class="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+												<!-- Search input -->
+												<div class="p-2 border-b border-border">
+													<div class="relative">
+														<Search size={16} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+														<input
+															type="text"
+															bind:value={feedSearchQuery}
+															placeholder="Search feeds..."
+															class="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500"
+														/>
+													</div>
+												</div>
+
+												<!-- Scrollable feed list -->
+												<div class="max-h-60 overflow-y-auto">
+													{#if filteredFeeds.length === 0}
+														<div class="px-3 py-4 text-sm text-muted-foreground text-center">
+															No feeds found
+														</div>
+													{:else}
+														{#each filteredFeeds as feed}
+															<button
+																type="button"
+																onclick={() => selectFeed(feed.id)}
+																class="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex flex-col gap-0.5 {approvalFeedIdInput === feed.id ? 'bg-accent/50' : ''}"
+															>
+																<span class="text-sm text-foreground truncate">
+																	{feed.title || feed.url}
+																</span>
+																<span class="text-xs text-muted-foreground truncate">
+																	{feed.id}
+																</span>
+															</button>
+														{/each}
+													{/if}
+												</div>
+											</div>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Divider -->
+								<div class="flex items-center gap-3 mb-4">
+									<div class="flex-1 border-t border-border"></div>
+									<span class="text-xs text-muted-foreground">OR</span>
+									<div class="flex-1 border-t border-border"></div>
+								</div>
+
+								<!-- Option 2: Add via Folo -->
+								<div class="mb-4">
+									<p class="text-xs text-muted-foreground mb-2">Add new feed via Folo:</p>
+									<div class="flex gap-2 items-center">
+										<button
+											type="button"
+											onclick={() => openFoloForFeed(suggestion.feed_url)}
+											class="px-4 py-2 bg-primary/20 text-primary border border-primary/30 rounded-lg hover:bg-primary/30 transition-colors font-medium flex items-center gap-2 text-sm"
+										>
+											<Link size={16} />
+											Open in Folo
+										</button>
+										<input
+											type="text"
+											bind:value={approvalFeedIdInput}
+											placeholder="Paste feed ID here..."
+											class="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+										/>
+										<button
+											type="button"
+											onclick={loadExistingFeeds}
+											class="px-3 py-2 text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors text-sm"
+											title="Refresh feed list"
+										>
+											↻
+										</button>
+									</div>
+								</div>
+
+								{#if approvalError}
+									<p class="text-sm text-red-500 mb-3">{approvalError}</p>
+								{/if}
+								<p class="text-xs text-muted-foreground mb-3">
+									Users will be auto-subscribed immediately after approval.
+								</p>
+								<div class="flex gap-2 mt-3">
+									<button
+										onclick={() => confirmApprove(suggestion.id)}
+										disabled={approvingIds.has(suggestion.id)}
+										class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+									>
+										{#if approvingIds.has(suggestion.id)}
+											<svg
+												class="animate-spin h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													class="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													stroke-width="4"
+												></circle>
+												<path
+													class="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												></path>
+											</svg>
+											Approving...
+										{:else}
+											<ThumbsUp size={16} />
+											Confirm Approve
+										{/if}
+									</button>
+									<button
+										onclick={cancelApprove}
+										disabled={approvingIds.has(suggestion.id)}
+										class="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+									>
+										Cancel
+									</button>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Inline Link Feed Form (for editing after approval) -->
+						{#if linkingFeedId === suggestion.id}
+							<div class="mt-4 p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
+								<label class="block text-sm font-medium text-foreground mb-2">
+									Feed ID from Folo
+								</label>
+								<input
+									type="text"
+									bind:value={feedIdInput}
+									placeholder="Paste the feed ID here..."
+									class="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+								/>
+								{#if linkError}
+									<p class="text-sm text-red-500 mt-2">{linkError}</p>
+								{/if}
+								<p class="text-xs text-muted-foreground mt-2">
+									{#if feedStatusMap.get(suggestion.id)?.feedId}
+										Currently linked to: <code class="bg-background px-1 rounded">{feedStatusMap.get(suggestion.id)?.feedId}</code>
+									{:else}
+										When the feed is created in Supabase, users will be auto-subscribed.
+									{/if}
+								</p>
+								<div class="flex gap-2 mt-3">
+									<button
+										onclick={() => confirmLinkFeed(suggestion.id)}
+										disabled={linkingInProgress}
+										class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+									>
+										{#if linkingInProgress}
+											<svg
+												class="animate-spin h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													class="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													stroke-width="4"
+												></circle>
+												<path
+													class="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												></path>
+											</svg>
+											{feedStatusMap.get(suggestion.id)?.feedId ? 'Updating...' : 'Linking...'}
+										{:else}
+											<Link size={16} />
+											{feedStatusMap.get(suggestion.id)?.feedId ? 'Update Link' : 'Link Feed'}
+										{/if}
+									</button>
+									<button
+										onclick={cancelLinkFeed}
+										disabled={linkingInProgress}
+										class="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+									>
+										Cancel
+									</button>
+								</div>
+							</div>
+						{/if}
 
 						<!-- Inline Rejection Form -->
 						{#if rejectingWithReasonId === suggestion.id}
