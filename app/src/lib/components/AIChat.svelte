@@ -134,6 +134,58 @@
 		}
 	}
 
+	// Load starred entries and add as context (for manual "Add Context" button)
+	async function addStarredContext() {
+		if (!$user) return;
+
+		// Fetch starred entries from the database
+		const { data, error } = await supabase.rpc('get_user_timeline', {
+			user_id_param: $user.id,
+			feed_id_filter: undefined,
+			starred_only: true,
+			unread_only: false,
+			limit_param: 10,
+			offset_param: 0
+		});
+
+		if (error) {
+			console.error('Error loading starred entries:', error);
+		}
+
+		addContext({
+			id: 'manual-view-starred',
+			type: 'view',
+			label: 'Starred Posts',
+			data: { view: 'starred', entries: data || [] }
+		});
+	}
+
+	// Load all posts entries and add as context (for manual "Add Context" button)
+	async function addAllPostsContext() {
+		if (!$user) return;
+
+		// Fetch recent entries from the database
+		const { data, error } = await supabase.rpc('get_user_timeline', {
+			user_id_param: $user.id,
+			feed_id_filter: undefined,
+			starred_only: false,
+			unread_only: false,
+			limit_param: 10,
+			offset_param: 0
+		});
+
+		if (error) {
+			console.error('Error loading entries:', error);
+		}
+
+		addContext({
+			id: 'manual-view-all',
+			type: 'view',
+			label: 'All Posts',
+			data: { view: 'all', entries: data || [] }
+		});
+	}
+
 	function clearAllContexts() {
 		activeContexts = [];
 	}
@@ -720,12 +772,14 @@ ${customPrompt}`
 		let contextParts: string[] = [];
 
 		for (const context of activeContexts) {
-			if (context.type === 'view' && context.label === 'All') {
-				// Include summaries of visible timeline entries with content
-				if (timelineEntries.length > 0) {
-					const entrySummaries = timelineEntries
+			// Handle both automatic ('All') and manual ('All Posts') labels
+			if (context.type === 'view' && (context.label === 'All' || context.label === 'All Posts')) {
+				// Use entries from context.data if available (manual context), otherwise use timelineEntries
+				const entriesToUse = context.data?.entries?.length > 0 ? context.data.entries : timelineEntries;
+				if (entriesToUse.length > 0) {
+					const entrySummaries = entriesToUse
 						.slice(0, 8)
-						.map((entry) => {
+						.map((entry: any) => {
 							const rawContent = entry.entry_content || entry.entry_description || 'No content';
 							const content = stripHtml(rawContent);
 							return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
@@ -733,15 +787,17 @@ ${customPrompt}`
 						.join('\n\n');
 
 					contextParts.push(
-						`## All Posts Feed (${timelineEntries.length} visible entries, showing first 8):\n${entrySummaries}`
+						`## All Posts Feed (${entriesToUse.length} entries, showing first 8):\n${entrySummaries}`
 					);
 				}
-			} else if (context.type === 'view' && context.label === 'Starred') {
-				// Include starred posts with content (similar to All view)
-				if (timelineEntries.length > 0) {
-					const entrySummaries = timelineEntries
+			// Handle both automatic ('Starred') and manual ('Starred Posts') labels
+			} else if (context.type === 'view' && (context.label === 'Starred' || context.label === 'Starred Posts')) {
+				// Use entries from context.data if available (manual context), otherwise use timelineEntries
+				const entriesToUse = context.data?.entries?.length > 0 ? context.data.entries : timelineEntries;
+				if (entriesToUse.length > 0) {
+					const entrySummaries = entriesToUse
 						.slice(0, 8)
-						.map((entry) => {
+						.map((entry: any) => {
 							const rawContent = entry.entry_content || entry.entry_description || 'No content';
 							const content = stripHtml(rawContent);
 							return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? '...' : ''}`;
@@ -749,7 +805,7 @@ ${customPrompt}`
 						.join('\n\n');
 
 					contextParts.push(
-						`## Starred Posts (${timelineEntries.length} visible entries, showing first 8):\n${entrySummaries}`
+						`## Starred Posts (${entriesToUse.length} entries, showing first 8):\n${entrySummaries}`
 					);
 				} else {
 					contextParts.push(`## Context: User is viewing their starred/saved posts (none visible)`);
@@ -1167,13 +1223,8 @@ The user is asking about the content above. Provide insightful, accurate analysi
 									<div class="text-xs text-gray-500 mb-1 px-2">Views</div>
 									<button
 										type="button"
-										onclick={() => {
-											addContext({
-												id: 'manual-view-all',
-												type: 'view',
-												label: 'All Posts',
-												data: { view: 'all' }
-											});
+										onclick={async () => {
+											await addAllPostsContext();
 											showContextMenu = false;
 										}}
 										class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
@@ -1182,13 +1233,8 @@ The user is asking about the content above. Provide insightful, accurate analysi
 									</button>
 									<button
 										type="button"
-										onclick={() => {
-											addContext({
-												id: 'manual-view-starred',
-												type: 'view',
-												label: 'Starred Posts',
-												data: { view: 'starred' }
-											});
+										onclick={async () => {
+											await addStarredContext();
 											showContextMenu = false;
 										}}
 										class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
