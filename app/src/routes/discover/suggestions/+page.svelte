@@ -3,12 +3,13 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { ThumbsUp, ThumbsDown, ArrowLeft } from 'lucide-svelte';
+	import { ThumbsUp, ThumbsDown, ArrowLeft, Trash2 } from 'lucide-svelte';
 
 	let suggestions = $state<any[]>([]);
 	let loading = $state(true);
 	let approvingIds = $state<Set<string>>(new Set());
 	let rejectingIds = $state<Set<string>>(new Set());
+	let deletingIds = $state<Set<string>>(new Set());
 	let selectedFilter = $state<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
 	// Check if current user is owner
@@ -63,6 +64,16 @@
 
 			if (error) throw error;
 
+			// Find the suggestion to get the URL
+			const suggestion = suggestions.find((s) => s.id === suggestionId);
+			if (suggestion?.feed_url) {
+				// Redirect to folo.is with the feed URL
+				window.open(
+					`https://app.folo.is/discover?type=rss&url=${encodeURIComponent(suggestion.feed_url)}`,
+					'_blank'
+				);
+			}
+
 			// Reload suggestions
 			await loadSuggestions();
 		} catch (err: any) {
@@ -98,6 +109,30 @@
 			const newSet = new Set(rejectingIds);
 			newSet.delete(suggestionId);
 			rejectingIds = newSet;
+		}
+	}
+
+	async function deleteSuggestion(suggestionId: string) {
+		if (!confirm('Are you sure you want to delete this suggestion?')) return;
+
+		deletingIds = new Set(deletingIds).add(suggestionId);
+
+		try {
+			const { error } = await supabase.rpc('delete_feed_suggestion' as any, {
+				p_suggestion_id: suggestionId
+			});
+
+			if (error) throw error;
+
+			// Reload suggestions
+			await loadSuggestions();
+		} catch (err: any) {
+			console.error('Error deleting suggestion:', err);
+			alert('Failed to delete suggestion: ' + err.message);
+		} finally {
+			const newSet = new Set(deletingIds);
+			newSet.delete(suggestionId);
+			deletingIds = newSet;
 		}
 	}
 
@@ -264,9 +299,9 @@
 								{/if}
 							</div>
 
-							<!-- Action Buttons (only for pending) -->
-							{#if suggestion.status === 'pending'}
-								<div class="flex gap-2 flex-shrink-0">
+							<!-- Action Buttons -->
+							<div class="flex gap-2 flex-shrink-0">
+								{#if suggestion.status === 'pending'}
 									<button
 										onclick={() => approveSuggestion(suggestion.id)}
 										disabled={approvingIds.has(suggestion.id) ||
@@ -333,8 +368,42 @@
 										{/if}
 										Reject
 									</button>
-								</div>
-							{/if}
+								{/if}
+
+								<!-- Delete Button (always visible) -->
+								<button
+									onclick={() => deleteSuggestion(suggestion.id)}
+									disabled={deletingIds.has(suggestion.id)}
+									class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+									title="Delete suggestion"
+								>
+									{#if deletingIds.has(suggestion.id)}
+										<svg
+											class="animate-spin h-4 w-4"
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+										>
+											<circle
+												class="opacity-25"
+												cx="12"
+												cy="12"
+												r="10"
+												stroke="currentColor"
+												stroke-width="4"
+											></circle>
+											<path
+												class="opacity-75"
+												fill="currentColor"
+												d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+											></path>
+										</svg>
+									{:else}
+										<Trash2 size={16} />
+									{/if}
+									Delete
+								</button>
+							</div>
 						</div>
 					</div>
 				{/each}

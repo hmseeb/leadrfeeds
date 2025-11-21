@@ -169,6 +169,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Function to delete a suggestion
+CREATE OR REPLACE FUNCTION delete_feed_suggestion(
+    p_suggestion_id UUID
+)
+RETURNS VOID AS $$
+DECLARE
+    v_user_email TEXT;
+BEGIN
+    -- Get user email from JWT
+    v_user_email := auth.jwt() ->> 'email';
+
+    IF v_user_email != 'hsbazr@gmail.com' THEN
+        RAISE EXCEPTION 'Only owner can delete suggestions';
+    END IF;
+
+    -- Delete the suggestion
+    DELETE FROM feed_suggestions
+    WHERE id = p_suggestion_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Suggestion not found';
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- =====================================================
 -- Grant permissions
 -- =====================================================
@@ -178,6 +203,7 @@ GRANT EXECUTE ON FUNCTION get_pending_suggestions_count() TO authenticated;
 GRANT EXECUTE ON FUNCTION submit_feed_suggestion(TEXT, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION approve_feed_suggestion(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION reject_feed_suggestion(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION delete_feed_suggestion(UUID) TO authenticated;
 
 -- =====================================================
 -- Verification
