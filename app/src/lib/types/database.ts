@@ -204,6 +204,7 @@ export type Database = {
           created_at: string | null
           openrouter_api_key: string | null
           preferred_model: string | null
+          sidebar_collapsed: boolean | null
           theme: string | null
           updated_at: string | null
           user_id: string
@@ -213,6 +214,7 @@ export type Database = {
           created_at?: string | null
           openrouter_api_key?: string | null
           preferred_model?: string | null
+          sidebar_collapsed?: boolean | null
           theme?: string | null
           updated_at?: string | null
           user_id: string
@@ -222,6 +224,7 @@ export type Database = {
           created_at?: string | null
           openrouter_api_key?: string | null
           preferred_model?: string | null
+          sidebar_collapsed?: boolean | null
           theme?: string | null
           updated_at?: string | null
           user_id?: string

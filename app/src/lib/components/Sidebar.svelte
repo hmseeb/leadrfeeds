@@ -22,10 +22,45 @@
 	let { activeFeedId = null, activeCategory = null, onCollapseChange }: { activeFeedId?: string | null; activeCategory?: string | null; onCollapseChange?: (collapsed: boolean) => void } = $props();
 
 	let isCollapsed = $state(false);
+	let isLoadingSettings = $state(true);
 
 	$effect(() => {
 		onCollapseChange?.(isCollapsed);
 	});
+
+	// Save sidebar collapsed state to database when it changes
+	async function saveSidebarState(collapsed: boolean) {
+		if (!$user || isLoadingSettings) return;
+
+		await supabase
+			.from('user_settings')
+			.upsert({
+				user_id: $user.id,
+				sidebar_collapsed: collapsed,
+				updated_at: new Date().toISOString()
+			}, { onConflict: 'user_id' });
+	}
+
+	// Load sidebar state from database
+	async function loadSidebarState() {
+		if (!$user) return;
+
+		const { data } = await supabase
+			.from('user_settings')
+			.select('sidebar_collapsed')
+			.eq('user_id', $user.id)
+			.single();
+
+		if (data?.sidebar_collapsed !== null && data?.sidebar_collapsed !== undefined) {
+			isCollapsed = data.sidebar_collapsed;
+		}
+		isLoadingSettings = false;
+	}
+
+	function toggleSidebar() {
+		isCollapsed = !isCollapsed;
+		saveSidebarState(isCollapsed);
+	}
 
 	let feeds = $state<FeedWithUnread[]>([]);
 	let totalUnread = $state(0);
@@ -66,7 +101,12 @@
 			return;
 		}
 
-		await loadFeeds();
+		// Load sidebar state and feeds in parallel
+		await Promise.all([
+			loadSidebarState(),
+			loadFeeds()
+		]);
+
 		if (isOwner) {
 			await loadPendingSuggestionsCount();
 		}
@@ -192,29 +232,25 @@
 	}
 </script>
 
-<div class="{isCollapsed ? 'w-16' : 'w-64'} bg-[#121212] flex flex-col h-screen text-gray-200 overflow-visible transition-all duration-300 relative">
-	<!-- Toggle Button -->
-	<button
-		onclick={() => isCollapsed = !isCollapsed}
-		class="absolute -right-3 top-1/2 -translate-y-1/2 z-[60] bg-gray-800 hover:bg-gray-700 rounded-full p-1.5 shadow-lg transition-colors border border-gray-700"
-		title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-	>
-		{#if isCollapsed}
-			<ChevronRight size={16} class="text-gray-300" />
-		{:else}
-			<ChevronLeft size={16} class="text-gray-300" />
-		{/if}
-	</button>
-
+<div class="{isCollapsed ? 'w-16' : 'w-64'} bg-[#121212] flex flex-col h-screen text-gray-200 overflow-visible transition-all duration-300">
 	<!-- Header -->
-	<div class="px-6 py-5 flex items-center justify-between border-b border-gray-800/50 flex-shrink-0">
+	<div class="{isCollapsed ? 'px-2 justify-center' : 'px-4'} py-4 flex items-center gap-2 border-b border-gray-800/50 flex-shrink-0">
 		{#if !isCollapsed}
-			<h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">LeadrFeeds</h1>
+			<h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent flex-1">LeadrFeeds</h1>
 		{:else}
-			<div class="w-full flex justify-center">
-				<span class="text-xl font-bold text-blue-400">L</span>
-			</div>
+			<span class="text-xl font-bold text-blue-400">L</span>
 		{/if}
+		<button
+			onclick={toggleSidebar}
+			class="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-200"
+			title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+		>
+			{#if isCollapsed}
+				<ChevronRight size={18} />
+			{:else}
+				<ChevronLeft size={18} />
+			{/if}
+		</button>
 	</div>
 
 	<!-- Navigation -->
@@ -415,7 +451,7 @@
 						{@const totalCategoryUnread = categoryFeeds.reduce((sum, f) => sum + f.unread_count, 0)}
 						<a
 							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
-							class="flex items-center justify-center p-2 rounded-md hover:bg-gray-800 transition-colors relative {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+							class="flex items-center justify-center p-2 rounded-md hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
 							title={isMultiFeedCategory ? feed.feed_category : feed.feed_title}
 						>
 							{#if feed.feed_image}
@@ -445,13 +481,6 @@
 								<div class="w-6 h-6 rounded flex items-center justify-center bg-gray-700">
 									<div class="w-3 h-3 rounded-full bg-gray-500"></div>
 								</div>
-							{/if}
-
-							<!-- Unread badge -->
-							{#if totalCategoryUnread > 0}
-								<span class="absolute -top-1 -right-1 w-4 h-4 text-[10px] font-bold rounded-full bg-blue-500 text-white flex items-center justify-center">
-									{totalCategoryUnread > 9 ? '9+' : totalCategoryUnread}
-								</span>
 							{/if}
 						</a>
 					{/each}

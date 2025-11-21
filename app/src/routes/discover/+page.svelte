@@ -23,6 +23,26 @@
 	// Suggestion feature
 	let suggestModalOpen = $state(false);
 
+	// Track which categories have multiple feeds (others go to "Others")
+	let multiCategorySet = $state<Set<string>>(new Set());
+
+	// Get the display category for a feed (original category if multi-feed, "Others" if single-feed)
+	function getDisplayCategory(feed: DiscoveryFeed): string {
+		const category = feed.feed_category || 'Others';
+		return multiCategorySet.has(category) ? category : 'Others';
+	}
+
+	// Get display categories for filter buttons (only multi-feed categories + Others)
+	const displayCategories = $derived.by(() => {
+		const cats = Array.from(multiCategorySet).sort();
+		// Add "Others" at the end if there are any single-feed categories
+		const hasOthers = feeds.some(f => !multiCategorySet.has(f.feed_category || 'Others'));
+		if (hasOthers && !cats.includes('Others')) {
+			cats.push('Others');
+		}
+		return cats;
+	});
+
 	// Filtered feeds based on filters
 	const displayedFeeds = $derived.by(() => {
 		let result = feeds;
@@ -30,6 +50,15 @@
 		result = result.filter(f => f.last_entry_at !== null);
 		if (showSubscribedOnly) {
 			result = result.filter(f => subscribedFeedIds.has(f.feed_id));
+		}
+		// Filter by selected category (using display category logic)
+		if (selectedCategory) {
+			if (selectedCategory === 'Others') {
+				// Show feeds whose original category is NOT in the multi-category set
+				result = result.filter(f => !multiCategorySet.has(f.feed_category || 'Others'));
+			} else {
+				result = result.filter(f => f.feed_category === selectedCategory);
+			}
 		}
 		return result;
 	});
@@ -103,33 +132,40 @@
 	async function loadFeeds() {
 		loading = true;
 
-		// Load all categories (without filter) if not already loaded
-		if (allCategories.length === 0) {
-			const { data: allFeedsData } = await supabase.rpc('get_discovery_feeds', {
-				search_query: undefined,
-				category_filter: undefined,
-				limit_param: 1000,
-				offset_param: 0
-			});
-
-			if (allFeedsData) {
-				const uniqueCategories = new Set(allFeedsData.map(f => f.feed_category).filter(Boolean));
-				allCategories = Array.from(uniqueCategories).sort();
-			}
-		}
-
-		// Load discovery feeds with filters
-		const { data: feedsData, error: feedsError } = await supabase.rpc('get_discovery_feeds', {
+		// Load all feeds to calculate category counts
+		const { data: allFeedsData } = await supabase.rpc('get_discovery_feeds', {
 			search_query: searchQuery || undefined,
-			category_filter: selectedCategory || undefined,
-			limit_param: 100,
+			category_filter: undefined, // Always load all for category calculation
+			limit_param: 1000,
 			offset_param: 0
 		});
 
-		if (feedsError) {
-			console.error('Error loading feeds:', feedsError);
-		} else if (feedsData) {
-			feeds = feedsData;
+		if (allFeedsData) {
+			// Filter out feeds with no posts first
+			const feedsWithPosts = allFeedsData.filter(f => f.last_entry_at !== null);
+
+			// Count feeds per category
+			const categoryCounts = new Map<string, number>();
+			feedsWithPosts.forEach(f => {
+				const cat = f.feed_category || 'Others';
+				categoryCounts.set(cat, (categoryCounts.get(cat) || 0) + 1);
+			});
+
+			// Categories with 2+ feeds are "multi-feed categories"
+			const multiCats = new Set<string>();
+			categoryCounts.forEach((count, cat) => {
+				if (count >= 2) {
+					multiCats.add(cat);
+				}
+			});
+			multiCategorySet = multiCats;
+
+			// Store all unique categories
+			const uniqueCategories = new Set(feedsWithPosts.map(f => f.feed_category).filter(Boolean));
+			allCategories = Array.from(uniqueCategories).sort();
+
+			// Set feeds
+			feeds = allFeedsData;
 		}
 
 		// Load user's subscriptions
@@ -192,9 +228,9 @@
 		await loadFeeds();
 	}
 
-	async function filterByCategory(category: string) {
+	function filterByCategory(category: string) {
 		selectedCategory = category === selectedCategory ? '' : category;
-		await loadFeeds();
+		// No need to reload - filtering is done client-side via displayedFeeds
 	}
 </script>
 
@@ -248,7 +284,7 @@
 				>
 					All
 				</button>
-				{#each allCategories as category}
+				{#each displayCategories as category}
 					<button
 						onclick={() => {
 							filterByCategory(category);
@@ -338,7 +374,7 @@
 								</h3>
 								<div class="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
 									<span class="px-2 py-0.5 bg-accent/10 text-accent rounded">
-										{feed.feed_category || 'Other'}
+										{getDisplayCategory(feed)}
 									</span>
 									<span>
 										{feed.subscriber_count || 0} subscribers
