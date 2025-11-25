@@ -56,9 +56,16 @@
 
       // YouTube - extract channel name
       if (domain.includes("youtube.com")) {
-        const channelMatch = path.match(/\/@([^\/]+)|\/channel\/([^\/]+)|\/c\/([^\/]+)|\/user\/([^\/]+)/);
+        const channelMatch = path.match(
+          /\/@([^\/]+)|\/channel\/([^\/]+)|\/c\/([^\/]+)|\/user\/([^\/]+)/
+        );
         if (channelMatch) {
-          return channelMatch[1] || channelMatch[2] || channelMatch[3] || channelMatch[4];
+          return (
+            channelMatch[1] ||
+            channelMatch[2] ||
+            channelMatch[3] ||
+            channelMatch[4]
+          );
         }
         return "YouTube Channel";
       }
@@ -105,7 +112,10 @@
       // Twitter/X
       if (domain.includes("twitter.com") || domain.includes("x.com")) {
         const twitterMatch = path.match(/^\/([^\/]+)/);
-        if (twitterMatch && !["home", "explore", "search"].includes(twitterMatch[1])) {
+        if (
+          twitterMatch &&
+          !["home", "explore", "search"].includes(twitterMatch[1])
+        ) {
           return `@${twitterMatch[1]}`;
         }
         return "Twitter/X";
@@ -212,21 +222,29 @@
 </script>
 
 {#if isOpen}
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     onclick={closeModal}
+    onkeydown={(e) => e.key === "Escape" && closeModal()}
+    tabindex="-1"
     role="dialog"
     aria-modal="true"
     aria-labelledby="suggest-feed-title"
   >
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="bg-card border border-border rounded-lg w-full max-w-lg mx-4 p-6 shadow-2xl"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
     >
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         {#if !showSuccessState}
-          <h2 id="suggest-feed-title" class="text-2xl font-bold text-foreground">
+          <h2
+            id="suggest-feed-title"
+            class="text-2xl font-bold text-foreground"
+          >
             Suggest a Feed
           </h2>
         {:else}
@@ -245,16 +263,21 @@
       <!-- Success State -->
       {#if showSuccessState}
         <div class="text-center py-6">
-          <div class="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20">
+          <div
+            class="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20"
+          >
             <PartyPopper size={32} class="text-green-500" />
           </div>
           <h3 class="text-xl font-bold text-foreground mb-2">
             Suggestion Submitted!
           </h3>
           <p class="text-muted-foreground mb-4">
-            You'll be automatically subscribed to this feed as soon as it's available.
+            You'll be automatically subscribed to this feed as soon as it's
+            available.
           </p>
-          <div class="bg-primary/10 border border-primary/30 rounded-lg p-4 text-left">
+          <div
+            class="bg-primary/10 border border-primary/30 rounded-lg p-4 text-left"
+          >
             <p class="text-sm text-foreground">
               <span class="font-medium">What happens next?</span>
             </p>
@@ -269,7 +292,9 @@
               </li>
               <li class="flex items-start gap-2">
                 <span class="text-primary mt-0.5">3.</span>
-                <span>You'll be subscribed automatically - no action needed!</span>
+                <span
+                  >You'll be subscribed automatically - no action needed!</span
+                >
               </li>
             </ul>
           </div>
@@ -328,7 +353,9 @@
 
             <!-- Error Message -->
             {#if errorMessage}
-              <div class="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
+              <div
+                class="bg-red-500/10 border border-red-500/50 rounded-lg p-3"
+              >
                 <p class="text-sm text-red-500">{errorMessage}</p>
               </div>
             {/if}

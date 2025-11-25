@@ -99,23 +99,26 @@
 		}
 	}
 
-	onMount(async () => {
-		if (!$user) {
-			goto('/auth/login');
-			return;
-		}
-
-		// Redirect non-owners to discover page
-		if (!isOwner) {
-			goto('/discover');
-			return;
-		}
-
+	onMount(() => {
 		// Add global click handler to close dropdown
 		document.addEventListener('click', handleGlobalClick);
 
-		await loadSuggestions();
-		await loadExistingFeeds();
+		// Load data asynchronously
+		(async () => {
+			if (!$user) {
+				goto('/auth/login');
+				return;
+			}
+
+			// Redirect non-owners to discover page
+			if (!isOwner) {
+				goto('/discover');
+				return;
+			}
+
+			await loadSuggestions();
+			await loadExistingFeeds();
+		})();
 
 		return () => {
 			document.removeEventListener('click', handleGlobalClick);
@@ -706,9 +709,9 @@
 						<!-- Inline Approval Form with Feed ID -->
 						{#if approvingWithFeedId === suggestion.id}
 							<div class="mt-4 p-4 bg-green-500/5 rounded-lg border border-green-500/20">
-								<label class="block text-sm font-medium text-foreground mb-3">
+								<span class="block text-sm font-medium text-foreground mb-3">
 									Link to Feed
-								</label>
+								</span>
 
 								<!-- Option 1: Select from existing feeds -->
 								<div class="mb-4">
@@ -859,10 +862,11 @@
 						<!-- Inline Link Feed Form (for editing after approval) -->
 						{#if linkingFeedId === suggestion.id}
 							<div class="mt-4 p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
-								<label class="block text-sm font-medium text-foreground mb-2">
+								<label for="feedIdInput-{suggestion.id}" class="block text-sm font-medium text-foreground mb-2">
 									Feed ID from Folo
 								</label>
 								<input
+									id="feedIdInput-{suggestion.id}"
 									type="text"
 									bind:value={feedIdInput}
 									placeholder="Paste the feed ID here..."
@@ -925,15 +929,16 @@
 						<!-- Inline Rejection Form -->
 						{#if rejectingWithReasonId === suggestion.id}
 							<div class="mt-4 p-4 bg-red-500/5 rounded-lg border border-red-500/20">
-								<label class="block text-sm font-medium text-foreground mb-2">
+								<label for="rejectionReason-{suggestion.id}" class="block text-sm font-medium text-foreground mb-2">
 									Rejection Reason (optional)
 								</label>
 								<textarea
+									id="rejectionReason-{suggestion.id}"
 									bind:value={rejectionReason}
 									rows="3"
 									placeholder="Why are you rejecting this suggestion?"
 									class="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-								/>
+								></textarea>
 								<div class="flex gap-2 mt-3">
 									<button
 										onclick={() => confirmReject(suggestion.id)}

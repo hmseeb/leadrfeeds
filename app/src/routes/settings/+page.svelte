@@ -4,13 +4,18 @@
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import MobileHeader from '$lib/components/MobileHeader.svelte';
 	import { Save, Check, X } from 'lucide-svelte';
+	import { useDesktopLayout } from '$lib/stores/screenSize';
+
+	// Responsive state
+	const isDesktopMode = $derived($useDesktopLayout);
+	let isSidebarOpen = $state(false);
 
 	let apiKey = $state('');
 	let preferredModel = $state('anthropic/claude-3.5-sonnet');
 	let customModel = $state('');
 	let useCustomModel = $state(false);
-	let theme = $state('dark');
 	let loading = $state(true);
 	let saving = $state(false);
 	let saveSuccess = $state(false);
@@ -59,7 +64,6 @@
 			if (newSettings) {
 				apiKey = newSettings.openrouter_api_key || '';
 				preferredModel = newSettings.preferred_model || 'anthropic/claude-3.5-sonnet';
-				theme = newSettings.theme || 'dark';
 			}
 		} else if (data) {
 			apiKey = data.openrouter_api_key || '';
@@ -76,8 +80,6 @@
 				customModel = savedModel;
 				useCustomModel = true;
 			}
-
-			theme = data.theme || 'dark';
 		}
 
 		loading = false;
@@ -105,7 +107,6 @@
 			.update({
 				openrouter_api_key: apiKey,
 				preferred_model: modelToSave,
-				theme: theme,
 				updated_at: new Date().toISOString()
 			})
 			.eq('user_id', $user.id);
@@ -123,17 +124,34 @@
 	}
 </script>
 
-<div class="flex h-screen bg-background">
-	<!-- Sidebar -->
-	<Sidebar />
+<!-- Mobile Header (only on mobile) - positioned fixed -->
+{#if !isDesktopMode}
+	<MobileHeader
+		onMenuClick={() => isSidebarOpen = true}
+	/>
+{/if}
+
+<!-- Mobile Sidebar (overlay only - only render when open) -->
+{#if !isDesktopMode && isSidebarOpen}
+	<Sidebar
+		isMobileOpen={true}
+		onMobileClose={() => isSidebarOpen = false}
+	/>
+{/if}
+
+<div class="flex h-screen bg-background {!isDesktopMode ? 'pt-14' : ''}">
+	<!-- Desktop Sidebar -->
+	{#if isDesktopMode}
+		<Sidebar />
+	{/if}
 
 	<!-- Main Content -->
 	<div class="flex-1 overflow-y-auto">
-		<div class="max-w-3xl mx-auto p-6">
+		<div class="max-w-3xl mx-auto p-4 md:p-6">
 			<!-- Header -->
-			<div class="mb-8 select-none">
-				<h1 class="text-3xl font-bold text-foreground mb-2">Settings</h1>
-				<p class="text-muted-foreground">Manage your account and preferences</p>
+			<div class="mb-6 md:mb-8 select-none">
+				<h1 class="text-2xl md:text-3xl font-bold text-foreground mb-2">Settings</h1>
+				<p class="text-muted-foreground text-sm md:text-base">Manage your account and preferences</p>
 			</div>
 
 			{#if loading}
@@ -172,9 +190,9 @@
 							</div>
 
 							<div>
-								<label class="block text-sm font-medium text-foreground mb-2">
+								<span class="block text-sm font-medium text-foreground mb-2">
 									Model Selection
-								</label>
+								</span>
 
 								<!-- Toggle between preset and custom -->
 								<div class="flex gap-2 mb-3">
@@ -230,28 +248,6 @@
 									</p>
 								{/if}
 							</div>
-						</div>
-					</div>
-
-					<!-- Appearance -->
-					<div class="bg-card border border-border rounded-lg p-6">
-						<h2 class="text-lg font-semibold text-foreground mb-4 select-none">Appearance</h2>
-
-						<div>
-							<label for="theme" class="block text-sm font-medium text-foreground mb-2">
-								Theme
-							</label>
-							<select
-								id="theme"
-								bind:value={theme}
-								class="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-							>
-								<option value="dark">Dark</option>
-								<option value="light">Light</option>
-							</select>
-							<p class="mt-2 text-xs text-muted-foreground">
-								Light theme support coming soon
-							</p>
 						</div>
 					</div>
 

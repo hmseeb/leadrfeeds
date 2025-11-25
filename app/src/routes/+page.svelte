@@ -32,7 +32,7 @@
 
 <div class="min-h-screen flex items-center justify-center bg-background">
 	<div class="text-center">
-		<h1 class="text-4xl font-bold text-foreground mb-4">LeadrFeeds</h1>
+		<img src="/logo.png" alt="LeadrFeeds" class="h-20 mx-auto mb-4" />
 		<p class="text-muted-foreground">Loading...</p>
 	</div>
 </div>

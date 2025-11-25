@@ -1,11 +1,14 @@
 # Fix Feed Category Extraction in Database
 
 ## Problem
+
 The `extract_category()` database function was extracting the subdomain instead of the main domain name:
+
 - `blog.google.com` → "Blog" ❌
 - Should be → "Google" ✅
 
 ## Solution
+
 Run the SQL script `fix-category-function.sql` in your Supabase SQL Editor to update the database function.
 
 ## Steps
@@ -19,6 +22,7 @@ Run the SQL script `fix-category-function.sql` in your Supabase SQL Editor to up
 ## What This Does
 
 1. **Updates the `extract_category()` function** to:
+
    - Extract the main domain (e.g., "google" from "blog.google.com")
    - For multi-level domains: uses second-to-last part
    - For simple domains: uses first part

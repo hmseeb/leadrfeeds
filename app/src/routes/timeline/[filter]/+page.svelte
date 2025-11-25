@@ -8,10 +8,17 @@
 	import EntryCard from '$lib/components/EntryCard.svelte';
 	import AIChat from '$lib/components/AIChat.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { Maximize, Minimize } from 'lucide-svelte';
+	import MobileHeader from '$lib/components/MobileHeader.svelte';
+	import { MessageCircle, ChevronRight } from 'lucide-svelte';
+	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import type { Database } from '$lib/types/database';
 
 	type TimelineEntry = Database['public']['Functions']['get_user_timeline']['Returns'][0];
+
+	// Responsive state
+	const isDesktopMode = $derived($useDesktopLayout);
+	let isSidebarOpen = $state(false);
+	let isChatOpen = $state(false);
 
 	let entries = $state<TimelineEntry[]>([]);
 	let loading = $state(true);
@@ -19,7 +26,8 @@
 	let offset = $state(0);
 	const limit = 20;
 
-	let filter = $state('');
+	// Initialize filter from page params reactively to avoid flash of wrong title
+	const filter = $derived($page.params.filter || 'all');
 	let activeFeedId = $state<string | null>(null);
 	let activeCategory = $state<string | null>(null);
 	let selectedEntry = $state<TimelineEntry | null>(null);
@@ -27,9 +35,9 @@
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
 	let loadMoreElement = $state<HTMLElement | null>(null);
 	let isSidebarCollapsed = $state(false);
-	let articleWidth = $state(650); // Default width in pixels
-	let isResizing = $state(false);
-	let isArticleFullscreen = $state(false);
+	let timelineScrollContainer = $state<HTMLElement | null>(null);
+	// Store scroll positions per view (filter)
+	let scrollPositions = $state<Map<string, number>>(new Map());
 
 	onMount(async () => {
 		if (!$user) {
@@ -37,9 +45,10 @@
 			return;
 		}
 
-		filter = $page.params.filter;
+		// Ensure page starts at top on mobile
+		window.scrollTo(0, 0);
+
 		await loadFeeds();
-		await loadUserSettings();
 		await loadEntries();
 	});
 
@@ -76,61 +85,6 @@
 		}
 	}
 
-	async function loadUserSettings() {
-		if (!$user) return;
-
-		const { data, error } = await supabase
-			.from('user_settings')
-			.select('article_panel_width')
-			.eq('user_id', $user.id)
-			.single();
-
-		if (!error && data && data.article_panel_width) {
-			articleWidth = data.article_panel_width;
-		}
-	}
-
-	async function saveArticleWidth(width: number) {
-		if (!$user) return;
-
-		await supabase
-			.from('user_settings')
-			.upsert({
-				user_id: $user.id,
-				article_panel_width: width
-			}, {
-				onConflict: 'user_id'
-			});
-	}
-
-	function handleResizeStart(e: PointerEvent) {
-		isResizing = true;
-		e.preventDefault();
-
-		const startX = e.clientX;
-		const startWidth = articleWidth;
-
-		function handleResize(e: PointerEvent) {
-			if (!isResizing) return;
-
-			const deltaX = startX - e.clientX;
-			const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
-			articleWidth = newWidth;
-		}
-
-		function handleResizeEnd() {
-			if (isResizing) {
-				isResizing = false;
-				saveArticleWidth(articleWidth);
-				document.removeEventListener('pointermove', handleResize);
-				document.removeEventListener('pointerup', handleResizeEnd);
-			}
-		}
-
-		document.addEventListener('pointermove', handleResize);
-		document.addEventListener('pointerup', handleResizeEnd);
-	}
-
 	function getDomainCategory(url: string | null, siteUrl: string | null): string {
 		const feedUrl = url || siteUrl;
 		if (!feedUrl) return 'Other';
@@ -157,13 +111,15 @@
 		}
 	}
 
+	// Track the previous filter to detect changes
+	let previousFilter = $state<string | null>(null);
+
 	$effect(() => {
 		// Watch for route changes (skip initial load which is handled by onMount)
-		const currentFilter = $page.params.filter;
-		if (currentFilter && currentFilter !== filter && filter !== '') {
-			filter = currentFilter;
+		if (previousFilter !== null && filter !== previousFilter) {
 			resetAndLoad();
 		}
+		previousFilter = filter;
 	});
 
 	async function resetAndLoad() {
@@ -171,6 +127,10 @@
 		offset = 0;
 		hasMore = true;
 		selectedEntry = null; // Clear selected entry when switching views
+		// Reset scroll to top when switching views
+		if (timelineScrollContainer) {
+			timelineScrollContainer.scrollTop = 0;
+		}
 		await loadEntries();
 	}
 
@@ -311,13 +271,14 @@
 			user_id_param: $user.id
 		});
 
-		if (!error && data !== null) {
-			// Update local state
+		if (!error && typeof data === 'boolean') {
+			// Update entries list
 			entries = entries.map(e =>
 				e.entry_id === entryId ? { ...e, is_starred: data } : e
 			);
 
-			if (selectedEntry?.entry_id === entryId) {
+			// Update selected entry if it's the one being starred
+			if (selectedEntry && selectedEntry.entry_id === entryId) {
 				selectedEntry = { ...selectedEntry, is_starred: data };
 			}
 		}
@@ -344,17 +305,42 @@
 	}
 
 	function handleEntryClick(entry: TimelineEntry) {
+		// Save scroll position for current view before viewing article
+		if (timelineScrollContainer) {
+			scrollPositions.set(filter, timelineScrollContainer.scrollTop);
+		}
 		selectedEntry = entry;
+		// Reset scroll to top for the article view
+		if (timelineScrollContainer && isDesktopMode) {
+			requestAnimationFrame(() => {
+				if (timelineScrollContainer) {
+					timelineScrollContainer.scrollTop = 0;
+				}
+			});
+		}
 	}
 
 	function closeEntryDetail() {
 		selectedEntry = null;
-		isArticleFullscreen = false;
+		// Restore scroll position for current view after closing article
+		if (timelineScrollContainer && isDesktopMode) {
+			const savedPosition = scrollPositions.get(filter) || 0;
+			requestAnimationFrame(() => {
+				if (timelineScrollContainer) {
+					timelineScrollContainer.scrollTop = savedPosition;
+				}
+			});
+		}
 	}
 
-	function toggleArticleFullscreen() {
-		isArticleFullscreen = !isArticleFullscreen;
-	}
+	// Compute the current view title for breadcrumbs
+	const viewTitle = $derived(() => {
+		if (filter === 'all') return 'All Posts';
+		if (filter === 'starred') return 'Starred Posts';
+		if (activeCategory) return activeCategory;
+		if (currentFeed) return currentFeed.feed_title;
+		return 'Feed Posts';
+	});
 
 	async function loadMore() {
 		if (!loading && hasMore) {
@@ -363,137 +349,244 @@
 	}
 </script>
 
-<div class="flex h-screen bg-background">
-	<!-- Sidebar -->
-	<Sidebar {activeFeedId} {activeCategory} onCollapseChange={(collapsed) => isSidebarCollapsed = collapsed} />
+<!-- Mobile Header (only on mobile) - positioned fixed -->
+{#if !isDesktopMode}
+	<MobileHeader
+		onMenuClick={() => isSidebarOpen = true}
+	/>
+{/if}
+
+<!-- Mobile Sidebar (overlay - rendered outside main flex container) -->
+{#if !isDesktopMode && isSidebarOpen}
+	<Sidebar
+		{activeFeedId}
+		{activeCategory}
+		isMobileOpen={true}
+		onMobileClose={() => isSidebarOpen = false}
+	/>
+{/if}
+
+<div class="flex h-screen bg-background overflow-hidden {!isDesktopMode ? 'pt-14' : ''}">
+	<!-- Desktop Sidebar -->
+	{#if isDesktopMode}
+		<Sidebar {activeFeedId} {activeCategory} onCollapseChange={(collapsed) => isSidebarCollapsed = collapsed} />
+	{/if}
 
 	<!-- Main Content -->
 	<div class="flex-1 flex overflow-hidden">
-		<!-- Timeline -->
-		<div class="flex-1 overflow-y-auto bg-secondary">
-			<div class="{selectedEntry ? 'w-full px-3' : 'max-w-3xl px-6 mx-auto'} py-6 transition-all duration-300">
-				<!-- Header -->
-				<div class="mb-6">
-					<h1 class="text-2xl font-bold text-foreground tracking-tight">
-						{#if filter === 'all'}
-							All Posts
-						{:else if filter === 'starred'}
-							Starred Posts
-						{:else if activeCategory}
-							{activeCategory}
-						{:else if currentFeed}
-							{currentFeed.feed_title}
-						{:else}
-							Feed Posts
-						{/if}
-					</h1>
-				</div>
+		<!-- Timeline / Article Content Area -->
+		<div bind:this={timelineScrollContainer} class="flex-1 overflow-y-auto bg-secondary">
+			<div class="max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-4 md:px-6 mx-auto py-4 md:py-6">
+				{#if selectedEntry && isDesktopMode}
+					<!-- Desktop Article View with Breadcrumbs -->
+					<!-- Breadcrumb Navigation - Sticky -->
+					<nav class="sticky top-0 z-10 bg-secondary/95 backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-4">
+						<button
+							onclick={closeEntryDetail}
+							class="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors group"
+						>
+							<span class="group-hover:underline">{viewTitle()}</span>
+							<ChevronRight size={16} class="text-muted-foreground/50" />
+							<span class="text-foreground font-medium truncate max-w-md">
+								{selectedEntry.entry_title || 'Article'}
+							</span>
+						</button>
+					</nav>
 
-				<!-- Entries -->
-				{#if loading && entries.length === 0}
-					<div class="space-y-2">
-						{#each Array(5) as _, i}
-							<div class="bg-card border border-border rounded-lg p-4">
-								<div class="flex items-start gap-4">
-									<Skeleton variant="circular" width="40px" height="40px" />
-									<div class="flex-1 space-y-3">
-										<Skeleton width="70%" height="20px" />
-										<Skeleton width="100%" height="16px" />
-										<Skeleton width="90%" height="16px" />
-										<Skeleton width="60%" height="16px" />
-										<div class="flex gap-2 mt-4">
-											<Skeleton width="80px" height="32px" />
-											<Skeleton width="80px" height="32px" />
+					<!-- Article Content -->
+					<article class="bg-card border border-border rounded-lg p-6 md:p-8">
+						<!-- Feed Info -->
+						<div class="flex items-center gap-3 mb-4">
+							{#if selectedEntry.feed_image}
+								<img
+									src={selectedEntry.feed_image}
+									alt={selectedEntry.feed_title}
+									class="w-8 h-8 rounded object-cover"
+									onerror={(e) => { const target = e.target as HTMLImageElement;
+										if (!target.dataset.fallbackAttempted) {
+											target.dataset.fallbackAttempted = 'true';
+											target.src = selectedEntry.entry_url
+												? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry.entry_url)}&size=64`
+												: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
+										} else {
+											target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
+										}
+									}}
+								/>
+							{:else if selectedEntry.entry_url}
+								<img
+									src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry.entry_url)}&size=64`}
+									alt={selectedEntry.feed_title}
+									class="w-8 h-8 rounded object-cover"
+									onerror={(e) => { const target = e.target as HTMLImageElement;
+										target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
+									}}
+								/>
+							{:else}
+								<div class="w-8 h-8 rounded flex items-center justify-center bg-accent/10">
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+										<path d="M4 11a9 9 0 0 1 9 9"/>
+										<path d="M4 4a16 16 0 0 1 16 16"/>
+										<circle cx="5" cy="19" r="1"/>
+									</svg>
+								</div>
+							{/if}
+							<div>
+								<div class="font-medium text-foreground">{selectedEntry.feed_title}</div>
+								<div class="text-sm text-muted-foreground">
+									{selectedEntry.feed_category}
+								</div>
+							</div>
+						</div>
+
+						<!-- Title -->
+						<h1 class="text-2xl font-bold text-foreground mb-4">
+							{selectedEntry.entry_title || 'Untitled Entry'}
+						</h1>
+
+						<!-- Metadata -->
+						<div class="flex items-center gap-3 text-sm text-muted-foreground mb-6">
+							{#if selectedEntry.entry_author}
+								<span>{selectedEntry.entry_author}</span>
+								<span>•</span>
+							{/if}
+							<span>{new Date(selectedEntry.entry_published_at).toLocaleDateString()}</span>
+						</div>
+
+						<!-- Actions -->
+						<div class="flex gap-2 mb-6">
+							<button
+								onclick={() => handleToggleStar(selectedEntry!.entry_id)}
+								class="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-accent transition-colors flex items-center gap-2"
+							>
+								<span class={selectedEntry.is_starred ? 'text-accent' : ''}>★</span>
+								{selectedEntry.is_starred ? 'Unstar' : 'Star'}
+							</button>
+
+							{#if selectedEntry.entry_url}
+								<a
+									href={selectedEntry.entry_url}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+								>
+									Open Original →
+								</a>
+							{/if}
+						</div>
+
+						<!-- Content -->
+						<div class="prose prose-invert max-w-none article-content">
+							{#if selectedEntry.entry_content}
+								{@html selectedEntry.entry_content}
+							{:else if selectedEntry.entry_description}
+								<p>{selectedEntry.entry_description}</p>
+							{:else}
+								<p class="text-muted-foreground">No content available</p>
+							{/if}
+						</div>
+					</article>
+				{:else}
+					<!-- Posts List View -->
+					<!-- Header -->
+					<div class="mb-4 md:mb-6">
+						<h1 class="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+							{viewTitle()}
+						</h1>
+					</div>
+
+					<!-- Entries -->
+					{#if loading && entries.length === 0}
+						<div class="space-y-2">
+							{#each Array(5) as _, i}
+								<div class="bg-card border border-border rounded-lg p-4">
+									<div class="flex items-start gap-4">
+										<Skeleton variant="circular" width="40px" height="40px" />
+										<div class="flex-1 space-y-3">
+											<Skeleton width="70%" height="20px" />
+											<Skeleton width="100%" height="16px" />
+											<Skeleton width="90%" height="16px" />
+											<Skeleton width="60%" height="16px" />
+											<div class="flex gap-2 mt-4">
+												<Skeleton width="80px" height="32px" />
+												<Skeleton width="80px" height="32px" />
+											</div>
 										</div>
 									</div>
 								</div>
-							</div>
-						{/each}
-					</div>
-				{:else if entries.length === 0}
-					<div class="text-center py-12">
-						<p class="text-muted-foreground">No posts found</p>
-						{#if filter !== 'all'}
-							<a href="/timeline/all" class="text-primary hover:text-primary/90 mt-2 inline-block">
-								View all posts
-							</a>
-						{/if}
-					</div>
-				{:else}
-					<div class="space-y-2">
-						{#each entries as entry (entry.entry_id)}
-							<EntryCard
-								{entry}
-								onToggleStar={handleToggleStar}
-								onMarkRead={handleMarkRead}
-								onClick={handleEntryClick}
-								isSelected={selectedEntry?.entry_id === entry.entry_id}
-							/>
-						{/each}
-					</div>
-
-					<!-- Infinite scroll sentinel and loading indicator -->
-					{#if hasMore}
-						<div
-							bind:this={loadMoreElement}
-							class="text-center py-6"
-						>
-							{#if loading}
-								<div class="flex items-center justify-center gap-2 text-muted-foreground">
-									<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-									</svg>
-									<span>Loading more posts...</span>
-								</div>
-							{:else}
-								<p class="text-muted-foreground text-sm">Scroll for more</p>
+							{/each}
+						</div>
+					{:else if entries.length === 0}
+						<div class="text-center py-12">
+							<p class="text-muted-foreground">No posts found</p>
+							{#if filter !== 'all'}
+								<a href="/timeline/all" class="text-primary hover:text-primary/90 mt-2 inline-block">
+									View all posts
+								</a>
 							{/if}
 						</div>
-					{:else if entries.length > 0}
-						<div class="text-center py-6">
-							<p class="text-muted-foreground text-sm">No more posts</p>
+					{:else}
+						<div class="space-y-2">
+							{#each entries as entry (entry.entry_id)}
+								<EntryCard
+									{entry}
+									onToggleStar={handleToggleStar}
+									onMarkRead={handleMarkRead}
+									onClick={handleEntryClick}
+									isSelected={false}
+								/>
+							{/each}
 						</div>
+
+						<!-- Infinite scroll sentinel and loading indicator -->
+						{#if hasMore}
+							<div
+								bind:this={loadMoreElement}
+								class="text-center py-6"
+							>
+								{#if loading}
+									<div class="flex items-center justify-center gap-2 text-muted-foreground">
+										<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+										</svg>
+										<span>Loading more posts...</span>
+									</div>
+								{:else}
+									<p class="text-muted-foreground text-sm">Scroll for more</p>
+								{/if}
+							</div>
+						{:else if entries.length > 0}
+							<div class="text-center py-6">
+								<p class="text-muted-foreground text-sm">No more posts</p>
+							</div>
+						{/if}
 					{/if}
 				{/if}
 			</div>
 		</div>
 
-		<!-- Entry Detail Panel -->
-		{#if selectedEntry}
-			<div class="relative border-l border-border bg-card overflow-y-auto flex-shrink-0 transition-all duration-300 {isArticleFullscreen ? 'fixed inset-0 z-50 w-full' : ''}" style:width="{isArticleFullscreen ? '100%' : `${articleWidth}px`}">
-				<!-- Resize Handle (hidden in fullscreen) -->
-				{#if !isArticleFullscreen}
-					<div
-						onpointerdown={handleResizeStart}
-						class="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/50 active:bg-primary transition-colors z-20 {isResizing ? 'bg-primary' : ''}"
-						role="separator"
-						aria-label="Resize article panel"
-					></div>
-				{/if}
-
-				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10">
-					<h2 class="font-semibold text-lg text-foreground">Article</h2>
-					<div class="flex items-center gap-2">
-						<button
-							onclick={toggleArticleFullscreen}
-							class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all"
-							title={isArticleFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-						>
-							{#if isArticleFullscreen}
-								<Minimize size={18} />
-							{:else}
-								<Maximize size={18} />
-							{/if}
-						</button>
-						<button
-							onclick={closeEntryDetail}
-							class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all"
-							title="Close"
-						>
-							✕
-						</button>
-					</div>
+		<!-- Mobile Entry Detail Overlay -->
+		{#if selectedEntry && !isDesktopMode}
+			<div class="fixed inset-0 z-50 bg-card overflow-y-auto slide-in-right safe-area-inset-top">
+				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center justify-between z-10 safe-area-inset-top">
+					<button
+						onclick={closeEntryDetail}
+						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all -ml-2"
+						title="Back"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="m15 18-6-6 6-6"/>
+						</svg>
+					</button>
+					<h2 class="font-semibold text-lg text-foreground flex-1 text-center">Article</h2>
+					<button
+						onclick={closeEntryDetail}
+						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all -mr-2"
+						title="Close"
+					>
+						✕
+					</button>
 				</div>
 
 				<div class="p-6">
@@ -505,13 +598,14 @@
 								alt={selectedEntry.feed_title}
 								class="w-8 h-8 rounded object-cover"
 								onerror={(e) => {
-									if (!e.target.dataset.fallbackAttempted) {
-										e.target.dataset.fallbackAttempted = 'true';
-										e.target.src = selectedEntry.entry_url
+									const target = e.target as HTMLImageElement;
+									if (!target.dataset.fallbackAttempted) {
+										target.dataset.fallbackAttempted = 'true';
+										target.src = selectedEntry.entry_url
 											? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry.entry_url)}&size=64`
 											: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
 									} else {
-										e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
+										target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
 									}
 								}}
 							/>
@@ -521,7 +615,8 @@
 								alt={selectedEntry.feed_title}
 								class="w-8 h-8 rounded object-cover"
 								onerror={(e) => {
-									e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
+									const target = e.target as HTMLImageElement;
+									target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
 								}}
 							/>
 						{:else}
@@ -591,26 +686,64 @@
 			</div>
 		{/if}
 
-		<!-- AI Chat Panel -->
-		<AIChat
-			contextType={selectedEntry ? 'entry' : 'feed'}
-			contextId={selectedEntry?.entry_id || activeFeedId}
-			currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : 'feed'}
-			currentCategory={activeCategory}
-			{currentFeed}
-			currentEntry={selectedEntry
-				? {
-						entry_id: selectedEntry.entry_id,
-						entry_title: selectedEntry.entry_title,
-						entry_content: selectedEntry.entry_content,
-						entry_description: selectedEntry.entry_description,
-						entry_author: selectedEntry.entry_author,
-						entry_published_at: selectedEntry.entry_published_at
-					}
-				: null}
-			timelineEntries={entries}
-			{feeds}
-		/>
+		<!-- AI Chat Panel (Desktop: always visible, Mobile: overlay with FAB trigger) -->
+		{#if isDesktopMode}
+			<AIChat
+				contextType={selectedEntry ? 'entry' : 'feed'}
+				contextId={selectedEntry?.entry_id || activeFeedId}
+				currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : 'feed'}
+				currentCategory={activeCategory}
+				{currentFeed}
+				currentEntry={selectedEntry
+					? {
+							entry_id: selectedEntry.entry_id,
+							entry_title: selectedEntry.entry_title,
+							entry_content: selectedEntry.entry_content,
+							entry_description: selectedEntry.entry_description,
+							entry_author: selectedEntry.entry_author,
+							entry_published_at: selectedEntry.entry_published_at
+						}
+					: null}
+				timelineEntries={entries}
+				{feeds}
+			/>
+		{:else}
+			<!-- Mobile FAB for AI Chat -->
+			<button
+				onclick={() => isChatOpen = true}
+				class="fab"
+				aria-label="Open AI Chat"
+			>
+				<MessageCircle size={24} />
+			</button>
+
+			<!-- Mobile AI Chat Overlay -->
+			{#if isChatOpen}
+				<div class="fixed inset-0 z-50 bg-background slide-in-right safe-area-inset-top">
+					<AIChat
+						contextType={selectedEntry ? 'entry' : 'feed'}
+						contextId={selectedEntry?.entry_id || activeFeedId}
+						currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : 'feed'}
+						currentCategory={activeCategory}
+						{currentFeed}
+						currentEntry={selectedEntry
+							? {
+									entry_id: selectedEntry.entry_id,
+									entry_title: selectedEntry.entry_title,
+									entry_content: selectedEntry.entry_content,
+									entry_description: selectedEntry.entry_description,
+									entry_author: selectedEntry.entry_author,
+									entry_published_at: selectedEntry.entry_published_at
+								}
+							: null}
+						timelineEntries={entries}
+						{feeds}
+						isMobileOverlay={true}
+						onClose={() => isChatOpen = false}
+					/>
+				</div>
+			{/if}
+		{/if}
 	</div>
 </div>
 

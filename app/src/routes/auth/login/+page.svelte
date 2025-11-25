@@ -54,7 +54,7 @@
 <div class="min-h-screen flex items-center justify-center bg-background px-4">
 	<div class="w-full max-w-md">
 		<div class="text-center mb-8">
-			<h1 class="text-4xl font-bold text-foreground mb-2">LeadrFeeds</h1>
+			<img src="/logo.png" alt="LeadrFeeds" class="h-16 mx-auto mb-4" />
 			<p class="text-muted-foreground">Sign in to your account</p>
 		</div>
 
