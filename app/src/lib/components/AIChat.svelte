@@ -98,6 +98,11 @@
       description: "Compare sources with synthesis",
     },
     {
+      name: "clear",
+      label: "Clear",
+      description: "Clear conversation history",
+    },
+    {
       name: "help",
       label: "Help",
       description: "Show available commands",
@@ -126,6 +131,27 @@ OUTPUT STYLE:
   function stripHtml(html: string): string {
     const doc = new DOMParser().parseFromString(html, "text/html");
     return doc.body.textContent || "";
+  }
+
+  // Filter entries to only include those from the last 24 hours
+  function filterRecentEntries(entries: any[]): any[] {
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return entries.filter((entry) => {
+      const publishedAt = new Date(entry.entry_published_at);
+      return publishedAt >= twentyFourHoursAgo;
+    });
+  }
+
+  // Trim description to timeline-view length (short preview)
+  function trimDescription(text: string | null, maxLength: number = 150): string {
+    if (!text) return "";
+    const stripped = stripHtml(text);
+    if (stripped.length <= maxLength) return stripped;
+    // Trim to maxLength and find the last space to avoid cutting words
+    const trimmed = stripped.substring(0, maxLength);
+    const lastSpace = trimmed.lastIndexOf(" ");
+    return (lastSpace > 0 ? trimmed.substring(0, lastSpace) : trimmed) + "...";
   }
 
   // Domain category helper (same as sidebar/timeline)
@@ -485,6 +511,56 @@ If multiple posts are provided, summarize the key themes across all of them.`;
     await sendMessageWithPrompt("/summarize", summarizePrompt);
   }
 
+  async function handleClear() {
+    if (!$user) return;
+
+    // Delete messages from database for this context
+    let query = supabase
+      .from("chat_messages")
+      .delete()
+      .eq("user_id", $user.id)
+      .eq("context_type", contextType);
+
+    if (contextId) {
+      query = query.eq("context_id", contextId);
+    } else {
+      query = query.is("context_id", null);
+    }
+
+    const { error } = await query;
+
+    if (error) {
+      console.error("Error clearing messages:", error);
+      const errorMsg = {
+        id: "error-" + Date.now(),
+        user_id: $user.id,
+        context_type: contextType,
+        context_id: contextId || null,
+        role: "assistant" as const,
+        content: "Failed to clear conversation history. Please try again.",
+        created_at: new Date().toISOString(),
+      } as ChatMessage;
+      messages = [...messages, errorMsg];
+      return;
+    }
+
+    // Clear local messages
+    messages = [];
+
+    // Show confirmation
+    const confirmMsg = {
+      id: "clear-" + Date.now(),
+      user_id: $user.id,
+      context_type: contextType,
+      context_id: contextId || null,
+      role: "assistant" as const,
+      content: "🧹 Conversation cleared. Ready for a fresh start!",
+      created_at: new Date().toISOString(),
+    } as ChatMessage;
+    messages = [confirmMsg];
+    scrollToBottom();
+  }
+
   async function handleHelp() {
     const helpText = `📚 **Available Commands:**
 
@@ -493,6 +569,7 @@ If multiple posts are provided, summarize the key themes across all of them.`;
 **/actionable** - Extract action items and next steps
 **/analyze** - MECE analysis with patterns and blind spots
 **/compare** - Compare sources with synthesis (requires 2+ contexts)
+**/clear** - Clear conversation history
 **/help** - Show this message
 
 💡 **Tips:**
@@ -768,19 +845,18 @@ ${customPrompt}`,
           context.data?.entries?.length > 0
             ? context.data.entries
             : timelineEntries;
-        if (entriesToUse.length > 0) {
-          const entrySummaries = entriesToUse
-            .slice(0, 8)
+        // Filter to only last 24 hours
+        const recentEntries = filterRecentEntries(entriesToUse);
+        if (recentEntries.length > 0) {
+          const entrySummaries = recentEntries
             .map((entry: any) => {
-              const rawContent =
-                entry.entry_content || entry.entry_description || "No content";
-              const content = stripHtml(rawContent);
-              return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? "..." : ""}`;
+              const description = trimDescription(entry.entry_description, 150);
+              return `- "${entry.entry_title}" (${entry.feed_title})${description ? `\n  ${description}` : ""}`;
             })
-            .join("\n\n");
+            .join("\n");
 
           contextParts.push(
-            `## All Posts Feed (${entriesToUse.length} entries, showing first 8):\n${entrySummaries}`
+            `## All Posts (last 24h, ${recentEntries.length} entries):\n${entrySummaries}`
           );
         }
         // Handle both automatic ('Starred') and manual ('Starred Posts') labels
@@ -793,23 +869,22 @@ ${customPrompt}`,
           context.data?.entries?.length > 0
             ? context.data.entries
             : timelineEntries;
-        if (entriesToUse.length > 0) {
-          const entrySummaries = entriesToUse
-            .slice(0, 8)
+        // Filter to only last 24 hours
+        const recentEntries = filterRecentEntries(entriesToUse);
+        if (recentEntries.length > 0) {
+          const entrySummaries = recentEntries
             .map((entry: any) => {
-              const rawContent =
-                entry.entry_content || entry.entry_description || "No content";
-              const content = stripHtml(rawContent);
-              return `- "${entry.entry_title}" (from ${entry.feed_title}, ${new Date(entry.entry_published_at).toLocaleDateString()})\n  ${content.substring(0, 800)}${content.length > 800 ? "..." : ""}`;
+              const description = trimDescription(entry.entry_description, 150);
+              return `- "${entry.entry_title}" (${entry.feed_title})${description ? `\n  ${description}` : ""}`;
             })
-            .join("\n\n");
+            .join("\n");
 
           contextParts.push(
-            `## Starred Posts (${entriesToUse.length} entries, showing first 8):\n${entrySummaries}`
+            `## Starred Posts (last 24h, ${recentEntries.length} entries):\n${entrySummaries}`
           );
         } else {
           contextParts.push(
-            `## Context: User is viewing their starred/saved posts (none visible)`
+            `## Context: User is viewing their starred/saved posts (none from last 24h)`
           );
         }
       } else if (context.type === "category") {
@@ -822,18 +897,17 @@ ${customPrompt}`,
           const domainCat = getDomainCategory(feed.url, feed.site_url);
           return domainCat === context.data.category;
         });
-        if (categoryPosts.length > 0) {
-          const summaries = categoryPosts
-            .slice(0, 8)
+        // Filter to only last 24 hours
+        const recentPosts = filterRecentEntries(categoryPosts);
+        if (recentPosts.length > 0) {
+          const summaries = recentPosts
             .map((entry) => {
-              const rawContent =
-                entry.entry_content || entry.entry_description || "No content";
-              const content = stripHtml(rawContent);
-              return `- "${entry.entry_title}" (${entry.feed_title})\n  ${content.substring(0, 800)}${content.length > 800 ? "..." : ""}`;
+              const description = trimDescription(entry.entry_description, 150);
+              return `- "${entry.entry_title}" (${entry.feed_title})${description ? `\n  ${description}` : ""}`;
             })
-            .join("\n\n");
+            .join("\n");
           contextParts.push(
-            `## ${context.label} Posts (showing ${Math.min(8, categoryPosts.length)} of ${categoryPosts.length}):\n${summaries}`
+            `## ${context.label} Posts (last 24h, ${recentPosts.length} entries):\n${summaries}`
           );
         }
       } else if (context.type === "feed") {
@@ -841,22 +915,21 @@ ${customPrompt}`,
         const feedPosts = timelineEntries.filter(
           (e) => e.feed_id === context.data.feed_id
         );
-        if (feedPosts.length > 0) {
-          const summaries = feedPosts
-            .slice(0, 8)
+        // Filter to only last 24 hours
+        const recentPosts = filterRecentEntries(feedPosts);
+        if (recentPosts.length > 0) {
+          const summaries = recentPosts
             .map((entry) => {
-              const rawContent =
-                entry.entry_content || entry.entry_description || "No content";
-              const content = stripHtml(rawContent);
-              return `- "${entry.entry_title}"\n  ${content.substring(0, 800)}${content.length > 800 ? "..." : ""}`;
+              const description = trimDescription(entry.entry_description, 150);
+              return `- "${entry.entry_title}"${description ? `\n  ${description}` : ""}`;
             })
-            .join("\n\n");
+            .join("\n");
           contextParts.push(
-            `## ${context.label} Feed (showing ${Math.min(8, feedPosts.length)} of ${feedPosts.length} posts):\n${summaries}`
+            `## ${context.label} Feed (last 24h, ${recentPosts.length} posts):\n${summaries}`
           );
         } else {
           contextParts.push(
-            `## Context: User is asking about the "${context.label}" feed`
+            `## Context: User is asking about the "${context.label}" feed (no posts from last 24h)`
           );
         }
       } else if (context.type === "entry") {
@@ -897,6 +970,9 @@ ${customPrompt}`,
           return;
         case "compare":
           await handleCompare();
+          return;
+        case "clear":
+          await handleClear();
           return;
         case "help":
           await handleHelp();
