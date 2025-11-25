@@ -514,20 +514,12 @@ If multiple posts are provided, summarize the key themes across all of them.`;
   async function handleClear() {
     if (!$user) return;
 
-    // Delete messages from database for this context
-    let query = supabase
+    // Delete ALL messages for this user in this context_type
+    const { error } = await supabase
       .from("chat_messages")
       .delete()
       .eq("user_id", $user.id)
       .eq("context_type", contextType);
-
-    if (contextId) {
-      query = query.eq("context_id", contextId);
-    } else {
-      query = query.is("context_id", null);
-    }
-
-    const { error } = await query;
 
     if (error) {
       console.error("Error clearing messages:", error);
