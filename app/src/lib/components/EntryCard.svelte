@@ -4,16 +4,16 @@
 
   interface Entry {
     entry_id: string;
-    entry_title: string;
-    entry_description: string;
-    entry_content: string;
-    entry_author: string;
-    entry_url: string;
+    entry_title: string | null;
+    entry_description: string | null;
+    entry_content: string | null;
+    entry_author: string | null;
+    entry_url: string | null;
     entry_published_at: string;
     feed_id: string;
-    feed_title: string;
-    feed_category: string;
-    feed_image: string;
+    feed_title: string | null;
+    feed_category: string | null;
+    feed_image: string | null;
     is_read: boolean;
     is_starred: boolean;
   }

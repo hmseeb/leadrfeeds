@@ -9,7 +9,7 @@
 	import AIChat from '$lib/components/AIChat.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import MobileHeader from '$lib/components/MobileHeader.svelte';
-	import { MessageCircle, ChevronRight } from 'lucide-svelte';
+	import { MessageCircle, ChevronRight, Filter, X, Check, Search } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import type { Database } from '$lib/types/database';
 
@@ -39,6 +39,139 @@
 	// Store scroll positions per view (filter)
 	let scrollPositions = $state<Map<string, number>>(new Map());
 
+	// Filter state
+	let showFilterMenu = $state(false);
+	let excludedFeedIds = $state<Set<string>>(new Set());
+	let excludedCategories = $state<Set<string>>(new Set());
+
+	// Search state
+	let searchQuery = $state('');
+	let showSearchInput = $state(false);
+	let searchInputRef = $state<HTMLInputElement | null>(null);
+
+	// Filtered entries based on search
+	const filteredEntries = $derived(() => {
+		if (!searchQuery.trim()) return entries;
+		const query = searchQuery.toLowerCase().trim();
+		return entries.filter(entry => {
+			const title = (entry.entry_title || '').toLowerCase();
+			const description = (entry.entry_description || '').toLowerCase();
+			const author = (entry.entry_author || '').toLowerCase();
+			const feedTitle = (entry.feed_title || '').toLowerCase();
+			return title.includes(query) || description.includes(query) || author.includes(query) || feedTitle.includes(query);
+		});
+	});
+
+	// Get unique categories from feeds
+	const feedCategories = $derived(() => {
+		const categories = new Map<string, { name: string; feeds: typeof feeds }>();
+		for (const feed of feeds) {
+			const cat = getDomainCategory(feed.url, feed.site_url);
+			if (!categories.has(cat)) {
+				categories.set(cat, { name: cat, feeds: [] });
+			}
+			categories.get(cat)!.feeds.push(feed);
+		}
+		return Array.from(categories.entries())
+			.map(([name, data]) => ({ name, feeds: data.feeds }))
+			.sort((a, b) => a.name.localeCompare(b.name));
+	});
+
+	// Count active filters
+	const activeFilterCount = $derived(excludedFeedIds.size + excludedCategories.size);
+
+	// Load filter preferences from Supabase
+	async function loadFilterPreferences() {
+		if (!$user) return;
+		try {
+			const { data, error } = await supabase
+				.from('user_settings')
+				.select('timeline_filters')
+				.eq('user_id', $user.id)
+				.single();
+
+			if (error && error.code !== 'PGRST116') {
+				console.error('Error loading filter preferences:', error);
+				return;
+			}
+
+			if (data?.timeline_filters) {
+				const filters = data.timeline_filters as { excludedFeedIds?: string[]; excludedCategories?: string[] };
+				excludedFeedIds = new Set(filters.excludedFeedIds || []);
+				excludedCategories = new Set(filters.excludedCategories || []);
+			}
+		} catch (e) {
+			console.error('Error loading filter preferences:', e);
+		}
+	}
+
+	// Save filter preferences to Supabase
+	async function saveFilterPreferences() {
+		if (!$user) return;
+		try {
+			const filters = {
+				excludedFeedIds: Array.from(excludedFeedIds),
+				excludedCategories: Array.from(excludedCategories)
+			};
+
+			const { error } = await supabase
+				.from('user_settings')
+				.upsert({
+					user_id: $user.id,
+					timeline_filters: filters,
+					updated_at: new Date().toISOString()
+				}, { onConflict: 'user_id' });
+
+			if (error) {
+				console.error('Error saving filter preferences:', error);
+			}
+		} catch (e) {
+			console.error('Error saving filter preferences:', e);
+		}
+	}
+
+	function toggleFeedFilter(feedId: string) {
+		if (excludedFeedIds.has(feedId)) {
+			excludedFeedIds.delete(feedId);
+		} else {
+			excludedFeedIds.add(feedId);
+		}
+		excludedFeedIds = new Set(excludedFeedIds); // Trigger reactivity
+		saveFilterPreferences();
+		resetAndLoad();
+	}
+
+	function toggleCategoryFilter(categoryName: string) {
+		if (excludedCategories.has(categoryName)) {
+			excludedCategories.delete(categoryName);
+		} else {
+			excludedCategories.add(categoryName);
+		}
+		excludedCategories = new Set(excludedCategories); // Trigger reactivity
+		saveFilterPreferences();
+		resetAndLoad();
+	}
+
+	function clearAllFilters() {
+		excludedFeedIds = new Set();
+		excludedCategories = new Set();
+		saveFilterPreferences();
+		resetAndLoad();
+	}
+
+	function isCategoryFullyExcluded(categoryName: string): boolean {
+		const category = feedCategories().find(c => c.name === categoryName);
+		if (!category) return false;
+		return category.feeds.every(f => excludedFeedIds.has(f.id));
+	}
+
+	function isCategoryPartiallyExcluded(categoryName: string): boolean {
+		const category = feedCategories().find(c => c.name === categoryName);
+		if (!category) return false;
+		const excludedCount = category.feeds.filter(f => excludedFeedIds.has(f.id)).length;
+		return excludedCount > 0 && excludedCount < category.feeds.length;
+	}
+
 	onMount(async () => {
 		if (!$user) {
 			goto('/auth/login');
@@ -47,6 +180,9 @@
 
 		// Ensure page starts at top on mobile
 		window.scrollTo(0, 0);
+
+		// Load filter preferences from Supabase
+		await loadFilterPreferences();
 
 		await loadFeeds();
 		await loadEntries();
@@ -68,7 +204,9 @@
 		observer.observe(loadMoreElement);
 
 		return () => {
-			observer.unobserve(loadMoreElement);
+			if (loadMoreElement) {
+				observer.unobserve(loadMoreElement);
+			}
 		};
 	});
 
@@ -127,6 +265,8 @@
 		offset = 0;
 		hasMore = true;
 		selectedEntry = null; // Clear selected entry when switching views
+		searchQuery = ''; // Clear search when switching views
+		showSearchInput = false;
 		// Reset scroll to top when switching views
 		if (timelineScrollContainer) {
 			timelineScrollContainer.scrollTop = 0;
@@ -172,10 +312,10 @@
 		}
 
 		if (categoryFilter) {
-			// Filter feeds by domain category
+			// Filter feeds by domain category, excluding any filtered feeds
 			const categoryFeeds = feeds.filter(f => {
 				const domainCat = getDomainCategory(f.url, f.site_url);
-				return domainCat === categoryFilter;
+				return domainCat === categoryFilter && !excludedFeedIds.has(f.id);
 			});
 			const feedIds = categoryFeeds.map(f => f.id);
 
@@ -221,12 +361,11 @@
 						entry_description: entry.description,
 						entry_content: entry.content,
 						entry_author: entry.author,
-						entry_published_at: entry.published_at,
+						entry_published_at: entry.published_at || new Date().toISOString(),
 						feed_id: feed.id,
 						feed_title: feed.title,
 						feed_category: feed.category,
 						feed_image: feed.image?.replace(/\/+$/, '') || null,
-						feed_site_url: feed.site_url,
 						is_read: false,
 						is_starred: false
 					};
@@ -237,12 +376,16 @@
 			}
 		} else {
 			// Use the existing RPC function for other filters
+			// Request more data to account for client-side filtering
+			const hasFilters = excludedFeedIds.size > 0 || excludedCategories.size > 0;
+			const requestLimit = hasFilters && !feedIdFilter ? limit * 2 : limit;
+
 			const { data, error } = await supabase.rpc('get_user_timeline', {
 				user_id_param: $user.id,
 				feed_id_filter: feedIdFilter,
 				starred_only: starredOnly,
 				unread_only: unreadOnly,
-				limit_param: limit,
+				limit_param: requestLimit,
 				offset_param: offset
 			});
 
@@ -250,12 +393,30 @@
 				console.error('Error loading entries:', error);
 			} else if (data) {
 				// Clean up feed_image URLs by removing trailing slashes
-				const cleanedData = data.map(entry => ({
+				let cleanedData = data.map(entry => ({
 					...entry,
 					feed_image: entry.feed_image?.replace(/\/+$/, '') || null
 				}));
+
+				// Apply filters if not viewing a specific feed
+				if (!feedIdFilter && (excludedFeedIds.size > 0 || excludedCategories.size > 0)) {
+					cleanedData = cleanedData.filter(entry => {
+						// Check if feed is excluded
+						if (excludedFeedIds.has(entry.feed_id)) return false;
+
+						// Check if category is excluded (need to find feed to get its category)
+						const feed = feeds.find(f => f.id === entry.feed_id);
+						if (feed) {
+							const cat = getDomainCategory(feed.url, feed.site_url);
+							if (excludedCategories.has(cat)) return false;
+						}
+
+						return true;
+					});
+				}
+
 				entries = [...entries, ...cleanedData];
-				hasMore = data.length === limit;
+				hasMore = data.length === requestLimit;
 				offset += data.length;
 			}
 		}
@@ -405,8 +566,8 @@
 									onerror={(e) => { const target = e.target as HTMLImageElement;
 										if (!target.dataset.fallbackAttempted) {
 											target.dataset.fallbackAttempted = 'true';
-											target.src = selectedEntry.entry_url
-												? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry.entry_url)}&size=64`
+											target.src = selectedEntry!.entry_url
+												? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry!.entry_url)}&size=64`
 												: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
 										} else {
 											target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
@@ -488,11 +649,172 @@
 					</article>
 				{:else}
 					<!-- Posts List View -->
-					<!-- Header -->
-					<div class="mb-4 md:mb-6">
-						<h1 class="text-xl md:text-2xl font-bold text-foreground tracking-tight">
-							{viewTitle()}
-						</h1>
+					<!-- Header with Search and Filter -->
+					<div class="mb-4 md:mb-6 flex items-center justify-between gap-2">
+						{#if showSearchInput}
+							<!-- Search Input -->
+							<div class="flex-1 flex items-center gap-2">
+								<div class="relative flex-1 max-w-md">
+									<Search size={16} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+									<input
+										bind:this={searchInputRef}
+										bind:value={searchQuery}
+										type="text"
+										placeholder="Search {viewTitle().toLowerCase()}..."
+										class="w-full pl-9 pr-8 py-1.5 text-sm rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+										onkeydown={(e) => e.key === 'Escape' && (showSearchInput = false, searchQuery = '')}
+									/>
+									{#if searchQuery}
+										<button
+											onclick={() => searchQuery = ''}
+											class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+										>
+											<X size={14} />
+										</button>
+									{/if}
+								</div>
+								<button
+									onclick={() => { showSearchInput = false; searchQuery = ''; }}
+									class="p-1.5 text-muted-foreground hover:text-foreground"
+								>
+									<X size={18} />
+								</button>
+							</div>
+						{:else}
+							<h1 class="text-xl md:text-2xl font-bold text-foreground tracking-tight">
+								{viewTitle()}
+							</h1>
+						{/if}
+
+						<!-- Search and Filter Buttons -->
+						<div class="flex items-center gap-2">
+							{#if !showSearchInput}
+								<button
+									onclick={() => { showSearchInput = true; requestAnimationFrame(() => searchInputRef?.focus()); }}
+									class="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+									title="Search"
+								>
+									<Search size={18} />
+								</button>
+							{/if}
+
+							<!-- Filter Button (only show in all posts, starred, or category views) -->
+							{#if filter === 'all' || filter === 'starred' || filter.startsWith('category:')}
+							<div class="relative">
+								<button
+									onclick={() => showFilterMenu = !showFilterMenu}
+									class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors {activeFilterCount > 0 ? 'bg-primary/10 border-primary/50 text-primary' : 'text-muted-foreground'}"
+								>
+									<Filter size={16} />
+									<span class="hidden sm:inline">Filter</span>
+									{#if activeFilterCount > 0}
+										<span class="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
+											{activeFilterCount}
+										</span>
+									{/if}
+								</button>
+
+								<!-- Filter Dropdown -->
+								{#if showFilterMenu}
+									<!-- Backdrop -->
+									<button
+										class="fixed inset-0 z-40"
+										onclick={() => showFilterMenu = false}
+										aria-label="Close filter menu"
+									></button>
+
+									<div class="absolute right-0 top-full mt-2 w-72 max-h-96 flex flex-col bg-card border border-border rounded-lg shadow-lg z-50">
+										<!-- Header -->
+										<div class="flex-shrink-0 border-b border-border px-4 py-3 flex items-center justify-between">
+											<span class="font-medium text-foreground">Filter Feeds</span>
+											{#if activeFilterCount > 0}
+												<button
+													onclick={clearAllFilters}
+													class="text-xs text-primary hover:underline"
+												>
+													Clear all
+												</button>
+											{/if}
+										</div>
+
+										<!-- Filter Options - scrollable -->
+										<div class="flex-1 overflow-y-auto p-2">
+											{#if filter.startsWith('category:')}
+												<!-- Show feeds in this category -->
+												{@const currentCategoryName = decodeURIComponent(filter.substring(9))}
+												{@const categoryData = feedCategories().find(c => c.name === currentCategoryName)}
+												{#if categoryData}
+													<div class="text-xs text-muted-foreground px-2 py-1 mb-1">
+														Feeds in {currentCategoryName}
+													</div>
+													{#each categoryData.feeds as feed}
+														<button
+															onclick={() => toggleFeedFilter(feed.id)}
+															class="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+														>
+															<div class="w-5 h-5 rounded border flex items-center justify-center {excludedFeedIds.has(feed.id) ? 'bg-muted border-muted-foreground/30' : 'border-primary bg-primary'}">
+																{#if !excludedFeedIds.has(feed.id)}
+																	<Check size={14} class="text-primary-foreground" />
+																{/if}
+															</div>
+															<span class="text-sm {excludedFeedIds.has(feed.id) ? 'text-muted-foreground line-through' : 'text-foreground'}">
+																{feed.title || 'Untitled Feed'}
+															</span>
+														</button>
+													{/each}
+												{/if}
+											{:else}
+												<!-- Show categories with nested feeds -->
+												{#each feedCategories() as category}
+													<!-- Category Header -->
+													<button
+														onclick={() => toggleCategoryFilter(category.name)}
+														class="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-accent transition-colors text-left"
+													>
+														<div class="w-5 h-5 rounded border flex items-center justify-center {excludedCategories.has(category.name) ? 'bg-muted border-muted-foreground/30' : isCategoryPartiallyExcluded(category.name) ? 'border-primary bg-primary/50' : 'border-primary bg-primary'}">
+															{#if !excludedCategories.has(category.name) && !isCategoryFullyExcluded(category.name)}
+																<Check size={14} class="text-primary-foreground" />
+															{/if}
+														</div>
+														<span class="text-sm font-medium {excludedCategories.has(category.name) ? 'text-muted-foreground line-through' : 'text-foreground'}">
+															{category.name}
+														</span>
+														<span class="text-xs text-muted-foreground ml-auto">
+															{category.feeds.length} feed{category.feeds.length !== 1 ? 's' : ''}
+														</span>
+													</button>
+
+													<!-- Feeds in Category (indented) -->
+													{#if !excludedCategories.has(category.name)}
+														{#each category.feeds as feed}
+															<button
+																onclick={() => toggleFeedFilter(feed.id)}
+																class="w-full flex items-center gap-2 px-2 py-1.5 pl-8 rounded-md hover:bg-accent transition-colors text-left"
+															>
+																<div class="w-4 h-4 rounded border flex items-center justify-center {excludedFeedIds.has(feed.id) ? 'bg-muted border-muted-foreground/30' : 'border-primary bg-primary'}">
+																	{#if !excludedFeedIds.has(feed.id)}
+																		<Check size={12} class="text-primary-foreground" />
+																	{/if}
+																</div>
+																<span class="text-sm truncate {excludedFeedIds.has(feed.id) ? 'text-muted-foreground line-through' : 'text-foreground'}">
+																	{feed.title || 'Untitled Feed'}
+																</span>
+															</button>
+														{/each}
+													{/if}
+												{/each}
+											{/if}
+										</div>
+
+										<!-- Footer hint - always visible -->
+										<div class="flex-shrink-0 border-t border-border px-4 py-2 text-xs text-muted-foreground">
+											Unchecked items are hidden from view
+										</div>
+									</div>
+								{/if}
+							</div>
+							{/if}
+						</div>
 					</div>
 
 					<!-- Entries -->
@@ -525,9 +847,26 @@
 								</a>
 							{/if}
 						</div>
+					{:else if filteredEntries().length === 0 && searchQuery}
+						<div class="text-center py-12">
+							<p class="text-muted-foreground">No results for "{searchQuery}"</p>
+							<button
+								onclick={() => searchQuery = ''}
+								class="text-primary hover:text-primary/90 mt-2 inline-block"
+							>
+								Clear search
+							</button>
+						</div>
 					{:else}
+						<!-- Search results count -->
+						{#if searchQuery && filteredEntries().length > 0}
+							<p class="text-sm text-muted-foreground mb-3">
+								{filteredEntries().length} result{filteredEntries().length !== 1 ? 's' : ''} for "{searchQuery}"
+							</p>
+						{/if}
+
 						<div class="space-y-2">
-							{#each entries as entry (entry.entry_id)}
+							{#each filteredEntries() as entry (entry.entry_id)}
 								<EntryCard
 									{entry}
 									onToggleStar={handleToggleStar}
@@ -569,7 +908,7 @@
 		<!-- Mobile Entry Detail Overlay -->
 		{#if selectedEntry && !isDesktopMode}
 			<div class="fixed inset-0 z-50 bg-card overflow-y-auto slide-in-right safe-area-inset-top">
-				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center justify-between z-10 safe-area-inset-top">
+				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center z-10 safe-area-inset-top">
 					<button
 						onclick={closeEntryDetail}
 						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all -ml-2"
@@ -579,14 +918,7 @@
 							<path d="m15 18-6-6 6-6"/>
 						</svg>
 					</button>
-					<h2 class="font-semibold text-lg text-foreground flex-1 text-center">Article</h2>
-					<button
-						onclick={closeEntryDetail}
-						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all -mr-2"
-						title="Close"
-					>
-						✕
-					</button>
+					<h2 class="font-semibold text-lg text-foreground flex-1 text-center pr-10">Article</h2>
 				</div>
 
 				<div class="p-6">
@@ -601,8 +933,8 @@
 									const target = e.target as HTMLImageElement;
 									if (!target.dataset.fallbackAttempted) {
 										target.dataset.fallbackAttempted = 'true';
-										target.src = selectedEntry.entry_url
-											? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry.entry_url)}&size=64`
+										target.src = selectedEntry!.entry_url
+											? `https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(selectedEntry!.entry_url)}&size=64`
 											: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
 									} else {
 										target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M4 11a9 9 0 0 1 9 9%22/%3E%3Cpath d=%22M4 4a16 16 0 0 1 16 16%22/%3E%3Ccircle cx=%225%22 cy=%2219%22 r=%221%22/%3E%3C/svg%3E';
@@ -708,14 +1040,16 @@
 				{feeds}
 			/>
 		{:else}
-			<!-- Mobile FAB for AI Chat -->
-			<button
-				onclick={() => isChatOpen = true}
-				class="fab"
-				aria-label="Open AI Chat"
-			>
-				<MessageCircle size={24} />
-			</button>
+			<!-- Mobile FAB for AI Chat (hidden when chat is open) -->
+			{#if !isChatOpen}
+				<button
+					onclick={() => isChatOpen = true}
+					class="fab"
+					aria-label="Open AI Chat"
+				>
+					<MessageCircle size={24} />
+				</button>
+			{/if}
 
 			<!-- Mobile AI Chat Overlay -->
 			{#if isChatOpen}

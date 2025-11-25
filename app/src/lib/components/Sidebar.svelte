@@ -6,19 +6,10 @@
 	import { goto } from '$app/navigation';
 	import { Home, Star, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
+	import { sidebarStore, type FeedWithUnread } from '$lib/stores/sidebar';
 
 	// Check if current user is owner
 	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
-
-	interface FeedWithUnread {
-		feed_id: string;
-		feed_title: string;
-		feed_category: string;
-		feed_url: string | null;
-		feed_image: string | null;
-		feed_site_url: string | null;
-		unread_count: number;
-	}
 
 	let {
 		activeFeedId = null,
@@ -37,8 +28,14 @@
 	// Use desktop layout store for responsive behavior
 	const isDesktopMode = $derived($useDesktopLayout);
 
+	// Get feeds data from store
+	const feeds = $derived($sidebarStore.feeds);
+	const totalUnread = $derived($sidebarStore.totalUnread);
+	const pendingSuggestionsCount = $derived($sidebarStore.pendingSuggestionsCount);
+
 	let isCollapsed = $state(true);
 	let isLoadingSettings = $state(true);
+	let expandedFeeds = $state<Set<string>>(new Set());
 
 	$effect(() => {
 		onCollapseChange?.(isCollapsed);
@@ -78,48 +75,10 @@
 		saveSidebarState(isCollapsed);
 	}
 
-	let feeds = $state<FeedWithUnread[]>([]);
-	let totalUnread = $state(0);
-	let expandedFeeds = $state<Set<string>>(new Set());
-	let pendingSuggestionsCount = $state(0);
-
 	// Reactive current path from page store
 	const currentPath = $derived($page.url.pathname);
 
-	function getDomainCategory(url: string | null): string {
-		if (!url) return 'Other';
-
-		try {
-			const urlObj = new URL(url);
-			let domain = urlObj.hostname.replace('www.', '');
-
-			// Map common domains to readable names
-			if (domain.includes('youtube.com')) return 'YouTube';
-			if (domain.includes('reddit.com')) return 'Reddit';
-			if (domain.includes('github.com')) return 'GitHub';
-			if (domain.includes('medium.com')) return 'Medium';
-			if (domain.includes('substack.com')) return 'Substack';
-
-			// Extract main domain (e.g., "google" from "blog.google.com")
-			const parts = domain.split('.');
-			// Get second-to-last part for multi-level domains (blog.google.com -> google)
-			// or first part for simple domains (example.com -> example)
-			const mainDomain = parts.length > 2 ? parts[parts.length - 2] : parts[0];
-			return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
-		} catch (e) {
-			return 'Other';
-		}
-	}
-
 	onMount(() => {
-		// Reload feeds every 30 seconds
-		const interval = setInterval(async () => {
-			await loadFeeds();
-			if (isOwner) {
-				await loadPendingSuggestionsCount();
-			}
-		}, 30000);
-
 		// Load data asynchronously
 		(async () => {
 			if (!$user) {
@@ -127,101 +86,27 @@
 				return;
 			}
 
-			// Load sidebar state and feeds in parallel
-			await Promise.all([
-				loadSidebarState(),
-				loadFeeds()
-			]);
+			// Load sidebar state (local preference)
+			await loadSidebarState();
+
+			// Load feeds from store (will skip if recently loaded)
+			await sidebarStore.loadFeeds();
 
 			if (isOwner) {
-				await loadPendingSuggestionsCount();
+				await sidebarStore.loadPendingSuggestionsCount();
 			}
+
+			// Start refresh interval
+			sidebarStore.startRefreshInterval();
 		})();
 
-		return () => clearInterval(interval);
+		return () => {
+			sidebarStore.stopRefreshInterval();
+		};
 	});
 
-	async function loadFeeds() {
-		if (!$user) return;
-
-		// Get user's subscribed feeds with unread counts
-		const { data: userFeeds, error: feedsError } = await supabase
-			.from('user_subscriptions')
-			.select(`
-				feed_id,
-				feeds:feed_id (
-					id,
-					title,
-					url,
-					category,
-					image,
-					site_url
-				)
-			`)
-			.eq('user_id', $user.id)
-			.order('subscribed_at', { ascending: false });
-
-		if (feedsError) {
-			console.error('Error loading feeds:', feedsError);
-			return;
-		}
-
-		// Get unread counts
-		const { data: unreadData, error: unreadError } = await supabase.rpc('get_unread_counts', {
-			user_id_param: $user.id
-		});
-
-		if (unreadError) {
-			console.error('Error loading unread counts:', unreadError);
-			return;
-		}
-
-		const unreadMap = new Map(unreadData?.map(u => [u.feed_id, u.unread_count]) || []);
-
-		// Build feeds list with domain-based categories
-		// Filter out feeds that are pending sync (no image from Folo sync)
-		const genericTitles = ['YouTube', 'GitHub', 'Reddit', 'Medium', 'Substack', 'Twitter/X', 'LinkedIn', 'Feed'];
-
-		feeds = userFeeds
-			.filter(uf => uf.feeds)
-			.map(uf => {
-				const feed = Array.isArray(uf.feeds) ? uf.feeds[0] : uf.feeds;
-				const feedUrl = feed.url || feed.site_url;
-				const domainCategory = getDomainCategory(feedUrl);
-				const hasGenericTitle = !feed.title || genericTitles.includes(feed.title);
-				const hasImage = !!feed.image;
-				// Feed is pending sync if it has a generic title and no image (Folo sets image when syncing)
-				const isPendingSync = hasGenericTitle && !hasImage;
-				return {
-					feed_id: feed.id,
-					feed_title: feed.title || domainCategory,
-					feed_category: domainCategory,
-					feed_url: feedUrl,
-					feed_image: feed.image?.replace(/\/+$/, '') || null,
-					feed_site_url: feed.site_url || null,
-					unread_count: unreadMap.get(feed.id) || 0,
-					_isPendingSync: isPendingSync
-				};
-			})
-			.filter(f => !f._isPendingSync); // Hide feeds pending Folo sync
-
-		totalUnread = feeds.reduce((sum, f) => sum + f.unread_count, 0);
-	}
-
-	async function loadPendingSuggestionsCount() {
-		if (!$user || !isOwner) return;
-
-		const { data, error } = await supabase.rpc('get_pending_suggestions_count');
-
-		if (error) {
-			console.error('Error loading pending suggestions count:', error);
-			return;
-		}
-
-		pendingSuggestionsCount = data || 0;
-	}
-
 	async function handleSignOut() {
+		sidebarStore.reset();
 		await signOut();
 		goto('/auth/login');
 	}

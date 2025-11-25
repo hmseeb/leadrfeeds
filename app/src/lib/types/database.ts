@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      feed_suggestions: {
+        Row: {
+          id: string
+          feed_url: string
+          feed_title: string | null
+          feed_description: string | null
+          reason: string | null
+          suggested_by_user_id: string
+          suggested_by_email: string
+          status: string
+          reviewed_at: string | null
+          reviewed_by_email: string | null
+          rejection_reason: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          feed_url: string
+          feed_title?: string | null
+          feed_description?: string | null
+          reason?: string | null
+          suggested_by_user_id: string
+          suggested_by_email: string
+          status?: string
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          rejection_reason?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          feed_url?: string
+          feed_title?: string | null
+          feed_description?: string | null
+          reason?: string | null
+          suggested_by_user_id?: string
+          suggested_by_email?: string
+          status?: string
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          rejection_reason?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      feed_waitlist: {
+        Row: {
+          id: string
+          feed_url: string
+          user_id: string
+          created_at: string | null
+          subscribed: boolean | null
+          subscribed_at: string | null
+          feed_id: string | null
+        }
+        Insert: {
+          id?: string
+          feed_url: string
+          user_id: string
+          created_at?: string | null
+          subscribed?: boolean | null
+          subscribed_at?: string | null
+          feed_id?: string | null
+        }
+        Update: {
+          id?: string
+          feed_url?: string
+          user_id?: string
+          created_at?: string | null
+          subscribed?: boolean | null
+          subscribed_at?: string | null
+          feed_id?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -206,6 +284,7 @@ export type Database = {
           preferred_model: string | null
           sidebar_collapsed: boolean | null
           theme: string | null
+          timeline_filters: { excludedFeedIds: string[]; excludedCategories: string[] } | null
           updated_at: string | null
           user_id: string
         }
@@ -216,6 +295,7 @@ export type Database = {
           preferred_model?: string | null
           sidebar_collapsed?: boolean | null
           theme?: string | null
+          timeline_filters?: { excludedFeedIds: string[]; excludedCategories: string[] } | null
           updated_at?: string | null
           user_id: string
         }
@@ -226,6 +306,7 @@ export type Database = {
           preferred_model?: string | null
           sidebar_collapsed?: boolean | null
           theme?: string | null
+          timeline_filters?: { excludedFeedIds: string[]; excludedCategories: string[] } | null
           updated_at?: string | null
           user_id?: string
         }
@@ -281,15 +362,77 @@ export type Database = {
           feed_image: string
           feed_site_url: string
           feed_title: string
+          feed_url: string
           last_entry_at: string
           subscriber_count: number
         }[]
+      }
+      get_pending_suggestions_count: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      get_suggestion_feed_status: {
+        Args: {
+          p_suggestion_id: string
+        }
+        Returns: {
+          feed_id: string | null
+          feed_title: string | null
+          waitlist_count: number
+          subscribed_count: number
+          is_feed_created: boolean
+        }[]
+      }
+      submit_feed_suggestion: {
+        Args: {
+          p_feed_url: string
+          p_feed_title?: string
+          p_feed_description?: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      approve_feed_suggestion: {
+        Args: {
+          p_suggestion_id: string
+        }
+        Returns: string
+      }
+      reject_feed_suggestion: {
+        Args: {
+          p_suggestion_id: string
+          p_rejection_reason?: string | null
+        }
+        Returns: undefined
+      }
+      delete_feed_suggestion: {
+        Args: {
+          p_suggestion_id: string
+        }
+        Returns: undefined
       }
       get_unread_counts: {
         Args: { user_id_param: string }
         Returns: {
           feed_id: string
           unread_count: number
+        }[]
+      }
+      get_waitlist_count: {
+        Args: {
+          p_feed_url: string
+        }
+        Returns: number
+      }
+      link_feed_to_waitlist: {
+        Args: {
+          p_feed_url: string
+          p_feed_id: string
+          p_feed_title?: string
+        }
+        Returns: {
+          subscribed_count: number
+          already_subscribed: number
         }[]
       }
       get_user_timeline: {
@@ -302,17 +445,17 @@ export type Database = {
           user_id_param: string
         }
         Returns: {
-          entry_author: string
-          entry_content: string
-          entry_description: string
+          entry_author: string | null
+          entry_content: string | null
+          entry_description: string | null
           entry_id: string
           entry_published_at: string
-          entry_title: string
-          entry_url: string
-          feed_category: string
+          entry_title: string | null
+          entry_url: string | null
+          feed_category: string | null
           feed_id: string
-          feed_image: string
-          feed_title: string
+          feed_image: string | null
+          feed_title: string | null
           is_read: boolean
           is_starred: boolean
         }[]

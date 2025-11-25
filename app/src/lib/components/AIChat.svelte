@@ -15,14 +15,17 @@
 
   interface Props {
     contextType: "feed" | "entry";
-    contextId?: string;
+    contextId?: string | null;
     currentView?: "all" | "starred" | string;
     currentCategory?: string | null;
     currentFeed?: { feed_id: string; feed_title: string } | null;
     currentEntry?: {
       entry_id: string;
-      entry_title: string;
-      entry_content?: string;
+      entry_title: string | null;
+      entry_content?: string | null;
+      entry_description?: string | null;
+      entry_author?: string | null;
+      entry_published_at?: string;
     } | null;
     timelineEntries?: any[];
     feeds?: any[];
@@ -59,6 +62,7 @@
   let showContextMenu = $state(false);
   let contextSearch = $state("");
   let showCommandMenu = $state(false);
+  let selectedCommandIndex = $state(0);
 
   // Slash commands
   interface SlashCommand {
@@ -69,26 +73,52 @@
 
   const slashCommands: SlashCommand[] = [
     {
+      name: "tldr",
+      label: "TL;DR",
+      description: "Ultra-short 1-2 sentence takeaway",
+    },
+    {
       name: "summarize",
       label: "Summarize",
-      description: "Get a concise summary of the active contexts",
+      description: "80/20 summary with key insights and hot take",
+    },
+    {
+      name: "actionable",
+      label: "Actionable",
+      description: "Extract action items and next steps",
     },
     {
       name: "analyze",
       label: "Analyze",
-      description: "Deep analysis of content with insights and patterns",
+      description: "MECE analysis with patterns and blind spots",
     },
     {
       name: "compare",
       label: "Compare",
-      description: "Compare and contrast multiple posts or feeds",
+      description: "Compare sources with synthesis",
     },
     {
       name: "help",
       label: "Help",
-      description: "Show available commands and context info",
+      description: "Show available commands",
     },
   ];
+
+  // Master system prompt for opinionated, structured responses
+  const BASE_SYSTEM_PROMPT = `You are an expert content analyst for LeadrFeeds - opinionated, direct, and focused on signal over noise.
+
+CORE PRINCIPLES:
+• 80/20 Rule: Focus on the 20% of content that delivers 80% of value
+• "So What?" Test: Always connect insights to why it matters
+• Be Opinionated: Call out hype, flag what's overrated, highlight what's underrated
+• No Fluff: Skip obvious statements, get to the point
+• Evidence-Based: Reference specific quotes/data, not vague summaries
+
+OUTPUT STYLE:
+• Use emoji headers for visual hierarchy
+• Bullet points over paragraphs
+• Bold key terms and takeaways
+• Be concise but complete`;
 
   let filteredCommands = $state<SlashCommand[]>([]);
 
@@ -203,15 +233,24 @@
 
   // Watch for slash command input
   $effect(() => {
-    if (input.startsWith("/") && input.length > 1) {
+    if (input.startsWith("/")) {
       showCommandMenu = true;
       const query = input.slice(1).toLowerCase();
-      filteredCommands = slashCommands.filter(
-        (c) => c.name.includes(query) || c.label.toLowerCase().includes(query)
-      );
+      if (query.length === 0) {
+        // Show all commands when just "/" is typed
+        filteredCommands = slashCommands;
+      } else {
+        filteredCommands = slashCommands.filter(
+          (c) =>
+            c.name.includes(query) || c.label.toLowerCase().includes(query)
+        );
+      }
+      // Reset selection when filter changes
+      selectedCommandIndex = 0;
     } else {
       showCommandMenu = false;
       filteredCommands = [];
+      selectedCommandIndex = 0;
     }
   });
 
@@ -291,7 +330,7 @@
       newContexts.push({
         id: `entry-${currentEntry.entry_id}`,
         type: "entry",
-        label: currentEntry.entry_title,
+        label: currentEntry.entry_title || "Untitled",
         data: currentEntry,
       });
     } else {
@@ -427,195 +466,45 @@
   }
 
   async function handleSummarize() {
-    if (contextType !== "entry" || !contextId) {
-      const errorMsg = {
-        id: "error-" + Date.now(),
-        user_id: $user!.id,
-        context_type: contextType,
-        context_id: contextId || null,
-        role: "assistant" as const,
-        content:
-          "The /summarize command only works when viewing a specific post. Please click on a post first.",
-        created_at: new Date().toISOString(),
-      } as ChatMessage;
-      messages = [...messages, errorMsg];
-      scrollToBottom();
-      return;
-    }
+    const summarizePrompt = `Apply the 80/20 rule: identify the 20% of content that conveys 80% of the value.
 
-    loading = true;
+OUTPUT FORMAT:
+📌 **TL;DR** (1-2 sentences - the one thing to remember)
 
-    // Fetch entry data
-    const { data: entry, error: entryError } = await supabase
-      .from("entries")
-      .select("title, description, content, author, url, published_at")
-      .eq("id", contextId)
-      .single();
+🎯 **Key Insights**
+• [Only what's genuinely new or important - max 5 bullets]
+• [Skip obvious or filler content]
 
-    if (entryError || !entry) {
-      loading = false;
-      const errorMsg = {
-        id: "error-" + Date.now(),
-        user_id: $user!.id,
-        context_type: contextType,
-        context_id: contextId || null,
-        role: "assistant" as const,
-        content: "Sorry, I couldn't load the post content to summarize.",
-        created_at: new Date().toISOString(),
-      } as ChatMessage;
-      messages = [...messages, errorMsg];
-      scrollToBottom();
-      return;
-    }
+💡 **So What?**
+Why this matters and what to do with this information.
 
-    // Save command message
-    const { data: savedMessage } = await supabase
-      .from("chat_messages")
-      .insert({
-        user_id: $user!.id,
-        context_type: contextType,
-        context_id: contextId || null,
-        role: "user",
-        content: "/summarize",
-      })
-      .select()
-      .single();
+⚡ **Hot Take**
+What the content overstates, understates, or misses entirely. Be opinionated.
 
-    if (savedMessage) {
-      messages = [...messages, savedMessage];
-      scrollToBottom();
-    }
-
-    // Create system message with Pareto principle instructions
-    const systemMessage = {
-      role: "system",
-      content: `You are summarizing an article for LeadrFeeds. Use the Pareto Principle (80/20 rule): identify the 20% of content that conveys 80% of the meaning.
-
-Article: "${entry.title}"${entry.author ? `\nAuthor: ${entry.author}` : ""}
-Published: ${new Date(entry.published_at || "").toLocaleDateString()}
-
-Content:
-${entry.content || entry.description || "No content available"}
-
-Provide a concise, high-quality summary in 2-3 paragraphs that:
-1. Captures the main thesis/argument
-2. Highlights key points and insights
-3. Notes important conclusions or takeaways
-Focus on substance over details. Be clear and direct.`,
-    };
-
-    try {
-      // Call OpenRouter with streaming
-      streamingContent = "";
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "LeadrFeeds",
-          },
-          body: JSON.stringify({
-            model: preferredModel,
-            messages: [
-              systemMessage,
-              { role: "user", content: "Please summarize this article." },
-            ],
-            stream: true,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("OpenRouter API request failed");
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let summary = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk
-            .split("\n")
-            .filter((line) => line.trim().startsWith("data: "));
-
-          for (const line of lines) {
-            const data = line.replace(/^data: /, "");
-            if (data === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content || "";
-              if (content) {
-                summary += content;
-                streamingContent = summary;
-                scrollToBottom();
-              }
-            } catch (e) {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-
-      // Save assistant response
-      const { data: assistantMsg } = await supabase
-        .from("chat_messages")
-        .insert({
-          user_id: $user!.id,
-          context_type: contextType,
-          context_id: contextId || null,
-          role: "assistant",
-          content: summary || "No response generated",
-        })
-        .select()
-        .single();
-
-      if (assistantMsg) {
-        messages = [...messages, assistantMsg];
-        scrollToBottom();
-      }
-
-      streamingContent = "";
-      loading = false;
-    } catch (error) {
-      console.error("Error calling OpenRouter:", error);
-      loading = false;
-      const errorMsg = {
-        id: "error-" + Date.now(),
-        user_id: $user!.id,
-        context_type: contextType,
-        context_id: contextId || null,
-        role: "assistant" as const,
-        content:
-          "Sorry, there was an error generating the summary. Please check your API key in settings.",
-        created_at: new Date().toISOString(),
-      } as ChatMessage;
-      messages = [...messages, errorMsg];
-      scrollToBottom();
-    }
+If multiple posts are provided, summarize the key themes across all of them.`;
+    await sendMessageWithPrompt("/summarize", summarizePrompt);
   }
 
   async function handleHelp() {
-    const helpText = `**Available Commands:**
+    const helpText = `📚 **Available Commands:**
 
-**/summarize** - Generate a concise summary of the current post (only works when viewing a post)
-**/help** - Show this help message
+**/tldr** - Ultra-short 1-2 sentence takeaway
+**/summarize** - 80/20 summary with key insights and hot take
+**/actionable** - Extract action items and next steps
+**/analyze** - MECE analysis with patterns and blind spots
+**/compare** - Compare sources with synthesis (requires 2+ contexts)
+**/help** - Show this message
 
-**Context Information:**
+💡 **Tips:**
+• Commands work with your current view (All Posts, Starred, Feed, or single article)
+• Add more contexts with "Add Context" to analyze multiple sources
+• Be direct with questions - I'll give opinionated, structured answers
+
+📍 **Current Context:**
 ${
-  contextType === "entry"
-    ? "✓ You are viewing a specific post. I can summarize it or answer questions about it."
-    : contextType === "feed"
-      ? "✓ You are viewing a feed. I can answer questions about posts in this feed."
-      : "✓ You are in global view. I can answer general questions about your feeds."
+  activeContexts.length > 0
+    ? `✓ ${activeContexts.length} context${activeContexts.length > 1 ? "s" : ""} loaded - all commands ready`
+    : "No contexts - navigate to a feed or post, or use Add Context"
 }`;
 
     const helpMsg = {
@@ -633,9 +522,25 @@ ${
   }
 
   async function handleAnalyze() {
-    // Use the regular send flow with a specific prompt
-    const analysisPrompt =
-      "Analyze the content in the active contexts. Look for patterns, trends, key insights, and interesting connections. Provide a structured analysis.";
+    // Use MECE framework for structured analysis
+    const analysisPrompt = `Perform a structured MECE analysis (Mutually Exclusive, Collectively Exhaustive).
+
+OUTPUT FORMAT:
+🔍 **Patterns & Themes**
+• Group related insights into distinct categories
+• Identify recurring narratives
+
+📊 **Signal vs Noise**
+• What's genuinely significant (signal)
+• What's hype or redundant (noise)
+
+🔗 **Connections**
+• How these pieces relate to each other
+• Emerging trends across sources
+
+🚨 **Blind Spots**
+• What's NOT being discussed that should be
+• Missing perspectives or contrarian views`;
     await sendMessageWithPrompt("/analyze", analysisPrompt);
   }
 
@@ -656,9 +561,41 @@ ${
       return;
     }
 
-    const comparePrompt =
-      "Compare and contrast the different pieces of content in the active contexts. Highlight similarities, differences, and unique perspectives.";
+    const comparePrompt = `Compare and contrast using a structured framework.
+
+OUTPUT FORMAT:
+✅ **Agreement** (High-confidence insights)
+• Where sources align - these are likely true
+
+⚔️ **Disagreement** (Needs more research)
+• Where sources conflict - dig deeper here
+
+🎁 **Unique Contributions**
+• What each source adds that others miss
+
+🧠 **Synthesis**
+Your opinionated take: combining these perspectives, what's the real story?`;
     await sendMessageWithPrompt("/compare", comparePrompt);
+  }
+
+  async function handleTldr() {
+    const tldrPrompt = `Give me the single most important takeaway in 1-2 sentences. Be direct and opinionated. Start with the conclusion, not background.
+
+If multiple posts are provided, give a combined TL;DR that captures the most important insight across all of them.`;
+    await sendMessageWithPrompt("/tldr", tldrPrompt);
+  }
+
+  async function handleActionable() {
+    const actionablePrompt = `Extract only the actionable items from this content.
+
+OUTPUT FORMAT:
+✅ **Do This** - Concrete actions to take
+⚠️ **Avoid This** - Pitfalls or anti-patterns mentioned
+📅 **Time-Sensitive** - Anything with urgency or deadlines
+🔗 **Follow Up** - Resources, links, or topics to explore further
+
+Skip theory and background. Only include items someone can actually act on. If there are no actionable items, say so directly.`;
+    await sendMessageWithPrompt("/actionable", actionablePrompt);
   }
 
   async function sendMessageWithPrompt(
@@ -705,14 +642,16 @@ ${
       return;
     }
 
-    // Build API messages
+    // Build API messages with enhanced base prompt
     const apiMessages: Array<{ role: string; content: string }> = [
       {
         role: "system",
-        content: `You are an AI assistant helping analyze feed content for LeadrFeeds.
+        content: `${BASE_SYSTEM_PROMPT}
 
+CONTEXT:
 ${contextString}
 
+TASK:
 ${customPrompt}`,
       },
       { role: "user", content: customPrompt },
@@ -944,8 +883,14 @@ ${customPrompt}`,
     if (parsed.isCommand) {
       input = "";
       switch (parsed.command) {
+        case "tldr":
+          await handleTldr();
+          return;
         case "summarize":
           await handleSummarize();
+          return;
+        case "actionable":
+          await handleActionable();
           return;
         case "analyze":
           await handleAnalyze();
@@ -1007,11 +952,19 @@ ${customPrompt}`,
     if (contextString) {
       apiMessages.push({
         role: "system",
-        content: `You are an AI assistant helping analyze feed content for LeadrFeeds.
+        content: `${BASE_SYSTEM_PROMPT}
 
+CONTEXT:
 ${contextString}
 
-The user is asking about the content above. Provide insightful, accurate analysis. When referencing posts, use their titles. Be concise and helpful.`,
+RESPONSE GUIDELINES:
+• If asked "what's important" → Apply 80/20 filter ruthlessly
+• If asked about trends → Look for patterns across 3+ sources
+• If asked for opinion → Be direct, take a stance, cite evidence
+• If asked to explain → Use analogies and concrete examples
+• If unclear what user wants → Default to the most useful interpretation
+
+Remember: Users are busy. Respect their time. Lead with the conclusion.`,
       });
     }
 
@@ -1132,6 +1085,39 @@ The user is asking about the content above. Provide insightful, accurate analysi
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    // Handle command menu navigation
+    if (showCommandMenu && filteredCommands.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        selectedCommandIndex = (selectedCommandIndex + 1) % filteredCommands.length;
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        selectedCommandIndex =
+          selectedCommandIndex === 0
+            ? filteredCommands.length - 1
+            : selectedCommandIndex - 1;
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const selectedCommand = filteredCommands[selectedCommandIndex];
+        if (selectedCommand) {
+          input = `/${selectedCommand.name}`;
+          showCommandMenu = false;
+          sendMessage();
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        showCommandMenu = false;
+        return;
+      }
+    }
+
+    // Normal Enter behavior for sending messages
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -1281,7 +1267,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
           class="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-lg z-50"
         >
           <div class="p-2">
-            {#each filteredCommands as command}
+            {#each filteredCommands as command, index}
               <button
                 type="button"
                 onclick={() => {
@@ -1289,14 +1275,27 @@ The user is asking about the content above. Provide insightful, accurate analysi
                   showCommandMenu = false;
                   sendMessage();
                 }}
-                class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-800 transition-colors"
+                class="w-full text-left px-3 py-2 rounded-md transition-colors {index ===
+                selectedCommandIndex
+                  ? 'bg-blue-500/20 border border-blue-500/50'
+                  : 'hover:bg-gray-800'}"
               >
                 <div class="font-medium text-sm text-gray-200">
-                  {command.label}
+                  /{command.name}
+                  <span class="text-gray-400 font-normal ml-1"
+                    >- {command.label}</span
+                  >
                 </div>
                 <div class="text-xs text-gray-400">{command.description}</div>
               </button>
             {/each}
+          </div>
+          <div
+            class="px-3 py-2 border-t border-gray-800 text-xs text-gray-500 flex gap-3"
+          >
+            <span><kbd class="px-1 bg-gray-800 rounded">↑↓</kbd> navigate</span>
+            <span><kbd class="px-1 bg-gray-800 rounded">↵</kbd> select</span>
+            <span><kbd class="px-1 bg-gray-800 rounded">esc</kbd> close</span>
           </div>
         </div>
       {/if}
@@ -1308,7 +1307,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
           disabled={!apiKey || loading}
           placeholder="Ask about your feeds..."
           rows="2"
-          class="flex-1 px-3 py-2 bg-[#0d0d0d] border border-gray-800 rounded-md text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
+          class="flex-1 px-3 py-2 bg-[#0d0d0d] border border-gray-800 rounded-md text-base md:text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
         ></textarea>
         <button
           type="submit"
@@ -1342,7 +1341,7 @@ The user is asking about the content above. Provide insightful, accurate analysi
                   type="text"
                   placeholder="Search for context..."
                   bind:value={contextSearch}
-                  class="w-full px-2 py-1 text-xs bg-[#0d0d0d] text-gray-200 border border-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-2 py-1 text-base md:text-xs bg-[#0d0d0d] text-gray-200 border border-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
