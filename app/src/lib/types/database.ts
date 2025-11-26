@@ -460,6 +460,29 @@ export type Database = {
           is_starred: boolean
         }[]
       }
+      get_ai_context: {
+        Args: {
+          user_id_param: string
+          feed_id_filter?: string
+          starred_only?: boolean
+          hours_lookback?: number
+        }
+        Returns: {
+          entry_id: string
+          entry_title: string | null
+          entry_description: string | null
+          entry_content: string | null
+          entry_author: string | null
+          entry_url: string | null
+          entry_published_at: string
+          feed_id: string
+          feed_title: string | null
+          feed_category: string | null
+          feed_url: string | null
+          feed_site_url: string | null
+          is_starred: boolean
+        }[]
+      }
       mark_entry_read: {
         Args: { entry_id_param: string; user_id_param: string }
         Returns: undefined

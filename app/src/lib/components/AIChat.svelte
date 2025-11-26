@@ -13,6 +13,22 @@
     data?: any;
   }
 
+  interface AIContextEntry {
+    entry_id: string;
+    entry_title: string | null;
+    entry_description: string | null;
+    entry_content: string | null;
+    entry_author: string | null;
+    entry_url: string | null;
+    entry_published_at: string;
+    feed_id: string;
+    feed_title: string | null;
+    feed_category: string | null;
+    feed_url: string | null;
+    feed_site_url: string | null;
+    is_starred: boolean;
+  }
+
   interface Props {
     contextType: "feed" | "entry";
     contextId?: string | null;
@@ -63,6 +79,11 @@
   let contextSearch = $state("");
   let showCommandMenu = $state(false);
   let selectedCommandIndex = $state(0);
+
+  // AI context cache
+  let aiContextCache = $state<Map<string, { entries: AIContextEntry[]; timestamp: number }>>(new Map());
+  let isLoadingContext = $state(false);
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute cache
 
   // Slash commands
   interface SlashCommand {
@@ -133,27 +154,6 @@ OUTPUT STYLE:
     return doc.body.textContent || "";
   }
 
-  // Filter entries to only include those from the last 24 hours
-  function filterRecentEntries(entries: any[]): any[] {
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    return entries.filter((entry) => {
-      const publishedAt = new Date(entry.entry_published_at);
-      return publishedAt >= twentyFourHoursAgo;
-    });
-  }
-
-  // Trim description to timeline-view length (short preview)
-  function trimDescription(text: string | null, maxLength: number = 150): string {
-    if (!text) return "";
-    const stripped = stripHtml(text);
-    if (stripped.length <= maxLength) return stripped;
-    // Trim to maxLength and find the last space to avoid cutting words
-    const trimmed = stripped.substring(0, maxLength);
-    const lastSpace = trimmed.lastIndexOf(" ");
-    return (lastSpace > 0 ? trimmed.substring(0, lastSpace) : trimmed) + "...";
-  }
-
   // Domain category helper (same as sidebar/timeline)
   function getDomainCategory(
     url: string | null,
@@ -184,6 +184,52 @@ OUTPUT STYLE:
     }
   }
 
+  // Fetch AI context from database (all posts from last 24h)
+  async function fetchAIContext(
+    viewType: 'all' | 'starred' | 'feed' | 'category',
+    feedId?: string,
+    category?: string
+  ): Promise<AIContextEntry[]> {
+    if (!$user) return [];
+
+    const cacheKey = `${viewType}-${feedId || ''}-${category || ''}`;
+    const cached = aiContextCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+      return cached.entries;
+    }
+
+    isLoadingContext = true;
+
+    try {
+      const { data, error } = await supabase.rpc('get_ai_context', {
+        user_id_param: $user.id,
+        feed_id_filter: viewType === 'feed' ? feedId : undefined,
+        starred_only: viewType === 'starred',
+        hours_lookback: 24
+      });
+
+      if (error) {
+        console.error('Error fetching AI context:', error);
+        return [];
+      }
+
+      let entries: AIContextEntry[] = data || [];
+
+      // Apply category filter client-side
+      if (viewType === 'category' && category) {
+        entries = entries.filter(e => {
+          const domainCat = getDomainCategory(e.feed_url, e.feed_site_url);
+          return domainCat === category;
+        });
+      }
+
+      aiContextCache.set(cacheKey, { entries, timestamp: Date.now() });
+      return entries;
+    } finally {
+      isLoadingContext = false;
+    }
+  }
+
   // Context management functions
   function addContext(context: ContextBadge) {
     // Check if context already exists
@@ -201,55 +247,23 @@ OUTPUT STYLE:
     }
   }
 
-  // Load starred entries and add as context (for manual "Add Context" button)
-  async function addStarredContext() {
-    if (!$user) return;
-
-    // Fetch starred entries from the database
-    const { data, error } = await supabase.rpc("get_user_timeline", {
-      user_id_param: $user.id,
-      feed_id_filter: undefined,
-      starred_only: true,
-      unread_only: false,
-      limit_param: 10,
-      offset_param: 0,
-    });
-
-    if (error) {
-      console.error("Error loading starred entries:", error);
-    }
-
+  // Add starred context badge (data will be fetched on-demand when sending messages)
+  function addStarredContext() {
     addContext({
       id: "manual-view-starred",
       type: "view",
       label: "Starred Posts",
-      data: { view: "starred", entries: data || [] },
+      data: { view: "starred" },
     });
   }
 
-  // Load all posts entries and add as context (for manual "Add Context" button)
-  async function addAllPostsContext() {
-    if (!$user) return;
-
-    // Fetch recent entries from the database
-    const { data, error } = await supabase.rpc("get_user_timeline", {
-      user_id_param: $user.id,
-      feed_id_filter: undefined,
-      starred_only: false,
-      unread_only: false,
-      limit_param: 10,
-      offset_param: 0,
-    });
-
-    if (error) {
-      console.error("Error loading entries:", error);
-    }
-
+  // Add all posts context badge (data will be fetched on-demand when sending messages)
+  function addAllPostsContext() {
     addContext({
       id: "manual-view-all",
       type: "view",
       label: "All Posts",
-      data: { view: "all", entries: data || [] },
+      data: { view: "all" },
     });
   }
 
@@ -691,8 +705,8 @@ Skip theory and background. Only include items someone can actually act on. If t
       scrollToBottom();
     }
 
-    // Build context from active badges
-    const contextString = buildContextFromBadges();
+    // Build context from active badges (async - fetches fresh data)
+    const contextString = await buildContextFromBadgesAsync();
 
     if (!contextString) {
       const errorMsg = {
@@ -820,8 +834,8 @@ ${customPrompt}`,
     }
   }
 
-  // Build context string from active context badges
-  function buildContextFromBadges(): string {
+  // Build context string from active context badges (async - fetches fresh data from DB)
+  async function buildContextFromBadgesAsync(): Promise<string> {
     if (activeContexts.length === 0) return "";
 
     let contextParts: string[] = [];
@@ -832,47 +846,44 @@ ${customPrompt}`,
         context.type === "view" &&
         (context.label === "All" || context.label === "All Posts")
       ) {
-        // Use entries from context.data if available (manual context), otherwise use timelineEntries
-        const entriesToUse =
-          context.data?.entries?.length > 0
-            ? context.data.entries
-            : timelineEntries;
-        // Filter to only last 24 hours
-        const recentEntries = filterRecentEntries(entriesToUse);
-        if (recentEntries.length > 0) {
-          const entrySummaries = recentEntries
-            .map((entry: any) => {
-              const description = trimDescription(entry.entry_description, 150);
-              return `- "${entry.entry_title}" (${entry.feed_title})${description ? `\n  ${description}` : ""}`;
+        // Fetch all entries from last 24h from database
+        const entries = await fetchAIContext('all');
+        if (entries.length > 0) {
+          const entrySummaries = entries
+            .map((entry, index) => {
+              const description = stripHtml(entry.entry_description || "");
+              return `[Post ${index + 1}]
+Title: ${entry.entry_title}
+Source: ${entry.feed_title}
+URL: ${entry.entry_url || "N/A"}
+Description: ${description || "N/A"}`;
             })
-            .join("\n");
+            .join("\n\n---\n\n");
 
           contextParts.push(
-            `## All Posts (last 24h, ${recentEntries.length} entries):\n${entrySummaries}`
+            `## All Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`
           );
         }
-        // Handle both automatic ('Starred') and manual ('Starred Posts') labels
       } else if (
         context.type === "view" &&
         (context.label === "Starred" || context.label === "Starred Posts")
       ) {
-        // Use entries from context.data if available (manual context), otherwise use timelineEntries
-        const entriesToUse =
-          context.data?.entries?.length > 0
-            ? context.data.entries
-            : timelineEntries;
-        // Filter to only last 24 hours
-        const recentEntries = filterRecentEntries(entriesToUse);
-        if (recentEntries.length > 0) {
-          const entrySummaries = recentEntries
-            .map((entry: any) => {
-              const description = trimDescription(entry.entry_description, 150);
-              return `- "${entry.entry_title}" (${entry.feed_title})${description ? `\n  ${description}` : ""}`;
+        // Fetch starred entries from last 24h from database
+        const entries = await fetchAIContext('starred');
+        if (entries.length > 0) {
+          const entrySummaries = entries
+            .map((entry, index) => {
+              const description = stripHtml(entry.entry_description || "");
+              return `[Post ${index + 1}]
+Title: ${entry.entry_title}
+Source: ${entry.feed_title}
+URL: ${entry.entry_url || "N/A"}
+Description: ${description || "N/A"}`;
             })
-            .join("\n");
+            .join("\n\n---\n\n");
 
           contextParts.push(
-            `## Starred Posts (last 24h, ${recentEntries.length} entries):\n${entrySummaries}`
+            `## Starred Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`
           );
         } else {
           contextParts.push(
@@ -880,44 +891,39 @@ ${customPrompt}`,
           );
         }
       } else if (context.type === "category") {
-        // Include posts from specific category (using domain-based categories)
-        const categoryPosts = timelineEntries.filter((e) => {
-          // Find the feed for this entry
-          const feed = feeds.find((f) => f.id === e.feed_id);
-          if (!feed) return false;
-          // Get domain category from feed URL
-          const domainCat = getDomainCategory(feed.url, feed.site_url);
-          return domainCat === context.data.category;
-        });
-        // Filter to only last 24 hours
-        const recentPosts = filterRecentEntries(categoryPosts);
-        if (recentPosts.length > 0) {
-          const summaries = recentPosts
-            .map((entry) => {
-              const description = trimDescription(entry.entry_description, 150);
-              return `- "${entry.entry_title}" (${entry.feed_title})${description ? `\n  ${description}` : ""}`;
+        // Fetch all entries then filter by category
+        const entries = await fetchAIContext('category', undefined, context.data.category);
+        if (entries.length > 0) {
+          const summaries = entries
+            .map((entry, index) => {
+              const description = stripHtml(entry.entry_description || "");
+              return `[Post ${index + 1}]
+Title: ${entry.entry_title}
+Source: ${entry.feed_title}
+URL: ${entry.entry_url || "N/A"}
+Description: ${description || "N/A"}`;
             })
-            .join("\n");
+            .join("\n\n---\n\n");
           contextParts.push(
-            `## ${context.label} Posts (last 24h, ${recentPosts.length} entries):\n${summaries}`
+            `## ${context.label} Posts (last 24h, ${entries.length} entries):\n\n${summaries}`
           );
         }
       } else if (context.type === "feed") {
-        // Include posts from specific feed
-        const feedPosts = timelineEntries.filter(
-          (e) => e.feed_id === context.data.feed_id
-        );
-        // Filter to only last 24 hours
-        const recentPosts = filterRecentEntries(feedPosts);
-        if (recentPosts.length > 0) {
-          const summaries = recentPosts
-            .map((entry) => {
-              const description = trimDescription(entry.entry_description, 150);
-              return `- "${entry.entry_title}"${description ? `\n  ${description}` : ""}`;
+        // Fetch entries for specific feed
+        const feedId = context.data.feed_id || context.data.id;
+        const entries = await fetchAIContext('feed', feedId);
+        if (entries.length > 0) {
+          const summaries = entries
+            .map((entry, index) => {
+              const description = stripHtml(entry.entry_description || "");
+              return `[Post ${index + 1}]
+Title: ${entry.entry_title}
+URL: ${entry.entry_url || "N/A"}
+Description: ${description || "N/A"}`;
             })
-            .join("\n");
+            .join("\n\n---\n\n");
           contextParts.push(
-            `## ${context.label} Feed (last 24h, ${recentPosts.length} posts):\n${summaries}`
+            `## ${context.label} Feed (last 24h, ${entries.length} posts):\n\n${summaries}`
           );
         } else {
           contextParts.push(
@@ -929,8 +935,9 @@ ${customPrompt}`,
         const rawContent =
           context.data.entry_content || context.data.entry_description || "";
         const content = stripHtml(rawContent);
+        const entryUrl = context.data.entry_url || context.data.url || "";
         contextParts.push(
-          `## Article: "${context.label}"\nAuthor: ${context.data.entry_author || "Unknown"}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content}`
+          `## Article: "${context.label}"\nAuthor: ${context.data.entry_author || "Unknown"}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}${entryUrl ? `\nURL: ${entryUrl}` : ""}\n\nContent:\n${content}`
         );
       }
     }
@@ -1010,8 +1017,8 @@ ${customPrompt}`,
     messages = [...messages, savedMessage];
     scrollToBottom();
 
-    // Build context from active badges
-    const contextString = buildContextFromBadges();
+    // Build context from active badges (async - fetches fresh data)
+    const contextString = await buildContextFromBadgesAsync();
 
     // Build messages array with context
     let apiMessages: Array<{ role: string; content: string }> = [];
@@ -1420,8 +1427,8 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
                   <div class="text-xs text-gray-500 mb-1 px-2">Views</div>
                   <button
                     type="button"
-                    onclick={async () => {
-                      await addAllPostsContext();
+                    onclick={() => {
+                      addAllPostsContext();
                       showContextMenu = false;
                     }}
                     class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
@@ -1430,8 +1437,8 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
                   </button>
                   <button
                     type="button"
-                    onclick={async () => {
-                      await addStarredContext();
+                    onclick={() => {
+                      addStarredContext();
                       showContextMenu = false;
                     }}
                     class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"

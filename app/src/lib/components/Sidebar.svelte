@@ -7,6 +7,7 @@
 	import { Home, Star, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import { sidebarStore, type FeedWithUnread } from '$lib/stores/sidebar';
+	import Skeleton from './Skeleton.svelte';
 
 	// Check if current user is owner
 	const isOwner = $derived($user?.email === 'hsbazr@gmail.com');
@@ -32,6 +33,10 @@
 	const feeds = $derived($sidebarStore.feeds);
 	const totalUnread = $derived($sidebarStore.totalUnread);
 	const pendingSuggestionsCount = $derived($sidebarStore.pendingSuggestionsCount);
+	const isLoadingFeeds = $derived($sidebarStore.isLoading);
+	const hasLoadedFeeds = $derived($sidebarStore.lastLoadedAt !== null);
+	// Show shimmer if loading OR if feeds haven't been loaded yet
+	const showFeedsShimmer = $derived((isLoadingFeeds || !hasLoadedFeeds) && feeds.length === 0);
 
 	let isCollapsed = $state(true);
 	let isLoadingSettings = $state(true);
@@ -234,7 +239,17 @@
 				</div>
 
 				<!-- Feed List -->
-				{#if feeds.length > 0}
+				{#if showFeedsShimmer}
+					<!-- Loading Skeletons -->
+					<div class="px-2 space-y-0.5">
+						{#each Array(5) as _, i}
+							<div class="flex items-center gap-3 px-3 py-2">
+								<Skeleton variant="circular" width="20px" height="20px" class="flex-shrink-0" />
+								<Skeleton variant="text" height="16px" class="flex-1" />
+							</div>
+						{/each}
+					</div>
+				{:else if feeds.length > 0}
 					<div class="px-2 space-y-0.5">
 						{#each getRepresentativeFeeds() as feed}
 							{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
@@ -441,7 +456,28 @@
 		{/if}
 
 		<!-- Feed List -->
-		{#if feeds.length > 0}
+		{#if showFeedsShimmer}
+			<!-- Loading Skeletons -->
+			{#if !isCollapsed}
+				<div class="px-2 space-y-0.5">
+					{#each Array(5) as _, i}
+						<div class="flex items-center gap-3 px-3 py-2">
+							<Skeleton variant="circular" width="20px" height="20px" class="flex-shrink-0" />
+							<Skeleton variant="text" height="16px" class="flex-1" />
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<!-- Collapsed Loading Skeletons -->
+				<div class="px-2 space-y-1">
+					{#each Array(5) as _, i}
+						<div class="flex items-center justify-center p-2">
+							<Skeleton variant="circular" width="24px" height="24px" />
+						</div>
+					{/each}
+				</div>
+			{/if}
+		{:else if feeds.length > 0}
 			{#if !isCollapsed}
 			<div class="px-2 space-y-0.5">
 				{#each getRepresentativeFeeds() as feed}
