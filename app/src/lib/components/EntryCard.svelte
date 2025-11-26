@@ -42,6 +42,34 @@
     }
   }
 
+  // Extract thumbnail from content or description HTML
+  function extractThumbnail(content: string | null, description: string | null): string | null {
+    const html = content || description || "";
+    if (!html) return null;
+
+    // Try to find an img tag
+    const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && imgMatch[1]) {
+      const src = imgMatch[1];
+      // Filter out tracking pixels and tiny images
+      if (src.includes('pixel') || src.includes('tracking') || src.includes('1x1')) {
+        return null;
+      }
+      return src;
+    }
+
+    // Try to find og:image or other meta-like patterns in content
+    const ogMatch = html.match(/(?:og:image|twitter:image)[^"']*["']([^"']+)["']/i);
+    if (ogMatch && ogMatch[1]) {
+      return ogMatch[1];
+    }
+
+    return null;
+  }
+
+  const thumbnail = $derived(extractThumbnail(entry.entry_content, entry.entry_description));
+  let thumbnailError = $state(false);
+
   function handleClick() {
     if (!entry.is_read) {
       onMarkRead(entry.entry_id);
@@ -145,23 +173,41 @@
     </button>
   </div>
 
-  <!-- Title -->
-  <h2
-    class="text-base md:text-lg font-semibold text-foreground mb-2 leading-tight break-words {!entry.is_read
-      ? 'font-bold'
-      : 'font-medium'}"
-  >
-    {entry.entry_title || "Untitled Post"}
-  </h2>
+  <!-- Content with optional thumbnail -->
+  <div class="flex gap-3">
+    <div class="flex-1 min-w-0">
+      <!-- Title -->
+      <h2
+        class="text-base md:text-lg font-semibold text-foreground mb-2 leading-tight break-words {!entry.is_read
+          ? 'font-bold'
+          : 'font-medium'}"
+      >
+        {entry.entry_title || "Untitled Post"}
+      </h2>
 
-  <!-- Description -->
-  {#if entry.entry_description}
-    <p
-      class="text-sm text-muted-foreground mb-2 leading-relaxed break-words line-clamp-2"
-    >
-      {entry.entry_description}
-    </p>
-  {/if}
+      <!-- Description -->
+      {#if entry.entry_description}
+        <p
+          class="text-sm text-muted-foreground mb-2 leading-relaxed break-words line-clamp-2"
+        >
+          {entry.entry_description}
+        </p>
+      {/if}
+    </div>
+
+    <!-- Thumbnail -->
+    {#if thumbnail && !thumbnailError}
+      <div class="flex-shrink-0">
+        <img
+          src={thumbnail}
+          alt=""
+          class="w-20 h-20 md:w-24 md:h-24 object-cover rounded-lg bg-muted"
+          loading="lazy"
+          onerror={() => { thumbnailError = true; }}
+        />
+      </div>
+    {/if}
+  </div>
 
   <!-- Metadata -->
   <div class="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">

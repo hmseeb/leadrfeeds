@@ -1109,7 +1109,16 @@
 		margin-top: 1rem !important;
 		margin-bottom: 1rem !important;
 		max-width: 100% !important;
+		width: 100% !important;
 		height: auto !important;
+		border-radius: 0.5rem;
+		object-fit: cover;
+	}
+
+	/* First image in article (hero image) gets special treatment */
+	:global(.article-content img:first-of-type) {
+		margin-top: 0 !important;
+		border-radius: 0.75rem;
 	}
 
 	/* Also handle images that might be wrapped in align attributes */
