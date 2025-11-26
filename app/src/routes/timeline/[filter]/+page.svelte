@@ -1033,7 +1033,8 @@
 							entry_content: selectedEntry.entry_content,
 							entry_description: selectedEntry.entry_description,
 							entry_author: selectedEntry.entry_author,
-							entry_published_at: selectedEntry.entry_published_at
+							entry_published_at: selectedEntry.entry_published_at,
+							entry_url: selectedEntry.entry_url
 						}
 					: null}
 				timelineEntries={entries}
@@ -1067,7 +1068,8 @@
 									entry_content: selectedEntry.entry_content,
 									entry_description: selectedEntry.entry_description,
 									entry_author: selectedEntry.entry_author,
-									entry_published_at: selectedEntry.entry_published_at
+									entry_published_at: selectedEntry.entry_published_at,
+									entry_url: selectedEntry.entry_url
 								}
 							: null}
 						timelineEntries={entries}

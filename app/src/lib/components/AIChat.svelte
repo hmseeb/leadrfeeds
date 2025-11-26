@@ -42,6 +42,7 @@
       entry_description?: string | null;
       entry_author?: string | null;
       entry_published_at?: string;
+      entry_url?: string | null;
     } | null;
     timelineEntries?: any[];
     feeds?: any[];
