@@ -278,6 +278,7 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          ai_chat_width: number | null
           article_panel_width: number | null
           created_at: string | null
           openrouter_api_key: string | null
@@ -289,6 +290,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_chat_width?: number | null
           article_panel_width?: number | null
           created_at?: string | null
           openrouter_api_key?: string | null
@@ -300,6 +302,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_chat_width?: number | null
           article_panel_width?: number | null
           created_at?: string | null
           openrouter_api_key?: string | null

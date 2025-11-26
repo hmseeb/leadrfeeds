@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { user } from "$lib/stores/auth";
-  import { Send, X, Plus } from "lucide-svelte";
+  import { Send, X, Plus, Sparkles, MessageSquare, Zap, FileText, BarChart3, GitCompare, Trash2, HelpCircle, ChevronDown, Bot, User, Loader2, AlertCircle, Command, GripVertical } from "lucide-svelte";
   import type { Tables } from "$lib/types/database";
   import { marked } from "marked";
 
@@ -72,10 +72,17 @@
   let preferredModel = $state("anthropic/claude-3.5-sonnet");
   let chatContainer: HTMLDivElement;
   let streamingContent = $state("");
+  let inputRef = $state<HTMLTextAreaElement | null>(null);
+
+  // Resizable panel state
+  let panelWidth = $state(380);
+  let isResizing = $state(false);
+  const MIN_WIDTH = 300;
+  const MAX_WIDTH = 600;
 
   // Context management
   let activeContexts = $state<ContextBadge[]>([]);
-  let removedAutoContexts = $state<Set<string>>(new Set()); // Track which auto contexts user removed
+  let removedAutoContexts = $state<Set<string>>(new Set());
   let showContextMenu = $state(false);
   let contextSearch = $state("");
   let showCommandMenu = $state(false);
@@ -84,13 +91,15 @@
   // AI context cache
   let aiContextCache = $state<Map<string, { entries: AIContextEntry[]; timestamp: number }>>(new Map());
   let isLoadingContext = $state(false);
-  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute cache
+  const CACHE_TTL_MS = 5 * 60 * 1000;
 
-  // Slash commands
+  // Slash commands with icons
   interface SlashCommand {
     name: string;
     label: string;
     description: string;
+    icon: typeof Zap;
+    color: string;
   }
 
   const slashCommands: SlashCommand[] = [
@@ -98,40 +107,53 @@
       name: "tldr",
       label: "TL;DR",
       description: "Ultra-short 1-2 sentence takeaway",
+      icon: Zap,
+      color: "text-yellow-400",
     },
     {
       name: "summarize",
       label: "Summarize",
-      description: "80/20 summary with key insights and hot take",
+      description: "80/20 summary with key insights",
+      icon: FileText,
+      color: "text-blue-400",
     },
     {
       name: "actionable",
       label: "Actionable",
       description: "Extract action items and next steps",
+      icon: BarChart3,
+      color: "text-green-400",
     },
     {
       name: "analyze",
       label: "Analyze",
-      description: "MECE analysis with patterns and blind spots",
+      description: "MECE analysis with patterns",
+      icon: Sparkles,
+      color: "text-purple-400",
     },
     {
       name: "compare",
       label: "Compare",
       description: "Compare sources with synthesis",
+      icon: GitCompare,
+      color: "text-orange-400",
     },
     {
       name: "clear",
       label: "Clear",
       description: "Clear conversation history",
+      icon: Trash2,
+      color: "text-red-400",
     },
     {
       name: "help",
       label: "Help",
       description: "Show available commands",
+      icon: HelpCircle,
+      color: "text-gray-400",
     },
   ];
 
-  // Master system prompt for opinionated, structured responses
   const BASE_SYSTEM_PROMPT = `You are an expert content analyst for LeadrFeeds - opinionated, direct, and focused on signal over noise.
 
 CORE PRINCIPLES:
@@ -149,17 +171,28 @@ OUTPUT STYLE:
 
   let filteredCommands = $state<SlashCommand[]>([]);
 
-  // Strip HTML tags from content
+  // Get context type icon and color
+  function getContextStyle(type: ContextBadge["type"]): { bg: string; border: string; text: string } {
+    switch (type) {
+      case "view":
+        return { bg: "bg-blue-500/15", border: "border-blue-500/40", text: "text-blue-300" };
+      case "category":
+        return { bg: "bg-purple-500/15", border: "border-purple-500/40", text: "text-purple-300" };
+      case "feed":
+        return { bg: "bg-green-500/15", border: "border-green-500/40", text: "text-green-300" };
+      case "entry":
+        return { bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-300" };
+      default:
+        return { bg: "bg-gray-500/15", border: "border-gray-500/40", text: "text-gray-300" };
+    }
+  }
+
   function stripHtml(html: string): string {
     const doc = new DOMParser().parseFromString(html, "text/html");
     return doc.body.textContent || "";
   }
 
-  // Domain category helper (same as sidebar/timeline)
-  function getDomainCategory(
-    url: string | null,
-    siteUrl: string | null
-  ): string {
+  function getDomainCategory(url: string | null, siteUrl: string | null): string {
     const feedUrl = url || siteUrl;
     if (!feedUrl) return "Other";
 
@@ -167,17 +200,13 @@ OUTPUT STYLE:
       const urlObj = new URL(feedUrl);
       let domain = urlObj.hostname.replace("www.", "");
 
-      // Map common domains to readable names
       if (domain.includes("youtube.com")) return "YouTube";
       if (domain.includes("reddit.com")) return "Reddit";
       if (domain.includes("github.com")) return "GitHub";
       if (domain.includes("medium.com")) return "Medium";
       if (domain.includes("substack.com")) return "Substack";
 
-      // Extract main domain (e.g., "google" from "blog.google.com")
       const parts = domain.split(".");
-      // Get second-to-last part for multi-level domains (blog.google.com -> google)
-      // or first part for simple domains (example.com -> example)
       const mainDomain = parts.length > 2 ? parts[parts.length - 2] : parts[0];
       return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
     } catch (e) {
@@ -185,7 +214,6 @@ OUTPUT STYLE:
     }
   }
 
-  // Fetch AI context from database (all posts from last 24h)
   async function fetchAIContext(
     viewType: 'all' | 'starred' | 'feed' | 'category',
     feedId?: string,
@@ -216,7 +244,6 @@ OUTPUT STYLE:
 
       let entries: AIContextEntry[] = data || [];
 
-      // Apply category filter client-side
       if (viewType === 'category' && category) {
         entries = entries.filter(e => {
           const domainCat = getDomainCategory(e.feed_url, e.feed_site_url);
@@ -231,9 +258,7 @@ OUTPUT STYLE:
     }
   }
 
-  // Context management functions
   function addContext(context: ContextBadge) {
-    // Check if context already exists
     const exists = activeContexts.some((c) => c.id === context.id);
     if (!exists) {
       activeContexts = [...activeContexts, context];
@@ -242,13 +267,11 @@ OUTPUT STYLE:
 
   function removeContext(contextId: string) {
     activeContexts = activeContexts.filter((c) => c.id !== contextId);
-    // If it's an auto-added context, remember that the user removed it
     if (!contextId.startsWith("manual-")) {
       removedAutoContexts = new Set([...removedAutoContexts, contextId]);
     }
   }
 
-  // Add starred context badge (data will be fetched on-demand when sending messages)
   function addStarredContext() {
     addContext({
       id: "manual-view-starred",
@@ -258,7 +281,6 @@ OUTPUT STYLE:
     });
   }
 
-  // Add all posts context badge (data will be fetched on-demand when sending messages)
   function addAllPostsContext() {
     addContext({
       id: "manual-view-all",
@@ -272,21 +294,17 @@ OUTPUT STYLE:
     activeContexts = [];
   }
 
-  // Watch for slash command input
   $effect(() => {
     if (input.startsWith("/")) {
       showCommandMenu = true;
       const query = input.slice(1).toLowerCase();
       if (query.length === 0) {
-        // Show all commands when just "/" is typed
         filteredCommands = slashCommands;
       } else {
         filteredCommands = slashCommands.filter(
-          (c) =>
-            c.name.includes(query) || c.label.toLowerCase().includes(query)
+          (c) => c.name.includes(query) || c.label.toLowerCase().includes(query)
         );
       }
-      // Reset selection when filter changes
       selectedCommandIndex = 0;
     } else {
       showCommandMenu = false;
@@ -295,8 +313,75 @@ OUTPUT STYLE:
     }
   });
 
+  // Resize handlers
+  function handleResizeStart(e: MouseEvent) {
+    if (isMobileOverlay) return;
+    e.preventDefault();
+    isResizing = true;
+    document.addEventListener("mousemove", handleResizeMove);
+    document.addEventListener("mouseup", handleResizeEnd);
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  function handleResizeMove(e: MouseEvent) {
+    if (!isResizing) return;
+    const newWidth = window.innerWidth - e.clientX;
+    panelWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+  }
+
+  function handleResizeEnd() {
+    isResizing = false;
+    document.removeEventListener("mousemove", handleResizeMove);
+    document.removeEventListener("mouseup", handleResizeEnd);
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    saveWidthToDatabase();
+  }
+
+  async function saveWidthToDatabase() {
+    if (!$user || isMobileOverlay) return;
+    try {
+      await supabase
+        .from("user_settings")
+        .update({ ai_chat_width: panelWidth })
+        .eq("user_id", $user.id);
+    } catch (error) {
+      console.error("Error saving chat width:", error);
+    }
+  }
+
+  // Track if settings have been loaded for this user
+  let loadedForUserId = $state<string | null>(null);
+
+  async function loadSettings(userId: string) {
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("openrouter_api_key, preferred_model, ai_chat_width")
+      .eq("user_id", userId)
+      .single();
+
+    if (settings) {
+      apiKey = settings.openrouter_api_key || "";
+      preferredModel = settings.preferred_model || "anthropic/claude-3.5-sonnet";
+      if (settings.ai_chat_width && !isMobileOverlay) {
+        panelWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, settings.ai_chat_width));
+      }
+    }
+
+    loadedForUserId = userId;
+    await loadMessages();
+  }
+
+  // Load settings when user becomes available or changes
+  $effect(() => {
+    const currentUser = $user;
+    if (currentUser && loadedForUserId !== currentUser.id) {
+      loadSettings(currentUser.id);
+    }
+  });
+
   onMount(() => {
-    // Click outside handler for context menu
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (showContextMenu && !target.closest(".context-menu-container")) {
@@ -306,33 +391,11 @@ OUTPUT STYLE:
 
     document.addEventListener("click", handleClickOutside);
 
-    // Load data asynchronously
-    (async () => {
-      if (!$user) return;
-
-      // Load user settings for API key
-      const { data: settings } = await supabase
-        .from("user_settings")
-        .select("openrouter_api_key, preferred_model")
-        .eq("user_id", $user.id)
-        .single();
-
-      if (settings) {
-        apiKey = settings.openrouter_api_key || "";
-        preferredModel =
-          settings.preferred_model || "anthropic/claude-3.5-sonnet";
-      }
-
-      // Load chat history
-      await loadMessages();
-    })();
-
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
   });
 
-  // Clear removed contexts tracking when view changes (so auto contexts can be re-added)
   let lastView = $state(currentView);
   let lastFeedId = $state(currentFeed?.feed_id);
   let lastEntryId = $state(currentEntry?.entry_id);
@@ -347,14 +410,12 @@ OUTPUT STYLE:
     const contextIdChanged = contextId !== lastContextId;
 
     if (viewChanged || feedChanged || entryChanged) {
-      // Clear the removed contexts tracking when navigation occurs
       removedAutoContexts = new Set();
       lastView = currentView;
       lastFeedId = currentFeed?.feed_id;
       lastEntryId = currentEntry?.entry_id;
     }
 
-    // Reload messages when context changes
     if (contextTypeChanged || contextIdChanged) {
       loadMessages();
       lastContextType = contextType;
@@ -362,11 +423,9 @@ OUTPUT STYLE:
     }
   });
 
-  // Automatic context management - add/remove badges based on current view
   $effect(() => {
     const newContexts: ContextBadge[] = [];
 
-    // Add specific entry context (opened post)
     if (currentEntry) {
       newContexts.push({
         id: `entry-${currentEntry.entry_id}`,
@@ -375,8 +434,6 @@ OUTPUT STYLE:
         data: currentEntry,
       });
     } else {
-      // Only add view contexts if no specific entry is selected
-      // Add "All" context when viewing all posts
       if (currentView === "all") {
         newContexts.push({
           id: "view-all",
@@ -386,7 +443,6 @@ OUTPUT STYLE:
         });
       }
 
-      // Add "Starred" context when viewing starred posts
       if (currentView === "starred") {
         newContexts.push({
           id: "view-starred",
@@ -395,8 +451,7 @@ OUTPUT STYLE:
           data: { view: "starred" },
         });
       }
-      // Only add category/feed context if no specific entry is selected
-      // Add category context (e.g., Reddit.com)
+
       if (currentCategory) {
         newContexts.push({
           id: `category-${currentCategory}`,
@@ -406,7 +461,6 @@ OUTPUT STYLE:
         });
       }
 
-      // Add specific feed context (e.g., OpenAI News)
       if (currentFeed) {
         newContexts.push({
           id: `feed-${currentFeed.feed_id}`,
@@ -417,24 +471,15 @@ OUTPUT STYLE:
       }
     }
 
-    // Build the new context array without triggering effect recursion
-    // Keep manually added contexts and merge with new auto contexts
-    const manualContexts = activeContexts.filter((c) =>
-      c.id.startsWith("manual-")
-    );
+    const manualContexts = activeContexts.filter((c) => c.id.startsWith("manual-"));
     const mergedContexts = [...manualContexts];
 
-    // Add new contexts if they don't already exist and weren't explicitly removed by user
     for (const context of newContexts) {
-      if (
-        !mergedContexts.some((c) => c.id === context.id) &&
-        !removedAutoContexts.has(context.id)
-      ) {
+      if (!mergedContexts.some((c) => c.id === context.id) && !removedAutoContexts.has(context.id)) {
         mergedContexts.push(context);
       }
     }
 
-    // Only update if there's actually a change
     if (JSON.stringify(mergedContexts) !== JSON.stringify(activeContexts)) {
       activeContexts = mergedContexts;
     }
@@ -455,9 +500,7 @@ OUTPUT STYLE:
       query = query.is("context_id", null);
     }
 
-    const { data, error } = await query.order("created_at", {
-      ascending: true,
-    });
+    const { data, error } = await query.order("created_at", { ascending: true });
 
     if (!error && data) {
       messages = data;
@@ -465,45 +508,13 @@ OUTPUT STYLE:
     }
   }
 
-  function parseCommand(input: string): {
-    isCommand: boolean;
-    command?: string;
-    args?: string;
-  } {
+  function parseCommand(input: string): { isCommand: boolean; command?: string; args?: string } {
     const trimmed = input.trim();
     if (trimmed.startsWith("/")) {
       const parts = trimmed.substring(1).split(" ");
-      return {
-        isCommand: true,
-        command: parts[0].toLowerCase(),
-        args: parts.slice(1).join(" "),
-      };
+      return { isCommand: true, command: parts[0].toLowerCase(), args: parts.slice(1).join(" ") };
     }
     return { isCommand: false };
-  }
-
-  async function loadContextData(): Promise<{
-    type: string;
-    data: any;
-  } | null> {
-    if (contextType === "entry" && contextId) {
-      const { data: entry } = await supabase
-        .from("entries")
-        .select("id, title, description, content, author, url, published_at")
-        .eq("id", contextId)
-        .single();
-
-      return entry ? { type: "entry", data: entry } : null;
-    } else if (contextType === "feed" && contextId) {
-      const { data: feed } = await supabase
-        .from("feeds")
-        .select("id, title, description, category")
-        .eq("id", contextId)
-        .single();
-
-      return feed ? { type: "feed", data: feed } : null;
-    }
-    return null;
   }
 
   async function handleSummarize() {
@@ -529,7 +540,6 @@ If multiple posts are provided, summarize the key themes across all of them.`;
   async function handleClear() {
     if (!$user) return;
 
-    // Delete ALL messages for this user in this context_type
     const { error } = await supabase
       .from("chat_messages")
       .delete()
@@ -538,58 +548,29 @@ If multiple posts are provided, summarize the key themes across all of them.`;
 
     if (error) {
       console.error("Error clearing messages:", error);
-      const errorMsg = {
-        id: "error-" + Date.now(),
-        user_id: $user.id,
-        context_type: contextType,
-        context_id: contextId || null,
-        role: "assistant" as const,
-        content: "Failed to clear conversation history. Please try again.",
-        created_at: new Date().toISOString(),
-      } as ChatMessage;
-      messages = [...messages, errorMsg];
       return;
     }
 
-    // Clear local messages
     messages = [];
-
-    // Show confirmation
-    const confirmMsg = {
-      id: "clear-" + Date.now(),
-      user_id: $user.id,
-      context_type: contextType,
-      context_id: contextId || null,
-      role: "assistant" as const,
-      content: "🧹 Conversation cleared. Ready for a fresh start!",
-      created_at: new Date().toISOString(),
-    } as ChatMessage;
-    messages = [confirmMsg];
-    scrollToBottom();
   }
 
   async function handleHelp() {
-    const helpText = `📚 **Available Commands:**
+    const helpText = `## Available Commands
 
-**/tldr** - Ultra-short 1-2 sentence takeaway
-**/summarize** - 80/20 summary with key insights and hot take
-**/actionable** - Extract action items and next steps
-**/analyze** - MECE analysis with patterns and blind spots
-**/compare** - Compare sources with synthesis (requires 2+ contexts)
-**/clear** - Clear conversation history
-**/help** - Show this message
+| Command | Description |
+|---------|-------------|
+| \`/tldr\` | Ultra-short 1-2 sentence takeaway |
+| \`/summarize\` | 80/20 summary with key insights |
+| \`/actionable\` | Extract action items and next steps |
+| \`/analyze\` | MECE analysis with patterns |
+| \`/compare\` | Compare sources (requires 2+ contexts) |
+| \`/clear\` | Clear conversation history |
+| \`/help\` | Show this message |
 
-💡 **Tips:**
-• Commands work with your current view (All Posts, Starred, Feed, or single article)
-• Add more contexts with "Add Context" to analyze multiple sources
-• Be direct with questions - I'll give opinionated, structured answers
-
-📍 **Current Context:**
-${
-  activeContexts.length > 0
-    ? `✓ ${activeContexts.length} context${activeContexts.length > 1 ? "s" : ""} loaded - all commands ready`
-    : "No contexts - navigate to a feed or post, or use Add Context"
-}`;
+**Tips:**
+- Type \`/\` to see all commands
+- Commands work with your current context
+- Add more contexts to analyze multiple sources`;
 
     const helpMsg = {
       id: "help-" + Date.now(),
@@ -606,7 +587,6 @@ ${
   }
 
   async function handleAnalyze() {
-    // Use MECE framework for structured analysis
     const analysisPrompt = `Perform a structured MECE analysis (Mutually Exclusive, Collectively Exhaustive).
 
 OUTPUT FORMAT:
@@ -636,8 +616,7 @@ OUTPUT FORMAT:
         context_type: contextType,
         context_id: contextId || null,
         role: "assistant" as const,
-        content:
-          'The /compare command requires at least 2 contexts. Please add more contexts using the "Add Context" button.',
+        content: "⚠️ The `/compare` command requires at least 2 contexts. Add more contexts using the **+ Context** button below.",
         created_at: new Date().toISOString(),
       } as ChatMessage;
       messages = [...messages, errorMsg];
@@ -682,13 +661,9 @@ Skip theory and background. Only include items someone can actually act on. If t
     await sendMessageWithPrompt("/actionable", actionablePrompt);
   }
 
-  async function sendMessageWithPrompt(
-    commandText: string,
-    customPrompt: string
-  ) {
+  async function sendMessageWithPrompt(commandText: string, customPrompt: string) {
     loading = true;
 
-    // Save command message
     const { data: savedMessage } = await supabase
       .from("chat_messages")
       .insert({
@@ -706,7 +681,6 @@ Skip theory and background. Only include items someone can actually act on. If t
       scrollToBottom();
     }
 
-    // Build context from active badges (async - fetches fresh data)
     const contextString = await buildContextFromBadgesAsync();
 
     if (!contextString) {
@@ -716,8 +690,7 @@ Skip theory and background. Only include items someone can actually act on. If t
         context_type: contextType,
         context_id: contextId || null,
         role: "assistant" as const,
-        content:
-          'No active contexts found. Please add some context using the "Add Context" button or navigate to a specific post/feed.',
+        content: "⚠️ No active contexts found. Add context using the **+ Context** button or navigate to a specific post/feed.",
         created_at: new Date().toISOString(),
       } as ChatMessage;
       messages = [...messages, errorMsg];
@@ -726,44 +699,28 @@ Skip theory and background. Only include items someone can actually act on. If t
       return;
     }
 
-    // Build API messages with enhanced base prompt
     const apiMessages: Array<{ role: string; content: string }> = [
       {
         role: "system",
-        content: `${BASE_SYSTEM_PROMPT}
-
-CONTEXT:
-${contextString}
-
-TASK:
-${customPrompt}`,
+        content: `${BASE_SYSTEM_PROMPT}\n\nCONTEXT:\n${contextString}\n\nTASK:\n${customPrompt}`,
       },
       { role: "user", content: customPrompt },
     ];
 
     try {
       streamingContent = "";
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "LeadrFeeds",
-          },
-          body: JSON.stringify({
-            model: preferredModel,
-            messages: apiMessages,
-            stream: true,
-          }),
-        }
-      );
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "LeadrFeeds",
+        },
+        body: JSON.stringify({ model: preferredModel, messages: apiMessages, stream: true }),
+      });
 
-      if (!response.ok) {
-        throw new Error("OpenRouter API request failed");
-      }
+      if (!response.ok) throw new Error("OpenRouter API request failed");
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -775,9 +732,7 @@ ${customPrompt}`,
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk
-            .split("\n")
-            .filter((line) => line.trim().startsWith("data: "));
+          const lines = chunk.split("\n").filter((line) => line.trim().startsWith("data: "));
 
           for (const line of lines) {
             const data = line.replace(/^data: /, "");
@@ -791,9 +746,7 @@ ${customPrompt}`,
                 streamingContent = assistantMessage;
                 scrollToBottom();
               }
-            } catch (e) {
-              // Skip invalid JSON
-            }
+            } catch (e) {}
           }
         }
       }
@@ -826,8 +779,7 @@ ${customPrompt}`,
         context_type: contextType,
         context_id: contextId || null,
         role: "assistant" as const,
-        content:
-          "Sorry, there was an error processing your request. Please check your API key in settings.",
+        content: "❌ Error processing your request. Please check your API key in [Settings](/settings).",
         created_at: new Date().toISOString(),
       } as ChatMessage;
       messages = [...messages, errorMsg];
@@ -835,106 +787,63 @@ ${customPrompt}`,
     }
   }
 
-  // Build context string from active context badges (async - fetches fresh data from DB)
   async function buildContextFromBadgesAsync(): Promise<string> {
     if (activeContexts.length === 0) return "";
 
     let contextParts: string[] = [];
 
     for (const context of activeContexts) {
-      // Handle both automatic ('All') and manual ('All Posts') labels
-      if (
-        context.type === "view" &&
-        (context.label === "All" || context.label === "All Posts")
-      ) {
-        // Fetch all entries from last 24h from database
+      if (context.type === "view" && (context.label === "All" || context.label === "All Posts")) {
         const entries = await fetchAIContext('all');
         if (entries.length > 0) {
           const entrySummaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]
-Title: ${entry.entry_title}
-Source: ${entry.feed_title}
-URL: ${entry.entry_url || "N/A"}
-Description: ${description || "N/A"}`;
+              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-
-          contextParts.push(
-            `## All Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`
-          );
+          contextParts.push(`## All Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`);
         }
-      } else if (
-        context.type === "view" &&
-        (context.label === "Starred" || context.label === "Starred Posts")
-      ) {
-        // Fetch starred entries from last 24h from database
+      } else if (context.type === "view" && (context.label === "Starred" || context.label === "Starred Posts")) {
         const entries = await fetchAIContext('starred');
         if (entries.length > 0) {
           const entrySummaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]
-Title: ${entry.entry_title}
-Source: ${entry.feed_title}
-URL: ${entry.entry_url || "N/A"}
-Description: ${description || "N/A"}`;
+              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-
-          contextParts.push(
-            `## Starred Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`
-          );
+          contextParts.push(`## Starred Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`);
         } else {
-          contextParts.push(
-            `## Context: User is viewing their starred/saved posts (none from last 24h)`
-          );
+          contextParts.push(`## Context: User is viewing their starred/saved posts (none from last 24h)`);
         }
       } else if (context.type === "category") {
-        // Fetch all entries then filter by category
         const entries = await fetchAIContext('category', undefined, context.data.category);
         if (entries.length > 0) {
           const summaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]
-Title: ${entry.entry_title}
-Source: ${entry.feed_title}
-URL: ${entry.entry_url || "N/A"}
-Description: ${description || "N/A"}`;
+              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(
-            `## ${context.label} Posts (last 24h, ${entries.length} entries):\n\n${summaries}`
-          );
+          contextParts.push(`## ${context.label} Posts (last 24h, ${entries.length} entries):\n\n${summaries}`);
         }
       } else if (context.type === "feed") {
-        // Fetch entries for specific feed
         const feedId = context.data.feed_id || context.data.id;
         const entries = await fetchAIContext('feed', feedId);
         if (entries.length > 0) {
           const summaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]
-Title: ${entry.entry_title}
-URL: ${entry.entry_url || "N/A"}
-Description: ${description || "N/A"}`;
+              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(
-            `## ${context.label} Feed (last 24h, ${entries.length} posts):\n\n${summaries}`
-          );
+          contextParts.push(`## ${context.label} Feed (last 24h, ${entries.length} posts):\n\n${summaries}`);
         } else {
-          contextParts.push(
-            `## Context: User is asking about the "${context.label}" feed (no posts from last 24h)`
-          );
+          contextParts.push(`## Context: User is asking about the "${context.label}" feed (no posts from last 24h)`);
         }
       } else if (context.type === "entry") {
-        // Include full entry content (no truncation for individual articles)
-        const rawContent =
-          context.data.entry_content || context.data.entry_description || "";
+        const rawContent = context.data.entry_content || context.data.entry_description || "";
         const content = stripHtml(rawContent);
         const entryUrl = context.data.entry_url || context.data.url || "";
         contextParts.push(
@@ -952,31 +861,16 @@ Description: ${description || "N/A"}`;
     const userMessage = input.trim();
     const parsed = parseCommand(userMessage);
 
-    // Handle commands
     if (parsed.isCommand) {
       input = "";
       switch (parsed.command) {
-        case "tldr":
-          await handleTldr();
-          return;
-        case "summarize":
-          await handleSummarize();
-          return;
-        case "actionable":
-          await handleActionable();
-          return;
-        case "analyze":
-          await handleAnalyze();
-          return;
-        case "compare":
-          await handleCompare();
-          return;
-        case "clear":
-          await handleClear();
-          return;
-        case "help":
-          await handleHelp();
-          return;
+        case "tldr": await handleTldr(); return;
+        case "summarize": await handleSummarize(); return;
+        case "actionable": await handleActionable(); return;
+        case "analyze": await handleAnalyze(); return;
+        case "compare": await handleCompare(); return;
+        case "clear": await handleClear(); return;
+        case "help": await handleHelp(); return;
         default:
           const unknownMsg = {
             id: "error-" + Date.now(),
@@ -984,7 +878,7 @@ Description: ${description || "N/A"}`;
             context_type: contextType,
             context_id: contextId || null,
             role: "assistant" as const,
-            content: `Unknown command: /${parsed.command}. Type /help to see available commands.`,
+            content: `Unknown command: \`/${parsed.command}\`. Type \`/help\` to see available commands.`,
             created_at: new Date().toISOString(),
           } as ChatMessage;
           messages = [...messages, unknownMsg];
@@ -996,7 +890,6 @@ Description: ${description || "N/A"}`;
     input = "";
     loading = true;
 
-    // Save user message
     const { data: savedMessage, error: saveError } = await supabase
       .from("chat_messages")
       .insert({
@@ -1018,67 +911,38 @@ Description: ${description || "N/A"}`;
     messages = [...messages, savedMessage];
     scrollToBottom();
 
-    // Build context from active badges (async - fetches fresh data)
     const contextString = await buildContextFromBadgesAsync();
 
-    // Build messages array with context
     let apiMessages: Array<{ role: string; content: string }> = [];
 
-    // Add system message with context if we have any active contexts
     if (contextString) {
       apiMessages.push({
         role: "system",
-        content: `${BASE_SYSTEM_PROMPT}
-
-CONTEXT:
-${contextString}
-
-RESPONSE GUIDELINES:
-• If asked "what's important" → Apply 80/20 filter ruthlessly
-• If asked about trends → Look for patterns across 3+ sources
-• If asked for opinion → Be direct, take a stance, cite evidence
-• If asked to explain → Use analogies and concrete examples
-• If unclear what user wants → Default to the most useful interpretation
-
-Remember: Users are busy. Respect their time. Lead with the conclusion.`,
+        content: `${BASE_SYSTEM_PROMPT}\n\nCONTEXT:\n${contextString}\n\nRESPONSE GUIDELINES:\n• If asked "what's important" → Apply 80/20 filter ruthlessly\n• If asked about trends → Look for patterns across 3+ sources\n• If asked for opinion → Be direct, take a stance, cite evidence\n• If asked to explain → Use analogies and concrete examples\n• If unclear what user wants → Default to the most useful interpretation\n\nRemember: Users are busy. Respect their time. Lead with the conclusion.`,
       });
     }
 
-    // Add conversation history (limit to last 10 messages to save tokens)
     const recentMessages = messages.slice(-10);
     apiMessages = [
       ...apiMessages,
-      ...recentMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: userMessage },
     ];
 
-    // Call OpenRouter API with streaming
     try {
       streamingContent = "";
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "LeadrFeeds",
-          },
-          body: JSON.stringify({
-            model: preferredModel,
-            messages: apiMessages,
-            stream: true,
-          }),
-        }
-      );
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "LeadrFeeds",
+        },
+        body: JSON.stringify({ model: preferredModel, messages: apiMessages, stream: true }),
+      });
 
-      if (!response.ok) {
-        throw new Error("OpenRouter API request failed");
-      }
+      if (!response.ok) throw new Error("OpenRouter API request failed");
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -1090,9 +954,7 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk
-            .split("\n")
-            .filter((line) => line.trim().startsWith("data: "));
+          const lines = chunk.split("\n").filter((line) => line.trim().startsWith("data: "));
 
           for (const line of lines) {
             const data = line.replace(/^data: /, "");
@@ -1106,14 +968,11 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
                 streamingContent = assistantMessage;
                 scrollToBottom();
               }
-            } catch (e) {
-              // Skip invalid JSON
-            }
+            } catch (e) {}
           }
         }
       }
 
-      // Save assistant message (keep streaming content visible until saved)
       const { data: assistantMsg, error: assistantError } = await supabase
         .from("chat_messages")
         .insert({
@@ -1131,21 +990,18 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
         scrollToBottom();
       }
 
-      // Clear streaming content and loading state after message is saved
       streamingContent = "";
       loading = false;
     } catch (error) {
       console.error("Error calling OpenRouter:", error);
       loading = false;
-      // Show error message
       const errorMsg = {
         id: "error-" + Date.now(),
         user_id: $user.id,
         context_type: contextType,
         context_id: contextId || null,
         role: "assistant",
-        content:
-          "Sorry, there was an error processing your request. Please check your API key in settings.",
+        content: "❌ Error processing your request. Please check your API key in [Settings](/settings).",
         created_at: new Date().toISOString(),
       } as ChatMessage;
       messages = [...messages, errorMsg];
@@ -1161,7 +1017,6 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    // Handle command menu navigation
     if (showCommandMenu && filteredCommands.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -1170,10 +1025,7 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        selectedCommandIndex =
-          selectedCommandIndex === 0
-            ? filteredCommands.length - 1
-            : selectedCommandIndex - 1;
+        selectedCommandIndex = selectedCommandIndex === 0 ? filteredCommands.length - 1 : selectedCommandIndex - 1;
         return;
       }
       if (e.key === "Enter" && !e.shiftKey) {
@@ -1191,9 +1043,16 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
         showCommandMenu = false;
         return;
       }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const selectedCommand = filteredCommands[selectedCommandIndex];
+        if (selectedCommand) {
+          input = `/${selectedCommand.name}`;
+        }
+        return;
+      }
     }
 
-    // Normal Enter behavior for sending messages
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -1203,127 +1062,212 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
   function renderMarkdown(content: string): string {
     return marked(content, { breaks: true, gfm: true }) as string;
   }
+
+  function formatTime(dateStr: string | null): string {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
 </script>
 
 <div
-  class="{isMobileOverlay
-    ? 'w-full h-full'
-    : 'border-l border-gray-800/50'} bg-[#121212] flex flex-col h-full"
-  style:width={!isMobileOverlay ? "clamp(320px, 22vw, 480px)" : undefined}
+  class="ai-chat-container {isMobileOverlay ? 'w-full h-full' : 'border-l border-gray-800/30'} bg-gradient-to-b from-[#0f0f0f] to-[#141414] flex flex-col h-full relative {!isMobileOverlay && !isResizing ? 'transition-[width] duration-300 ease-out' : ''}"
+  style:width={!isMobileOverlay ? `${panelWidth}px` : undefined}
 >
-  <!-- Header -->
-  <div
-    class="px-4 md:px-6 py-4 md:py-5 border-b border-gray-800/50 flex items-center justify-between {isMobileOverlay
-      ? 'safe-area-inset-top'
-      : ''}"
-  >
-    <div>
-      <h2 class="font-bold text-lg md:text-xl text-gray-100 tracking-tight">
-        AI Assistant
-      </h2>
-      <p class="text-xs text-gray-500 mt-0.5">Powered by OpenRouter</p>
+  <!-- Resize Handle (desktop only) -->
+  {#if !isMobileOverlay}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      class="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/50 transition-colors z-10 group"
+      onmousedown={handleResizeStart}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize chat panel"
+      tabindex="0"
+    >
+      <div class="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-12 -ml-1.5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <GripVertical size={14} class="text-gray-500" />
+      </div>
     </div>
-    {#if isMobileOverlay && onClose}
-      <button
-        onclick={onClose}
-        class="p-2 -mr-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded-lg transition-colors"
-        aria-label="Close"
-      >
-        <X size={24} />
-      </button>
-    {/if}
+  {/if}
+
+  <!-- Header -->
+  <div class="px-4 py-4 border-b border-gray-800/50 {isMobileOverlay ? 'safe-area-inset-top' : ''}">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-blue-500/20">
+          <Sparkles size={18} class="text-blue-400" />
+        </div>
+        <h2 class="font-semibold text-base text-gray-100">AI Assistant</h2>
+      </div>
+      {#if isMobileOverlay && onClose}
+        <button
+          onclick={onClose}
+          class="p-2 -mr-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 rounded-xl transition-all"
+          aria-label="Close"
+        >
+          <X size={22} />
+        </button>
+      {/if}
+    </div>
   </div>
 
   <!-- Messages -->
-  <div bind:this={chatContainer} class="flex-1 overflow-y-auto p-6 space-y-4">
-    {#if !apiKey}
-      <div
-        class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-400"
-      >
-        <p class="font-medium mb-2">OpenRouter API Key Required</p>
-        <p class="text-xs">
-          Configure your OpenRouter API key in
-          <a href="/settings" class="underline">Settings</a>
-          to use the AI chat feature.
+  <div bind:this={chatContainer} class="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth">
+    {#if !loadedForUserId}
+      <!-- Loading State with Shimmers -->
+      <div class="flex flex-col items-center justify-center h-full px-4">
+        <!-- Shimmer icon placeholder -->
+        <div class="w-20 h-20 rounded-2xl bg-gray-800/50 mb-5 shimmer"></div>
+        <!-- Shimmer title -->
+        <div class="h-5 w-40 bg-gray-800/50 rounded-lg mb-3 shimmer"></div>
+        <!-- Shimmer description -->
+        <div class="h-4 w-56 bg-gray-800/50 rounded-lg mb-2 shimmer"></div>
+        <div class="h-4 w-48 bg-gray-800/50 rounded-lg mb-6 shimmer"></div>
+        <!-- Shimmer buttons grid -->
+        <div class="w-full max-w-[300px] grid grid-cols-2 gap-2">
+          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
+        </div>
+      </div>
+    {:else if !apiKey}
+      <!-- API Key Required State -->
+      <div class="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-4 border border-amber-500/20">
+          <AlertCircle size={28} class="text-amber-400" />
+        </div>
+        <h3 class="text-lg font-semibold text-gray-100 mb-2">API Key Required</h3>
+        <p class="text-sm text-gray-400 mb-4 max-w-[280px]">
+          Configure your OpenRouter API key to start using the AI assistant.
         </p>
+        <a
+          href="/settings"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          Go to Settings
+        </a>
       </div>
     {:else if messages.length === 0}
-      <div class="text-center py-8 text-gray-400 text-sm">
-        <p>No messages yet.</p>
-        <p class="mt-2">Ask me anything about your feeds!</p>
+      <!-- Empty State -->
+      <div class="flex flex-col items-center justify-center h-full text-center px-4">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center mb-5 border border-gray-800/50">
+          <MessageSquare size={32} class="text-gray-500" />
+        </div>
+        <h3 class="text-lg font-semibold text-gray-200 mb-2">Start a Conversation</h3>
+        <p class="text-sm text-gray-500 mb-6 max-w-[280px]">
+          Ask questions about your feeds or use commands to analyze content.
+        </p>
+
+        <!-- Quick Commands -->
+        <div class="w-full max-w-[300px] space-y-2">
+          <p class="text-xs text-gray-600 uppercase tracking-wider mb-3">Quick Commands</p>
+          <div class="grid grid-cols-2 gap-2">
+            {#each slashCommands.slice(0, 4) as cmd}
+              <button
+                onclick={() => { input = `/${cmd.name}`; sendMessage(); }}
+                class="flex items-center gap-2 px-3 py-2.5 bg-gray-800/40 hover:bg-gray-800/70 border border-gray-700/50 rounded-lg text-left transition-all group"
+              >
+                <svelte:component this={cmd.icon} size={14} class="{cmd.color} group-hover:scale-110 transition-transform" />
+                <span class="text-xs text-gray-300 font-medium">{cmd.label}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       </div>
     {:else}
-      {#each messages as message}
-        <div
-          class="flex {message.role === 'user'
-            ? 'justify-end'
-            : 'justify-start'}"
-        >
-          <div
-            class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
-              ? 'bg-blue-500/20 text-gray-200'
-              : 'bg-gray-800 text-gray-200'}"
-          >
-            {#if message.role === "user"}
-              <p class="text-sm whitespace-pre-wrap">{message.content}</p>
-            {:else}
-              <div
-                class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-[#0d0d0d] prose-pre:text-gray-100"
-              >
-                {@html renderMarkdown(message.content)}
+      <!-- Messages List -->
+      {#each messages as message, i}
+        <div class="message-container {message.role === 'user' ? 'user-message' : 'assistant-message'}" class:animate-fade-in={i === messages.length - 1}>
+          {#if message.role === 'user'}
+            <!-- User Message -->
+            <div class="flex justify-end gap-2">
+              <div class="max-w-[85%] flex flex-col items-end">
+                <div class="px-4 py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-2xl rounded-br-md">
+                  <p class="text-sm text-gray-100 whitespace-pre-wrap">{message.content}</p>
+                </div>
+                <span class="text-[10px] text-gray-600 mt-1 mr-1">{formatTime(message.created_at)}</span>
               </div>
-            {/if}
-          </div>
+              <div class="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <User size={14} class="text-blue-400" />
+              </div>
+            </div>
+          {:else}
+            <!-- Assistant Message -->
+            <div class="flex gap-2">
+              <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5 border border-purple-500/20">
+                <Bot size={14} class="text-purple-400" />
+              </div>
+              <div class="max-w-[85%] flex flex-col">
+                <div class="px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-2xl rounded-tl-md">
+                  <div class="prose-chat text-sm">
+                    {@html renderMarkdown(message.content)}
+                  </div>
+                </div>
+                <span class="text-[10px] text-gray-600 mt-1 ml-1">{formatTime(message.created_at)}</span>
+              </div>
+            </div>
+          {/if}
         </div>
       {/each}
 
+      <!-- Streaming Content -->
       {#if streamingContent}
-        <div class="flex justify-start">
-          <div
-            class="max-w-[80%] rounded-lg px-4 py-2 bg-gray-800 text-gray-200"
-          >
-            <div
-              class="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-pre:bg-[#0d0d0d] prose-pre:text-gray-100"
-            >
-              {@html renderMarkdown(streamingContent)}
+        <div class="flex gap-2 animate-fade-in">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5 border border-purple-500/20">
+            <Bot size={14} class="text-purple-400" />
+          </div>
+          <div class="max-w-[85%]">
+            <div class="px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-2xl rounded-tl-md">
+              <div class="prose-chat text-sm">
+                {@html renderMarkdown(streamingContent)}
+              </div>
+              <span class="inline-block w-2 h-4 bg-purple-400/80 animate-pulse ml-0.5 rounded-sm"></span>
             </div>
-            <div
-              class="inline-block w-2 h-4 bg-gray-200 animate-pulse ml-1"
-            ></div>
           </div>
         </div>
       {:else if loading}
-        <div class="flex justify-start">
-          <div class="bg-gray-800 rounded-lg px-4 py-2">
-            <p class="text-sm text-gray-400">
-              Thinking<span class="blinking-dots"
-                ><span>.</span><span>.</span><span>.</span></span
-              >
-            </p>
+        <!-- Loading State -->
+        <div class="flex gap-2 animate-fade-in">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 border border-purple-500/20">
+            <Bot size={14} class="text-purple-400" />
+          </div>
+          <div class="px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-2xl rounded-tl-md">
+            <div class="flex items-center gap-2">
+              <div class="flex gap-1">
+                <span class="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 0ms"></span>
+                <span class="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 150ms"></span>
+                <span class="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 300ms"></span>
+              </div>
+              <span class="text-xs text-gray-500">Thinking...</span>
+            </div>
           </div>
         </div>
       {/if}
     {/if}
   </div>
 
-  <!-- Input -->
-  <div class="p-4 border-t border-gray-800">
+  <!-- Input Area -->
+  <div class="p-4 border-t border-gray-800/50 bg-[#0f0f0f]/80 backdrop-blur-sm">
     <!-- Context Badges -->
     {#if activeContexts.length > 0}
-      <div class="flex flex-wrap gap-2 mb-3">
+      <div class="flex flex-wrap gap-1.5 mb-3">
         {#each activeContexts as context}
+          {@const style = getContextStyle(context.type)}
           <div
-            class="flex items-center gap-1 px-3 py-1 bg-blue-500/20 border border-blue-400 rounded-full text-xs max-w-[250px]"
+            class="group flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 {style.bg} border {style.border} rounded-full text-xs transition-all hover:scale-[1.02]"
           >
-            <span class="text-gray-200 truncate" title={context.label}
-              >{context.label}</span
-            >
+            <span class="{style.text} truncate max-w-[140px]" title={context.label}>
+              {context.label}
+            </span>
             <button
               onclick={() => removeContext(context.id)}
-              class="hover:bg-blue-500/30 rounded-full p-0.5 transition-colors flex-shrink-0"
+              class="p-0.5 hover:bg-white/10 rounded-full transition-colors opacity-60 group-hover:opacity-100"
               type="button"
             >
-              <X size={12} />
+              <X size={12} class="text-gray-400" />
             </button>
           </div>
         {/each}
@@ -1331,176 +1275,157 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
     {/if}
 
     <form
-      onsubmit={(e) => {
-        e.preventDefault();
-        sendMessage();
-      }}
-      class="flex flex-col gap-2 relative"
+      onsubmit={(e) => { e.preventDefault(); sendMessage(); }}
+      class="relative"
     >
-      <!-- Command Dropdown -->
+      <!-- Command Menu -->
       {#if showCommandMenu && filteredCommands.length > 0}
-        <div
-          class="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-lg z-50"
-        >
-          <div class="p-2">
+        <div class="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up">
+          <div class="p-1.5">
             {#each filteredCommands as command, index}
               <button
                 type="button"
-                onclick={() => {
-                  input = `/${command.name}`;
-                  showCommandMenu = false;
-                  sendMessage();
-                }}
-                class="w-full text-left px-3 py-2 rounded-md transition-colors {index ===
-                selectedCommandIndex
-                  ? 'bg-blue-500/20 border border-blue-500/50'
-                  : 'hover:bg-gray-800'}"
+                onclick={() => { input = `/${command.name}`; showCommandMenu = false; sendMessage(); }}
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {index === selectedCommandIndex ? 'bg-blue-500/15 border border-blue-500/30' : 'hover:bg-gray-800/50 border border-transparent'}"
               >
-                <div class="font-medium text-sm text-gray-200">
-                  /{command.name}
-                  <span class="text-gray-400 font-normal ml-1"
-                    >- {command.label}</span
-                  >
+                <div class="w-8 h-8 rounded-lg bg-gray-800/80 flex items-center justify-center">
+                  <svelte:component this={command.icon} size={16} class={command.color} />
                 </div>
-                <div class="text-xs text-gray-400">{command.description}</div>
+                <div class="flex-1 text-left">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-200">/{command.name}</span>
+                    <span class="text-xs text-gray-500">{command.label}</span>
+                  </div>
+                  <p class="text-xs text-gray-500">{command.description}</p>
+                </div>
               </button>
             {/each}
           </div>
-          <div
-            class="px-3 py-2 border-t border-gray-800 text-xs text-gray-500 flex gap-3"
-          >
-            <span><kbd class="px-1 bg-gray-800 rounded">↑↓</kbd> navigate</span>
-            <span><kbd class="px-1 bg-gray-800 rounded">↵</kbd> select</span>
-            <span><kbd class="px-1 bg-gray-800 rounded">esc</kbd> close</span>
+          <div class="px-3 py-2 border-t border-gray-800/50 bg-gray-900/50 flex items-center gap-4 text-[10px] text-gray-500">
+            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px]">↑↓</kbd> Navigate</span>
+            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px]">Tab</kbd> Complete</span>
+            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px]">↵</kbd> Select</span>
           </div>
         </div>
       {/if}
 
-      <div class="flex gap-2">
-        <textarea
-          bind:value={input}
-          onkeydown={handleKeyDown}
-          disabled={!apiKey || loading}
-          placeholder="Ask about your feeds..."
-          rows="2"
-          class="flex-1 px-3 py-2 bg-[#0d0d0d] border border-gray-800 rounded-md text-base md:text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
-        ></textarea>
+      <!-- Input Row -->
+      <div class="flex gap-2 items-end">
+        <div class="flex-1 relative">
+          <textarea
+            bind:this={inputRef}
+            bind:value={input}
+            onkeydown={handleKeyDown}
+            disabled={!apiKey || loading}
+            placeholder={apiKey ? "Ask anything or type /..." : "Configure API key first..."}
+            rows="1"
+            class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[44px] max-h-[120px]"
+            style="field-sizing: content;"
+          ></textarea>
+          {#if !input && apiKey}
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-600 pointer-events-none">
+              <Command size={12} />
+              <span class="text-[10px]">/</span>
+            </div>
+          {/if}
+        </div>
         <button
           type="submit"
           disabled={!apiKey || loading || !input.trim()}
-          class="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-blue-500/25 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:hover:shadow-none"
         >
-          <Send size={18} />
+          {#if loading}
+            <Loader2 size={18} class="animate-spin" />
+          {:else}
+            <Send size={18} />
+          {/if}
         </button>
       </div>
 
-      <!-- Bottom actions -->
-      <div class="flex items-center justify-between relative">
-        <div class="flex items-center gap-2 context-menu-container relative">
+      <!-- Bottom Actions -->
+      <div class="flex items-center justify-between mt-2.5">
+        <div class="context-menu-container relative">
           <button
             type="button"
-            onclick={() => (showContextMenu = !showContextMenu)}
-            class="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 border border-gray-800 rounded-md hover:bg-gray-800 transition-colors"
+            onclick={() => showContextMenu = !showContextMenu}
+            class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-400 bg-gray-800/30 hover:bg-gray-800/60 border border-gray-700/40 rounded-lg transition-all hover:text-gray-300"
           >
             <Plus size={14} />
-            Add Context
+            <span>Context</span>
+            <ChevronDown size={12} class="transition-transform {showContextMenu ? 'rotate-180' : ''}" />
           </button>
 
-          <!-- Context Dropdown Menu -->
+          <!-- Context Menu -->
           {#if showContextMenu}
-            <div
-              class="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-lg z-50"
-            >
-              <!-- Search box -->
-              <div class="p-2 border-b border-gray-800">
+            <div class="absolute bottom-full left-0 mb-2 w-72 bg-[#1a1a1a] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
+              <div class="p-2 border-b border-gray-800/50">
                 <input
                   type="text"
-                  placeholder="Search for context..."
+                  placeholder="Search contexts..."
                   bind:value={contextSearch}
-                  class="w-full px-2 py-1 text-base md:text-xs bg-[#0d0d0d] text-gray-200 border border-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-3 py-2 text-sm bg-gray-800/50 text-gray-200 border border-gray-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 placeholder:text-gray-500"
                 />
               </div>
 
-              <!-- Context options -->
-              <div class="max-h-96 overflow-y-auto">
-                <!-- Views Section -->
+              <div class="max-h-72 overflow-y-auto">
+                <!-- Views -->
                 <div class="p-2">
-                  <div class="text-xs text-gray-500 mb-1 px-2">Views</div>
+                  <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Views</p>
                   <button
                     type="button"
-                    onclick={() => {
-                      addAllPostsContext();
-                      showContextMenu = false;
-                    }}
-                    class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
+                    onclick={() => { addAllPostsContext(); showContextMenu = false; }}
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
                   >
+                    <div class="w-6 h-6 rounded-md bg-blue-500/15 flex items-center justify-center">
+                      <FileText size={12} class="text-blue-400" />
+                    </div>
                     All Posts
                   </button>
                   <button
                     type="button"
-                    onclick={() => {
-                      addStarredContext();
-                      showContextMenu = false;
-                    }}
-                    class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors"
+                    onclick={() => { addStarredContext(); showContextMenu = false; }}
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
                   >
+                    <div class="w-6 h-6 rounded-md bg-yellow-500/15 flex items-center justify-center">
+                      <Sparkles size={12} class="text-yellow-400" />
+                    </div>
                     Starred Posts
                   </button>
                 </div>
 
-                <!-- Feeds Section -->
+                <!-- Feeds -->
                 {#if feeds.length > 0}
-                  <div class="p-2 border-t border-gray-800">
-                    <div class="text-xs text-gray-500 mb-1 px-2">Feeds</div>
-                    {#each feeds.filter((f) => !contextSearch || f.title
-                          ?.toLowerCase()
-                          .includes(contextSearch.toLowerCase())) as feed}
+                  <div class="p-2 border-t border-gray-800/50">
+                    <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Feeds</p>
+                    {#each feeds.filter((f) => !contextSearch || f.title?.toLowerCase().includes(contextSearch.toLowerCase())).slice(0, 8) as feed}
                       <button
                         type="button"
-                        onclick={() => {
-                          addContext({
-                            id: `manual-feed-${feed.id}`,
-                            type: "feed",
-                            label: feed.title,
-                            data: feed,
-                          });
-                          showContextMenu = false;
-                          contextSearch = "";
-                        }}
-                        class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors truncate"
+                        onclick={() => { addContext({ id: `manual-feed-${feed.id}`, type: "feed", label: feed.title, data: feed }); showContextMenu = false; contextSearch = ""; }}
+                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors truncate"
                       >
-                        {feed.title}
+                        <div class="w-6 h-6 rounded-md bg-green-500/15 flex items-center justify-center flex-shrink-0">
+                          <FileText size={12} class="text-green-400" />
+                        </div>
+                        <span class="truncate">{feed.title}</span>
                       </button>
                     {/each}
                   </div>
                 {/if}
 
-                <!-- Recent Entries Section -->
+                <!-- Recent Entries -->
                 {#if timelineEntries.length > 0}
-                  <div class="p-2 border-t border-gray-800">
-                    <div class="text-xs text-gray-500 mb-1 px-2">
-                      Recent Entries
-                    </div>
-                    {#each timelineEntries
-                      .filter((e) => !contextSearch || e.entry_title
-                            ?.toLowerCase()
-                            .includes(contextSearch.toLowerCase()))
-                      .slice(0, 10) as entry}
+                  <div class="p-2 border-t border-gray-800/50">
+                    <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Recent Posts</p>
+                    {#each timelineEntries.filter((e) => !contextSearch || e.entry_title?.toLowerCase().includes(contextSearch.toLowerCase())).slice(0, 6) as entry}
                       <button
                         type="button"
-                        onclick={() => {
-                          addContext({
-                            id: `manual-entry-${entry.entry_id}`,
-                            type: "entry",
-                            label: entry.entry_title,
-                            data: entry,
-                          });
-                          showContextMenu = false;
-                          contextSearch = "";
-                        }}
-                        class="w-full text-left px-2 py-1 text-xs text-gray-200 rounded hover:bg-gray-800 transition-colors truncate"
+                        onclick={() => { addContext({ id: `manual-entry-${entry.entry_id}`, type: "entry", label: entry.entry_title, data: entry }); showContextMenu = false; contextSearch = ""; }}
+                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
                       >
-                        {entry.entry_title}
+                        <div class="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+                          <FileText size={12} class="text-orange-400" />
+                        </div>
+                        <span class="truncate">{entry.entry_title}</span>
                       </button>
                     {/each}
                   </div>
@@ -1509,40 +1434,219 @@ Remember: Users are busy. Respect their time. Lead with the conclusion.`,
             </div>
           {/if}
         </div>
-        <span class="text-xs text-gray-500">Auto</span>
+
+        <span class="text-[10px] text-gray-600 flex items-center gap-1">
+          <span class="w-1 h-1 rounded-full bg-green-500/60"></span>
+          Auto-context
+        </span>
       </div>
     </form>
   </div>
 </div>
 
 <style>
-  .blinking-dots span {
-    animation: blink 1.4s infinite;
-    opacity: 0;
+  .ai-chat-container {
+    --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+    --scrollbar-track: transparent;
   }
 
-  .blinking-dots span:nth-child(1) {
-    animation-delay: 0s;
+  .ai-chat-container ::-webkit-scrollbar {
+    width: 6px;
   }
 
-  .blinking-dots span:nth-child(2) {
-    animation-delay: 0.2s;
+  .ai-chat-container ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
   }
 
-  .blinking-dots span:nth-child(3) {
-    animation-delay: 0.4s;
+  .ai-chat-container ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
   }
 
-  @keyframes blink {
-    0%,
-    20% {
+  .ai-chat-container ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Prose styling for chat messages */
+  :global(.prose-chat) {
+    color: #e5e5e5;
+    line-height: 1.6;
+  }
+
+  :global(.prose-chat p) {
+    margin: 0.5em 0;
+  }
+
+  :global(.prose-chat p:first-child) {
+    margin-top: 0;
+  }
+
+  :global(.prose-chat p:last-child) {
+    margin-bottom: 0;
+  }
+
+  :global(.prose-chat strong) {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  :global(.prose-chat em) {
+    color: #a3a3a3;
+  }
+
+  :global(.prose-chat code) {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #f472b6;
+  }
+
+  :global(.prose-chat pre) {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0.75em 1em;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 0.75em 0;
+  }
+
+  :global(.prose-chat pre code) {
+    background: none;
+    padding: 0;
+    color: #e5e5e5;
+  }
+
+  :global(.prose-chat ul, .prose-chat ol) {
+    margin: 0.5em 0;
+    padding-left: 1.25em;
+  }
+
+  :global(.prose-chat li) {
+    margin: 0.25em 0;
+  }
+
+  :global(.prose-chat h1, .prose-chat h2, .prose-chat h3) {
+    color: #fff;
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+  }
+
+  :global(.prose-chat h1:first-child, .prose-chat h2:first-child, .prose-chat h3:first-child) {
+    margin-top: 0;
+  }
+
+  :global(.prose-chat h2) {
+    font-size: 1.1em;
+  }
+
+  :global(.prose-chat h3) {
+    font-size: 1em;
+  }
+
+  :global(.prose-chat a) {
+    color: #60a5fa;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  :global(.prose-chat a:hover) {
+    color: #93c5fd;
+  }
+
+  :global(.prose-chat blockquote) {
+    border-left: 3px solid #3b82f6;
+    padding-left: 1em;
+    margin: 0.75em 0;
+    color: #a3a3a3;
+  }
+
+  :global(.prose-chat table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75em 0;
+    font-size: 0.9em;
+  }
+
+  :global(.prose-chat th, .prose-chat td) {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5em 0.75em;
+    text-align: left;
+  }
+
+  :global(.prose-chat th) {
+    background: rgba(0, 0, 0, 0.2);
+    font-weight: 600;
+  }
+
+  :global(.prose-chat hr) {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 1em 0;
+  }
+
+  /* Animations */
+  @keyframes fade-in {
+    from {
       opacity: 0;
+      transform: translateY(8px);
     }
-    40% {
+    to {
       opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
     }
     100% {
-      opacity: 0;
+      background-position: 200% 0;
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.2s ease-out;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    .ai-chat-container {
+      font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    textarea {
+      font-size: 16px !important;
+    }
+
+    input {
+      font-size: 16px !important;
     }
   }
 </style>
