@@ -4,7 +4,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Home, Star, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-svelte';
+	import { Home, Star, Circle, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import { sidebarStore, type FeedWithUnread } from '$lib/stores/sidebar';
 	import Skeleton from './Skeleton.svelte';
@@ -187,11 +187,6 @@
 					>
 						<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">All Posts</span>
-						{#if totalUnread > 0}
-							<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
-								{totalUnread}
-							</span>
-						{/if}
 					</a>
 
 					<a
@@ -201,6 +196,20 @@
 					>
 						<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">Starred</span>
+					</a>
+
+					<a
+						href="/timeline/unread"
+						onclick={handleNavClick}
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+					>
+						<Circle size={18} class="{currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<span class="flex-1 min-w-0 truncate">Unread</span>
+						{#if totalUnread > 0}
+							<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+								{totalUnread}
+							</span>
+						{/if}
 					</a>
 
 					<a
@@ -392,11 +401,6 @@
 				<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">All Posts</span>
-					{#if totalUnread > 0}
-						<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
-							{totalUnread}
-						</span>
-					{/if}
 				{/if}
 			</a>
 
@@ -409,6 +413,23 @@
 				<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">Starred</span>
+				{/if}
+			</a>
+
+			<a
+				href="/timeline/unread"
+				onclick={handleNavClick}
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				title={isCollapsed ? 'Unread' : ''}
+			>
+				<Circle size={18} class="{currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				{#if !isCollapsed}
+					<span class="flex-1 min-w-0 truncate">Unread</span>
+					{#if totalUnread > 0}
+						<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+							{totalUnread}
+						</span>
+					{/if}
 				{/if}
 			</a>
 

@@ -11,6 +11,7 @@
 	import MobileHeader from '$lib/components/MobileHeader.svelte';
 	import { MessageCircle, ChevronRight, Filter, X, Check, Search } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
+	import { sidebarStore } from '$lib/stores/sidebar';
 	import type { Database } from '$lib/types/database';
 
 	type TimelineEntry = Database['public']['Functions']['get_user_timeline']['Returns'][0];
@@ -290,6 +291,11 @@
 			activeFeedId = null;
 			activeCategory = null;
 			currentFeed = null;
+		} else if (filter === 'unread') {
+			unreadOnly = true;
+			activeFeedId = null;
+			activeCategory = null;
+			currentFeed = null;
 		} else if (filter.startsWith('category:')) {
 			// Category filter
 			categoryFilter = decodeURIComponent(filter.substring(9));
@@ -448,6 +454,10 @@
 	async function handleMarkRead(entryId: string) {
 		if (!$user) return;
 
+		// Find the entry to check if it's already read
+		const entry = entries.find(e => e.entry_id === entryId);
+		const wasUnread = entry && !entry.is_read;
+
 		const { error } = await supabase.rpc('mark_entry_read', {
 			entry_id_param: entryId,
 			user_id_param: $user.id
@@ -461,6 +471,11 @@
 
 			if (selectedEntry?.entry_id === entryId) {
 				selectedEntry = { ...selectedEntry, is_read: true };
+			}
+
+			// Update sidebar unread count immediately if the entry was unread
+			if (wasUnread && entry) {
+				sidebarStore.decrementUnreadCount(entry.feed_id);
 			}
 		}
 	}
@@ -498,6 +513,7 @@
 	const viewTitle = $derived(() => {
 		if (filter === 'all') return 'All Posts';
 		if (filter === 'starred') return 'Starred Posts';
+		if (filter === 'unread') return 'Unread Posts';
 		if (activeCategory) return activeCategory;
 		if (currentFeed) return currentFeed.feed_title;
 		return 'Feed Posts';
@@ -698,8 +714,8 @@
 								</button>
 							{/if}
 
-							<!-- Filter Button (only show in all posts, starred, or category views) -->
-							{#if filter === 'all' || filter === 'starred' || filter.startsWith('category:')}
+							<!-- Filter Button (only show in all posts, starred, unread, or category views) -->
+							{#if filter === 'all' || filter === 'starred' || filter === 'unread' || filter.startsWith('category:')}
 							<div class="relative">
 								<button
 									onclick={() => showFilterMenu = !showFilterMenu}
@@ -1023,7 +1039,7 @@
 			<AIChat
 				contextType={selectedEntry ? 'entry' : 'feed'}
 				contextId={selectedEntry?.entry_id || activeFeedId}
-				currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : 'feed'}
+				currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : filter === 'unread' ? 'unread' : 'feed'}
 				currentCategory={activeCategory}
 				{currentFeed}
 				currentEntry={selectedEntry
@@ -1058,7 +1074,7 @@
 					<AIChat
 						contextType={selectedEntry ? 'entry' : 'feed'}
 						contextId={selectedEntry?.entry_id || activeFeedId}
-						currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : 'feed'}
+						currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : filter === 'unread' ? 'unread' : 'feed'}
 						currentCategory={activeCategory}
 						{currentFeed}
 						currentEntry={selectedEntry

@@ -32,7 +32,7 @@
   interface Props {
     contextType: "feed" | "entry";
     contextId?: string | null;
-    currentView?: "all" | "starred" | string;
+    currentView?: "all" | "starred" | "unread" | string;
     currentCategory?: string | null;
     currentFeed?: { feed_id: string; feed_title: string } | null;
     currentEntry?: {
@@ -215,7 +215,7 @@ OUTPUT STYLE:
   }
 
   async function fetchAIContext(
-    viewType: 'all' | 'starred' | 'feed' | 'category',
+    viewType: 'all' | 'starred' | 'unread' | 'feed' | 'category',
     feedId?: string,
     category?: string
   ): Promise<AIContextEntry[]> {
@@ -234,6 +234,7 @@ OUTPUT STYLE:
         user_id_param: $user.id,
         feed_id_filter: viewType === 'feed' ? feedId : undefined,
         starred_only: viewType === 'starred',
+        unread_only: viewType === 'unread',
         hours_lookback: 24
       });
 
@@ -259,10 +260,37 @@ OUTPUT STYLE:
   }
 
   function addContext(context: ContextBadge) {
-    const exists = activeContexts.some((c) => c.id === context.id);
+    // Check if context already exists by ID or by same type+label combination
+    const exists = activeContexts.some((c) =>
+      c.id === context.id ||
+      (c.type === context.type && c.label === context.label) ||
+      // Also check for auto vs manual variants (e.g., "view-starred" vs "manual-view-starred")
+      (c.type === context.type && c.data?.view && context.data?.view && c.data.view === context.data.view)
+    );
     if (!exists) {
       activeContexts = [...activeContexts, context];
     }
+  }
+
+  // Helper to check if a view context is already active
+  function hasViewContext(viewName: string): boolean {
+    return activeContexts.some(c =>
+      c.type === "view" && (c.data?.view === viewName || c.label.toLowerCase().includes(viewName))
+    );
+  }
+
+  // Helper to check if a feed context is already active
+  function hasFeedContext(feedId: string): boolean {
+    return activeContexts.some(c =>
+      c.type === "feed" && (c.data?.feed_id === feedId || c.data?.id === feedId || c.id.includes(feedId))
+    );
+  }
+
+  // Helper to check if an entry context is already active
+  function hasEntryContext(entryId: string): boolean {
+    return activeContexts.some(c =>
+      c.type === "entry" && (c.data?.entry_id === entryId || c.id.includes(entryId))
+    );
   }
 
   function removeContext(contextId: string) {
@@ -287,6 +315,15 @@ OUTPUT STYLE:
       type: "view",
       label: "All Posts",
       data: { view: "all" },
+    });
+  }
+
+  function addUnreadContext() {
+    addContext({
+      id: "manual-view-unread",
+      type: "view",
+      label: "Unread Posts",
+      data: { view: "unread" },
     });
   }
 
@@ -452,6 +489,15 @@ OUTPUT STYLE:
         });
       }
 
+      if (currentView === "unread") {
+        newContexts.push({
+          id: "view-unread",
+          type: "view",
+          label: "Unread",
+          data: { view: "unread" },
+        });
+      }
+
       if (currentCategory) {
         newContexts.push({
           id: `category-${currentCategory}`,
@@ -475,7 +521,21 @@ OUTPUT STYLE:
     const mergedContexts = [...manualContexts];
 
     for (const context of newContexts) {
-      if (!mergedContexts.some((c) => c.id === context.id) && !removedAutoContexts.has(context.id)) {
+      // Check if this auto-context was manually removed
+      if (removedAutoContexts.has(context.id)) continue;
+
+      // Check if there's already a manual variant of this context
+      const hasManualVariant = manualContexts.some((c) => {
+        // Same type and same data (view, feed_id, entry_id, category)
+        if (c.type !== context.type) return false;
+        if (context.type === "view" && c.data?.view === context.data?.view) return true;
+        if (context.type === "feed" && (c.data?.feed_id === context.data?.feed_id || c.data?.id === context.data?.feed_id)) return true;
+        if (context.type === "entry" && c.data?.entry_id === context.data?.entry_id) return true;
+        if (context.type === "category" && c.data?.category === context.data?.category) return true;
+        return false;
+      });
+
+      if (!hasManualVariant && !mergedContexts.some((c) => c.id === context.id)) {
         mergedContexts.push(context);
       }
     }
@@ -796,49 +856,73 @@ Skip theory and background. Only include items someone can actually act on. If t
       if (context.type === "view" && (context.label === "All" || context.label === "All Posts")) {
         const entries = await fetchAIContext('all');
         if (entries.length > 0) {
+          const totalEntries = entries.length;
           const entrySummaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              // Number from total down to 1, so Post 1 is oldest and Post N is newest
+              const postNum = totalEntries - index;
+              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## All Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`);
+          contextParts.push(`## All Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
         }
       } else if (context.type === "view" && (context.label === "Starred" || context.label === "Starred Posts")) {
         const entries = await fetchAIContext('starred');
         if (entries.length > 0) {
+          const totalEntries = entries.length;
           const entrySummaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const postNum = totalEntries - index;
+              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## Starred Posts (last 24h, ${entries.length} entries):\n\n${entrySummaries}`);
+          contextParts.push(`## Starred Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
         } else {
           contextParts.push(`## Context: User is viewing their starred/saved posts (none from last 24h)`);
+        }
+      } else if (context.type === "view" && (context.label === "Unread" || context.label === "Unread Posts")) {
+        const entries = await fetchAIContext('unread');
+        if (entries.length > 0) {
+          const totalEntries = entries.length;
+          const entrySummaries = entries
+            .map((entry, index) => {
+              const description = stripHtml(entry.entry_description || "");
+              const postNum = totalEntries - index;
+              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+            })
+            .join("\n\n---\n\n");
+          contextParts.push(`## Unread Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
+        } else {
+          contextParts.push(`## Context: User is viewing their unread posts (none from last 24h)`);
         }
       } else if (context.type === "category") {
         const entries = await fetchAIContext('category', undefined, context.data.category);
         if (entries.length > 0) {
+          const totalEntries = entries.length;
           const summaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const postNum = totalEntries - index;
+              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## ${context.label} Posts (last 24h, ${entries.length} entries):\n\n${summaries}`);
+          contextParts.push(`## ${context.label} Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
         }
       } else if (context.type === "feed") {
         const feedId = context.data.feed_id || context.data.id;
         const entries = await fetchAIContext('feed', feedId);
         if (entries.length > 0) {
+          const totalEntries = entries.length;
           const summaries = entries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
-              return `[Post ${index + 1}]\nTitle: ${entry.entry_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const postNum = totalEntries - index;
+              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## ${context.label} Feed (last 24h, ${entries.length} posts):\n\n${summaries}`);
+          contextParts.push(`## ${context.label} Feed (last 24h, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
         } else {
           contextParts.push(`## Context: User is asking about the "${context.label}" feed (no posts from last 24h)`);
         }
@@ -1234,15 +1318,10 @@ Skip theory and background. Only include items someone can actually act on. If t
           <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 border border-purple-500/20">
             <Bot size={14} class="text-purple-400" />
           </div>
-          <div class="px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-2xl rounded-tl-md">
-            <div class="flex items-center gap-2">
-              <div class="flex gap-1">
-                <span class="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 0ms"></span>
-                <span class="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 150ms"></span>
-                <span class="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 300ms"></span>
-              </div>
-              <span class="text-xs text-gray-500">Thinking...</span>
-            </div>
+          <div class="flex gap-1 items-center px-3 py-2 bg-gray-800/40 rounded-2xl rounded-tl-md">
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400/70 animate-bounce" style="animation-delay: 0ms"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400/70 animate-bounce" style="animation-delay: 150ms"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400/70 animate-bounce" style="animation-delay: 300ms"></span>
           </div>
         </div>
       {/if}
@@ -1317,7 +1396,7 @@ Skip theory and background. Only include items someone can actually act on. If t
             bind:value={input}
             onkeydown={handleKeyDown}
             disabled={!apiKey || loading}
-            placeholder={apiKey ? "Ask anything or type /..." : "Configure API key first..."}
+            placeholder={apiKey ? "Ask anything or type /" : "Configure API key first..."}
             rows="1"
             class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[44px] max-h-[120px]"
             style="field-sizing: content;"
@@ -1371,64 +1450,86 @@ Skip theory and background. Only include items someone can actually act on. If t
                 <!-- Views -->
                 <div class="p-2">
                   <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Views</p>
-                  <button
-                    type="button"
-                    onclick={() => { addAllPostsContext(); showContextMenu = false; }}
-                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div class="w-6 h-6 rounded-md bg-blue-500/15 flex items-center justify-center">
-                      <FileText size={12} class="text-blue-400" />
-                    </div>
-                    All Posts
-                  </button>
-                  <button
-                    type="button"
-                    onclick={() => { addStarredContext(); showContextMenu = false; }}
-                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div class="w-6 h-6 rounded-md bg-yellow-500/15 flex items-center justify-center">
-                      <Sparkles size={12} class="text-yellow-400" />
-                    </div>
-                    Starred Posts
-                  </button>
+                  {#if !hasViewContext("all")}
+                    <button
+                      type="button"
+                      onclick={() => { addAllPostsContext(); showContextMenu = false; }}
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div class="w-6 h-6 rounded-md bg-blue-500/15 flex items-center justify-center">
+                        <FileText size={12} class="text-blue-400" />
+                      </div>
+                      All Posts
+                    </button>
+                  {/if}
+                  {#if !hasViewContext("starred")}
+                    <button
+                      type="button"
+                      onclick={() => { addStarredContext(); showContextMenu = false; }}
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div class="w-6 h-6 rounded-md bg-yellow-500/15 flex items-center justify-center">
+                        <Sparkles size={12} class="text-yellow-400" />
+                      </div>
+                      Starred Posts
+                    </button>
+                  {/if}
+                  {#if !hasViewContext("unread")}
+                    <button
+                      type="button"
+                      onclick={() => { addUnreadContext(); showContextMenu = false; }}
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div class="w-6 h-6 rounded-md bg-cyan-500/15 flex items-center justify-center">
+                        <FileText size={12} class="text-cyan-400" />
+                      </div>
+                      Unread Posts
+                    </button>
+                  {/if}
                 </div>
 
                 <!-- Feeds -->
                 {#if feeds.length > 0}
-                  <div class="p-2 border-t border-gray-800/50">
-                    <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Feeds</p>
-                    {#each feeds.filter((f) => !contextSearch || f.title?.toLowerCase().includes(contextSearch.toLowerCase())).slice(0, 8) as feed}
-                      <button
-                        type="button"
-                        onclick={() => { addContext({ id: `manual-feed-${feed.id}`, type: "feed", label: feed.title, data: feed }); showContextMenu = false; contextSearch = ""; }}
-                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors truncate"
-                      >
-                        <div class="w-6 h-6 rounded-md bg-green-500/15 flex items-center justify-center flex-shrink-0">
-                          <FileText size={12} class="text-green-400" />
-                        </div>
-                        <span class="truncate">{feed.title}</span>
-                      </button>
-                    {/each}
-                  </div>
+                  {@const availableFeeds = feeds.filter((f) => !hasFeedContext(f.id) && (!contextSearch || f.title?.toLowerCase().includes(contextSearch.toLowerCase())))}
+                  {#if availableFeeds.length > 0}
+                    <div class="p-2 border-t border-gray-800/50">
+                      <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Feeds</p>
+                      {#each availableFeeds.slice(0, 8) as feed}
+                        <button
+                          type="button"
+                          onclick={() => { addContext({ id: `manual-feed-${feed.id}`, type: "feed", label: feed.title, data: feed }); showContextMenu = false; contextSearch = ""; }}
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors truncate"
+                        >
+                          <div class="w-6 h-6 rounded-md bg-green-500/15 flex items-center justify-center flex-shrink-0">
+                            <FileText size={12} class="text-green-400" />
+                          </div>
+                          <span class="truncate">{feed.title}</span>
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
                 {/if}
 
                 <!-- Recent Entries -->
                 {#if timelineEntries.length > 0}
-                  <div class="p-2 border-t border-gray-800/50">
-                    <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Recent Posts</p>
-                    {#each timelineEntries.filter((e) => !contextSearch || e.entry_title?.toLowerCase().includes(contextSearch.toLowerCase())).slice(0, 6) as entry}
-                      <button
-                        type="button"
-                        onclick={() => { addContext({ id: `manual-entry-${entry.entry_id}`, type: "entry", label: entry.entry_title, data: entry }); showContextMenu = false; contextSearch = ""; }}
-                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
-                      >
-                        <div class="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-                          <FileText size={12} class="text-orange-400" />
-                        </div>
-                        <span class="truncate">{entry.entry_title}</span>
-                      </button>
-                    {/each}
-                  </div>
+                  {@const availableEntries = timelineEntries.filter((e) => !hasEntryContext(e.entry_id) && (!contextSearch || e.entry_title?.toLowerCase().includes(contextSearch.toLowerCase())))}
+                  {#if availableEntries.length > 0}
+                    <div class="p-2 border-t border-gray-800/50">
+                      <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Recent Posts</p>
+                      {#each availableEntries.slice(0, 6) as entry}
+                        <button
+                          type="button"
+                          onclick={() => { addContext({ id: `manual-entry-${entry.entry_id}`, type: "entry", label: entry.entry_title, data: entry }); showContextMenu = false; contextSearch = ""; }}
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                        >
+                          <div class="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+                            <FileText size={12} class="text-orange-400" />
+                          </div>
+                          <span class="truncate">{entry.entry_title}</span>
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
                 {/if}
               </div>
             </div>

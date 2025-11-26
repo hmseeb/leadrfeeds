@@ -184,13 +184,27 @@ function createSidebarStore() {
 		set(initialState);
 	}
 
+	function decrementUnreadCount(feedId: string) {
+		update(s => {
+			const feeds = s.feeds.map(f => {
+				if (f.feed_id === feedId && f.unread_count > 0) {
+					return { ...f, unread_count: f.unread_count - 1 };
+				}
+				return f;
+			});
+			const totalUnread = feeds.reduce((sum, f) => sum + f.unread_count, 0);
+			return { ...s, feeds, totalUnread };
+		});
+	}
+
 	return {
 		subscribe,
 		loadFeeds,
 		loadPendingSuggestionsCount,
 		startRefreshInterval,
 		stopRefreshInterval,
-		reset
+		reset,
+		decrementUnreadCount
 	};
 }
 

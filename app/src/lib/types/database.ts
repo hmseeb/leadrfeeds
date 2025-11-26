@@ -468,6 +468,7 @@ export type Database = {
           user_id_param: string
           feed_id_filter?: string
           starred_only?: boolean
+          unread_only?: boolean
           hours_lookback?: number
         }
         Returns: {
@@ -484,6 +485,7 @@ export type Database = {
           feed_url: string | null
           feed_site_url: string | null
           is_starred: boolean
+          is_read: boolean
         }[]
       }
       mark_entry_read: {
