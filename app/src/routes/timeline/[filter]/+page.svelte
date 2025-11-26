@@ -1109,10 +1109,8 @@
 		margin-top: 1rem !important;
 		margin-bottom: 1rem !important;
 		max-width: 100% !important;
-		width: 100% !important;
 		height: auto !important;
 		border-radius: 0.5rem;
-		object-fit: cover;
 	}
 
 	/* First image in article (hero image) gets special treatment */
