@@ -4,7 +4,15 @@
   import { user } from "$lib/stores/auth";
   import { Send, X, Plus, Sparkles, MessageSquare, Zap, FileText, BarChart3, GitCompare, Trash2, HelpCircle, ChevronDown, Bot, User, Loader2, AlertCircle, Command, GripVertical } from "lucide-svelte";
   import type { Tables } from "$lib/types/database";
-  import { marked } from "marked";
+  import { marked, Renderer } from "marked";
+
+  // Configure marked to open links in new tab
+  const renderer = new Renderer();
+  renderer.link = ({ href, title, text }) => {
+    const titleAttr = title ? ` title="${title}"` : '';
+    return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+  };
+  marked.use({ renderer });
 
   interface ContextBadge {
     id: string;
@@ -167,7 +175,9 @@ OUTPUT STYLE:
 • Use emoji headers for visual hierarchy
 • Bullet points over paragraphs
 • Bold key terms and takeaways
-• Be concise but complete`;
+• Be concise but complete
+• Use markdown hyperlinks [text](url) instead of raw URLs
+• When referencing posts, use their title as a clickable hyperlink: [Post Title](url)`;
 
   let filteredCommands = $state<SlashCommand[]>([]);
 
@@ -862,7 +872,8 @@ Skip theory and background. Only include items someone can actually act on. If t
               const description = stripHtml(entry.entry_description || "");
               // Number from total down to 1, so Post 1 is oldest and Post N is newest
               const postNum = totalEntries - index;
-              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const titleLink = entry.entry_url ? `[${entry.entry_title}](${entry.entry_url})` : entry.entry_title;
+              return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
           contextParts.push(`## All Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
@@ -875,7 +886,8 @@ Skip theory and background. Only include items someone can actually act on. If t
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
               const postNum = totalEntries - index;
-              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const titleLink = entry.entry_url ? `[${entry.entry_title}](${entry.entry_url})` : entry.entry_title;
+              return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
           contextParts.push(`## Starred Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
@@ -890,7 +902,8 @@ Skip theory and background. Only include items someone can actually act on. If t
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
               const postNum = totalEntries - index;
-              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const titleLink = entry.entry_url ? `[${entry.entry_title}](${entry.entry_url})` : entry.entry_title;
+              return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
           contextParts.push(`## Unread Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
@@ -905,7 +918,8 @@ Skip theory and background. Only include items someone can actually act on. If t
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
               const postNum = totalEntries - index;
-              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nSource: ${entry.feed_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const titleLink = entry.entry_url ? `[${entry.entry_title}](${entry.entry_url})` : entry.entry_title;
+              return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
           contextParts.push(`## ${context.label} Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
@@ -919,7 +933,8 @@ Skip theory and background. Only include items someone can actually act on. If t
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
               const postNum = totalEntries - index;
-              return `[Post ${postNum}]\nTitle: ${entry.entry_title}\nURL: ${entry.entry_url || "N/A"}\nDescription: ${description || "N/A"}`;
+              const titleLink = entry.entry_url ? `[${entry.entry_title}](${entry.entry_url})` : entry.entry_title;
+              return `[Post ${postNum}]\nTitle: ${titleLink}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
           contextParts.push(`## ${context.label} Feed (last 24h, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
@@ -930,8 +945,9 @@ Skip theory and background. Only include items someone can actually act on. If t
         const rawContent = context.data.entry_content || context.data.entry_description || "";
         const content = stripHtml(rawContent);
         const entryUrl = context.data.entry_url || context.data.url || "";
+        const titleLink = entryUrl ? `[${context.label}](${entryUrl})` : `"${context.label}"`;
         contextParts.push(
-          `## Article: "${context.label}"\nAuthor: ${context.data.entry_author || "Unknown"}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}${entryUrl ? `\nURL: ${entryUrl}` : ""}\n\nContent:\n${content}`
+          `## Article: ${titleLink}\nAuthor: ${context.data.entry_author || "Unknown"}\nPublished: ${new Date(context.data.entry_published_at).toLocaleDateString()}\n\nContent:\n${content}`
         );
       }
     }
@@ -1183,7 +1199,7 @@ Skip theory and background. Only include items someone can actually act on. If t
         <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-blue-500/20">
           <Sparkles size={18} class="text-blue-400" />
         </div>
-        <h2 class="font-semibold text-base text-gray-100">AI Assistant</h2>
+        <h2 class="font-semibold text-base text-gray-100">Feeds Assistant</h2>
       </div>
       {#if isMobileOverlay && onClose}
         <button

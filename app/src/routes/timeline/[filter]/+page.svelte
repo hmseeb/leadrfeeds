@@ -381,49 +381,102 @@
 				offset += data.length;
 			}
 		} else {
-			// Use the existing RPC function for other filters
-			// Request more data to account for client-side filtering
-			const hasFilters = excludedFeedIds.size > 0 || excludedCategories.size > 0;
-			const requestLimit = hasFilters && !feedIdFilter ? limit * 2 : limit;
+			// Check if we have filters applied (not viewing a specific feed)
+			const hasFilters = !feedIdFilter && (excludedFeedIds.size > 0 || excludedCategories.size > 0);
 
-			const { data, error } = await supabase.rpc('get_user_timeline', {
-				user_id_param: $user.id,
-				feed_id_filter: feedIdFilter,
-				starred_only: starredOnly,
-				unread_only: unreadOnly,
-				limit_param: requestLimit,
-				offset_param: offset
-			});
-
-			if (error) {
-				console.error('Error loading entries:', error);
-			} else if (data) {
-				// Clean up feed_image URLs by removing trailing slashes
-				let cleanedData = data.map(entry => ({
-					...entry,
-					feed_image: entry.feed_image?.replace(/\/+$/, '') || null
-				}));
-
-				// Apply filters if not viewing a specific feed
-				if (!feedIdFilter && (excludedFeedIds.size > 0 || excludedCategories.size > 0)) {
-					cleanedData = cleanedData.filter(entry => {
+			if (hasFilters) {
+				// When filters are active, compute included feed IDs and query directly
+				// This ensures we get entries from the correct feeds instead of filtering client-side
+				const includedFeedIds = feeds
+					.filter(f => {
 						// Check if feed is excluded
-						if (excludedFeedIds.has(entry.feed_id)) return false;
-
-						// Check if category is excluded (need to find feed to get its category)
-						const feed = feeds.find(f => f.id === entry.feed_id);
-						if (feed) {
-							const cat = getDomainCategory(feed.url, feed.site_url);
-							if (excludedCategories.has(cat)) return false;
-						}
-
+						if (excludedFeedIds.has(f.id)) return false;
+						// Check if category is excluded
+						const cat = getDomainCategory(f.url, f.site_url);
+						if (excludedCategories.has(cat)) return false;
 						return true;
-					});
+					})
+					.map(f => f.id);
+
+				if (includedFeedIds.length === 0) {
+					// No feeds to show
+					loading = false;
+					return;
 				}
 
-				entries = [...entries, ...cleanedData];
-				hasMore = data.length === requestLimit;
-				offset += data.length;
+				// Query entries directly for included feeds
+				const { data, error } = await supabase
+					.from('entries')
+					.select(`
+						id,
+						title,
+						url,
+						description,
+						content,
+						author,
+						published_at,
+						feed:feed_id (
+							id,
+							title,
+							category,
+							image,
+							site_url
+						)
+					`)
+					.in('feed_id', includedFeedIds)
+					.order('published_at', { ascending: false })
+					.range(offset, offset + limit - 1);
+
+				if (error) {
+					console.error('Error loading filtered entries:', error);
+				} else if (data) {
+					// Transform data to match timeline entry format
+					const transformedData = data.map(entry => {
+						const feed = Array.isArray(entry.feed) ? entry.feed[0] : entry.feed;
+						return {
+							entry_id: entry.id,
+							entry_title: entry.title,
+							entry_url: entry.url,
+							entry_description: entry.description,
+							entry_content: entry.content,
+							entry_author: entry.author,
+							entry_published_at: entry.published_at || new Date().toISOString(),
+							feed_id: feed?.id,
+							feed_title: feed?.title,
+							feed_category: feed?.category,
+							feed_image: feed?.image?.replace(/\/+$/, '') || null,
+							is_read: false,
+							is_starred: false
+						};
+					});
+					entries = [...entries, ...transformedData];
+					hasMore = data.length === limit;
+					offset += data.length;
+				}
+			} else {
+				// No filters - use the existing RPC function
+				const { data, error } = await supabase.rpc('get_user_timeline', {
+					user_id_param: $user.id,
+					feed_id_filter: feedIdFilter,
+					starred_only: starredOnly,
+					unread_only: unreadOnly,
+					limit_param: limit,
+					offset_param: offset
+				});
+
+				if (error) {
+					console.error('Error loading entries:', error);
+				} else if (data) {
+					// Clean up feed_image URLs by removing trailing slashes
+					const cleanedData = data.map(entry => ({
+						...entry,
+						feed_image: entry.feed_image?.replace(/\/+$/, '') || null
+					}));
+
+					entries = [...entries, ...cleanedData];
+					hasMore = data.length === limit;
+					offset += data.length;
+				}
 			}
 		}
 
@@ -800,8 +853,8 @@
 														</span>
 													</button>
 
-													<!-- Feeds in Category (indented) -->
-													{#if !excludedCategories.has(category.name)}
+													<!-- Feeds in Category (indented) - only show if category has more than 1 feed -->
+													{#if !excludedCategories.has(category.name) && category.feeds.length > 1}
 														{#each category.feeds as feed}
 															<button
 																onclick={() => toggleFeedFilter(feed.id)}

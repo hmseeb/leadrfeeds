@@ -98,7 +98,7 @@
 }
 
 .prose a {
-  @apply text-primary hover:text-primary/90 underline;
+  @apply text-primary hover:text-primary/90 underline break-all;
 }
 
 .prose code {
