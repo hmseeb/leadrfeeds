@@ -217,6 +217,10 @@
 			const params = new URLSearchParams(window.location.search);
 			const entryId = params.get('entry');
 
+			// Get saved scroll position before any state changes
+			const savedPosition = event.state?.scrollPosition ?? scrollPositions.get(filter) ?? 0;
+			const isClosingArticle = !entryId && selectedEntry;
+
 			const performTransition = () => {
 				if (entryId) {
 					// Find and select the entry
@@ -233,14 +237,9 @@
 						selectedEntry = null;
 					}
 				} else {
-					// No entry param, close detail view and restore scroll
+					// No entry param, close detail view
 					animatingEntryId = selectedEntry?.entry_id || null;
 					selectedEntry = null;
-					// Restore scroll position from state or saved positions
-					const savedPosition = event.state?.scrollPosition ?? scrollPositions.get(filter) ?? 0;
-					if (timelineScrollContainer) {
-						timelineScrollContainer.scrollTop = savedPosition;
-					}
 				}
 				return Promise.resolve();
 			};
@@ -252,9 +251,26 @@
 					isAnimating = false;
 					animatingEntryId = null;
 					isHistoryNavigation = false;
+
+					// Restore scroll position after transition completes when closing article
+					if (isClosingArticle && timelineScrollContainer) {
+						requestAnimationFrame(() => {
+							if (timelineScrollContainer) {
+								timelineScrollContainer.scrollTop = savedPosition;
+							}
+						});
+					}
 				});
 			} else {
 				performTransition();
+				// Restore scroll position after DOM update when closing article
+				if (isClosingArticle && timelineScrollContainer) {
+					requestAnimationFrame(() => {
+						if (timelineScrollContainer) {
+							timelineScrollContainer.scrollTop = savedPosition;
+						}
+					});
+				}
 				// Small delay to ensure state is updated before allowing new effects
 				requestAnimationFrame(() => {
 					isHistoryNavigation = false;
@@ -722,6 +738,7 @@
 
 	function closeEntryDetail() {
 		const previousEntryId = selectedEntry?.entry_id;
+		const savedPosition = scrollPositions.get(filter) || 0;
 
 		// Use View Transitions API if available for hero animation
 		if (browser && 'startViewTransition' in document && previousEntryId) {
@@ -734,18 +751,21 @@
 				// Update browser history
 				const url = new URL(window.location.href);
 				url.searchParams.delete('entry');
-				window.history.pushState({ scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
-
-				// Restore scroll position
-				if (timelineScrollContainer && isDesktopMode) {
-					const savedPosition = scrollPositions.get(filter) || 0;
-					timelineScrollContainer.scrollTop = savedPosition;
-				}
+				window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
 
 				return Promise.resolve();
 			}).finished.then(() => {
 				isAnimating = false;
 				animatingEntryId = null;
+
+				// Restore scroll position after transition completes
+				if (timelineScrollContainer && isDesktopMode) {
+					requestAnimationFrame(() => {
+						if (timelineScrollContainer) {
+							timelineScrollContainer.scrollTop = savedPosition;
+						}
+					});
+				}
 			});
 		} else {
 			// Fallback for browsers without View Transitions API
@@ -755,12 +775,11 @@
 			if (browser) {
 				const url = new URL(window.location.href);
 				url.searchParams.delete('entry');
-				window.history.pushState({ scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+				window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
 			}
 
 			// Restore scroll position for current view after closing article
 			if (timelineScrollContainer && isDesktopMode) {
-				const savedPosition = scrollPositions.get(filter) || 0;
 				requestAnimationFrame(() => {
 					if (timelineScrollContainer) {
 						timelineScrollContainer.scrollTop = savedPosition;
