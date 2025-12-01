@@ -217,39 +217,49 @@
 			const params = new URLSearchParams(window.location.search);
 			const entryId = params.get('entry');
 
-			if (entryId) {
-				// Find and select the entry
-				const entry = entries.find(e => e.entry_id === entryId);
-				if (entry) {
-					selectedEntry = entry;
-					// Reset scroll to top for article view
-					if (timelineScrollContainer) {
-						requestAnimationFrame(() => {
-							if (timelineScrollContainer) {
-								timelineScrollContainer.scrollTop = 0;
-							}
-						});
+			const performTransition = () => {
+				if (entryId) {
+					// Find and select the entry
+					const entry = entries.find(e => e.entry_id === entryId);
+					if (entry) {
+						animatingEntryId = entry.entry_id;
+						selectedEntry = entry;
+						// Reset scroll to top for article view
+						if (timelineScrollContainer) {
+							timelineScrollContainer.scrollTop = 0;
+						}
+					} else {
+						// Entry not in current list, clear selection
+						selectedEntry = null;
 					}
 				} else {
-					// Entry not in current list, clear selection
+					// No entry param, close detail view and restore scroll
+					animatingEntryId = selectedEntry?.entry_id || null;
 					selectedEntry = null;
-				}
-			} else {
-				// No entry param, close detail view and restore scroll
-				selectedEntry = null;
-				// Restore scroll position from state or saved positions
-				const savedPosition = event.state?.scrollPosition ?? scrollPositions.get(filter) ?? 0;
-				requestAnimationFrame(() => {
+					// Restore scroll position from state or saved positions
+					const savedPosition = event.state?.scrollPosition ?? scrollPositions.get(filter) ?? 0;
 					if (timelineScrollContainer) {
 						timelineScrollContainer.scrollTop = savedPosition;
 					}
+				}
+				return Promise.resolve();
+			};
+
+			// Use View Transitions API if available
+			if ('startViewTransition' in document) {
+				isAnimating = true;
+				(document as any).startViewTransition(performTransition).finished.then(() => {
+					isAnimating = false;
+					animatingEntryId = null;
+					isHistoryNavigation = false;
+				});
+			} else {
+				performTransition();
+				// Small delay to ensure state is updated before allowing new effects
+				requestAnimationFrame(() => {
+					isHistoryNavigation = false;
 				});
 			}
-
-			// Small delay to ensure state is updated before allowing new effects
-			requestAnimationFrame(() => {
-				isHistoryNavigation = false;
-			});
 		};
 
 		window.addEventListener('popstate', handlePopState);
