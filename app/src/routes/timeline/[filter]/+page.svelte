@@ -4,6 +4,7 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import EntryCard from '$lib/components/EntryCard.svelte';
 	import AIChat from '$lib/components/AIChat.svelte';
@@ -29,6 +30,8 @@
 
 	// Initialize filter from page params reactively to avoid flash of wrong title
 	const filter = $derived($page.params.filter || 'all');
+	// Get entry ID from URL query params for deep linking
+	const urlEntryId = $derived($page.url.searchParams.get('entry'));
 	let activeFeedId = $state<string | null>(null);
 	let activeCategory = $state<string | null>(null);
 	let selectedEntry = $state<TimelineEntry | null>(null);
@@ -37,8 +40,10 @@
 	let loadMoreElement = $state<HTMLElement | null>(null);
 	let isSidebarCollapsed = $state(false);
 	let timelineScrollContainer = $state<HTMLElement | null>(null);
-	// Store scroll positions per view (filter)
+	// Store scroll positions per view (filter) - persist to sessionStorage
 	let scrollPositions = $state<Map<string, number>>(new Map());
+	// Track if we're navigating via history (back/forward buttons)
+	let isHistoryNavigation = $state(false);
 
 	// Filter state
 	let showFilterMenu = $state(false);
@@ -173,7 +178,7 @@
 		return excludedCount > 0 && excludedCount < category.feeds.length;
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		if (!$user) {
 			goto('/auth/login');
 			return;
@@ -182,11 +187,73 @@
 		// Ensure page starts at top on mobile
 		window.scrollTo(0, 0);
 
-		// Load filter preferences from Supabase
-		await loadFilterPreferences();
+		// Load scroll positions from sessionStorage
+		if (browser) {
+			try {
+				const saved = sessionStorage.getItem('timeline-scroll-positions');
+				if (saved) {
+					scrollPositions = new Map(JSON.parse(saved));
+				}
+			} catch (e) {
+				// Ignore parse errors
+			}
+		}
 
-		await loadFeeds();
-		await loadEntries();
+		// Load data asynchronously
+		(async () => {
+			// Load filter preferences from Supabase
+			await loadFilterPreferences();
+			await loadFeeds();
+			await loadEntries();
+		})();
+
+		// Handle popstate (browser back/forward buttons)
+		const handlePopState = (event: PopStateEvent) => {
+			isHistoryNavigation = true;
+			// Check URL for entry param
+			const params = new URLSearchParams(window.location.search);
+			const entryId = params.get('entry');
+
+			if (entryId) {
+				// Find and select the entry
+				const entry = entries.find(e => e.entry_id === entryId);
+				if (entry) {
+					selectedEntry = entry;
+					// Reset scroll to top for article view
+					if (timelineScrollContainer) {
+						requestAnimationFrame(() => {
+							if (timelineScrollContainer) {
+								timelineScrollContainer.scrollTop = 0;
+							}
+						});
+					}
+				} else {
+					// Entry not in current list, clear selection
+					selectedEntry = null;
+				}
+			} else {
+				// No entry param, close detail view and restore scroll
+				selectedEntry = null;
+				// Restore scroll position from state or saved positions
+				const savedPosition = event.state?.scrollPosition ?? scrollPositions.get(filter) ?? 0;
+				requestAnimationFrame(() => {
+					if (timelineScrollContainer) {
+						timelineScrollContainer.scrollTop = savedPosition;
+					}
+				});
+			}
+
+			// Small delay to ensure state is updated before allowing new effects
+			requestAnimationFrame(() => {
+				isHistoryNavigation = false;
+			});
+		};
+
+		window.addEventListener('popstate', handlePopState);
+
+		return () => {
+			window.removeEventListener('popstate', handlePopState);
+		};
 	});
 
 	// Set up intersection observer when loadMoreElement is available
@@ -208,6 +275,54 @@
 			if (loadMoreElement) {
 				observer.unobserve(loadMoreElement);
 			}
+		};
+	});
+
+	// Handle URL entry parameter for deep linking and browser navigation
+	$effect(() => {
+		if (!browser || isHistoryNavigation) return;
+
+		// If there's an entry ID in URL and entries are loaded, select it
+		if (urlEntryId && entries.length > 0) {
+			const entry = entries.find(e => e.entry_id === urlEntryId);
+			if (entry && selectedEntry?.entry_id !== urlEntryId) {
+				selectedEntry = entry;
+			}
+		}
+	});
+
+	// Save scroll positions to sessionStorage when they change
+	$effect(() => {
+		if (browser && scrollPositions.size > 0) {
+			try {
+				sessionStorage.setItem('timeline-scroll-positions', JSON.stringify([...scrollPositions]));
+			} catch (e) {
+				// Ignore storage errors
+			}
+		}
+	});
+
+	// Track scroll position continuously when in list view (not article view)
+	$effect(() => {
+		if (!browser || !timelineScrollContainer || selectedEntry) return;
+
+		let scrollTimeout: ReturnType<typeof setTimeout>;
+
+		const handleScroll = () => {
+			// Debounce scroll position updates
+			clearTimeout(scrollTimeout);
+			scrollTimeout = setTimeout(() => {
+				if (timelineScrollContainer && !selectedEntry) {
+					scrollPositions.set(filter, timelineScrollContainer.scrollTop);
+				}
+			}, 100);
+		};
+
+		timelineScrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+
+		return () => {
+			clearTimeout(scrollTimeout);
+			timelineScrollContainer?.removeEventListener('scroll', handleScroll);
 		};
 	});
 
@@ -537,8 +652,25 @@
 		// Save scroll position for current view before viewing article
 		if (timelineScrollContainer) {
 			scrollPositions.set(filter, timelineScrollContainer.scrollTop);
+			// Force save to sessionStorage immediately
+			if (browser) {
+				try {
+					sessionStorage.setItem('timeline-scroll-positions', JSON.stringify([...scrollPositions]));
+				} catch (e) {
+					// Ignore storage errors
+				}
+			}
 		}
+
 		selectedEntry = entry;
+
+		// Push state to browser history for back button support
+		if (browser) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('entry', entry.entry_id);
+			window.history.pushState({ entryId: entry.entry_id, scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+		}
+
 		// Reset scroll to top for the article view
 		if (timelineScrollContainer && isDesktopMode) {
 			requestAnimationFrame(() => {
@@ -551,6 +683,14 @@
 
 	function closeEntryDetail() {
 		selectedEntry = null;
+
+		// Update browser history - go back or update URL
+		if (browser) {
+			const url = new URL(window.location.href);
+			url.searchParams.delete('entry');
+			window.history.pushState({ scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+		}
+
 		// Restore scroll position for current view after closing article
 		if (timelineScrollContainer && isDesktopMode) {
 			const savedPosition = scrollPositions.get(filter) || 0;
