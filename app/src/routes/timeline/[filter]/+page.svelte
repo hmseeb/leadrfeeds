@@ -44,6 +44,9 @@
 	let scrollPositions = $state<Map<string, number>>(new Map());
 	// Track if we're navigating via history (back/forward buttons)
 	let isHistoryNavigation = $state(false);
+	// Hero animation state
+	let isAnimating = $state(false);
+	let animatingEntryId = $state<string | null>(null);
 
 	// Filter state
 	let showFilterMenu = $state(false);
@@ -662,43 +665,98 @@
 			}
 		}
 
-		selectedEntry = entry;
+		// Use View Transitions API if available for hero animation
+		if (browser && 'startViewTransition' in document) {
+			animatingEntryId = entry.entry_id;
+			isAnimating = true;
 
-		// Push state to browser history for back button support
-		if (browser) {
-			const url = new URL(window.location.href);
-			url.searchParams.set('entry', entry.entry_id);
-			window.history.pushState({ entryId: entry.entry_id, scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
-		}
+			(document as any).startViewTransition(() => {
+				selectedEntry = entry;
+				animatingEntryId = null;
 
-		// Reset scroll to top for the article view
-		if (timelineScrollContainer && isDesktopMode) {
-			requestAnimationFrame(() => {
-				if (timelineScrollContainer) {
+				// Push state to browser history for back button support
+				const url = new URL(window.location.href);
+				url.searchParams.set('entry', entry.entry_id);
+				window.history.pushState({ entryId: entry.entry_id, scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+
+				// Reset scroll to top for the article view
+				if (timelineScrollContainer && isDesktopMode) {
 					timelineScrollContainer.scrollTop = 0;
 				}
+
+				return Promise.resolve();
+			}).finished.then(() => {
+				isAnimating = false;
 			});
+		} else {
+			// Fallback for browsers without View Transitions API
+			selectedEntry = entry;
+
+			// Push state to browser history for back button support
+			if (browser) {
+				const url = new URL(window.location.href);
+				url.searchParams.set('entry', entry.entry_id);
+				window.history.pushState({ entryId: entry.entry_id, scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+			}
+
+			// Reset scroll to top for the article view
+			if (timelineScrollContainer && isDesktopMode) {
+				requestAnimationFrame(() => {
+					if (timelineScrollContainer) {
+						timelineScrollContainer.scrollTop = 0;
+					}
+				});
+			}
 		}
 	}
 
 	function closeEntryDetail() {
-		selectedEntry = null;
+		const previousEntryId = selectedEntry?.entry_id;
 
-		// Update browser history - go back or update URL
-		if (browser) {
-			const url = new URL(window.location.href);
-			url.searchParams.delete('entry');
-			window.history.pushState({ scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
-		}
+		// Use View Transitions API if available for hero animation
+		if (browser && 'startViewTransition' in document && previousEntryId) {
+			animatingEntryId = previousEntryId;
+			isAnimating = true;
 
-		// Restore scroll position for current view after closing article
-		if (timelineScrollContainer && isDesktopMode) {
-			const savedPosition = scrollPositions.get(filter) || 0;
-			requestAnimationFrame(() => {
-				if (timelineScrollContainer) {
+			(document as any).startViewTransition(() => {
+				selectedEntry = null;
+
+				// Update browser history
+				const url = new URL(window.location.href);
+				url.searchParams.delete('entry');
+				window.history.pushState({ scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+
+				// Restore scroll position
+				if (timelineScrollContainer && isDesktopMode) {
+					const savedPosition = scrollPositions.get(filter) || 0;
 					timelineScrollContainer.scrollTop = savedPosition;
 				}
+
+				return Promise.resolve();
+			}).finished.then(() => {
+				isAnimating = false;
+				animatingEntryId = null;
 			});
+		} else {
+			// Fallback for browsers without View Transitions API
+			selectedEntry = null;
+
+			// Update browser history - go back or update URL
+			if (browser) {
+				const url = new URL(window.location.href);
+				url.searchParams.delete('entry');
+				window.history.pushState({ scrollPosition: scrollPositions.get(filter) || 0 }, '', url.toString());
+			}
+
+			// Restore scroll position for current view after closing article
+			if (timelineScrollContainer && isDesktopMode) {
+				const savedPosition = scrollPositions.get(filter) || 0;
+				requestAnimationFrame(() => {
+					if (timelineScrollContainer) {
+						timelineScrollContainer.scrollTop = savedPosition;
+					}
+				});
+			}
 		}
 	}
 
@@ -749,22 +807,23 @@
 			<div class="max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-4 md:px-6 mx-auto py-4 md:py-6">
 				{#if selectedEntry && isDesktopMode}
 					<!-- Desktop Article View with Breadcrumbs -->
-					<!-- Breadcrumb Navigation - Sticky -->
-					<nav class="sticky top-0 z-10 bg-secondary/95 backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-4">
-						<button
-							onclick={closeEntryDetail}
-							class="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors group"
-						>
-							<span class="group-hover:underline">{viewTitle()}</span>
-							<ChevronRight size={16} class="text-muted-foreground/50" />
-							<span class="text-foreground font-medium truncate max-w-md">
-								{selectedEntry.entry_title || 'Article'}
-							</span>
-						</button>
-					</nav>
+					<div style="view-transition-name: hero-card" class="article-view-wrapper">
+						<!-- Breadcrumb Navigation - Sticky -->
+						<nav class="sticky top-0 z-10 bg-secondary/95 backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-4">
+							<button
+								onclick={closeEntryDetail}
+								class="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors group"
+							>
+								<span class="group-hover:underline">{viewTitle()}</span>
+								<ChevronRight size={16} class="text-muted-foreground/50" />
+								<span class="text-foreground font-medium truncate max-w-md">
+									{selectedEntry.entry_title || 'Article'}
+								</span>
+							</button>
+						</nav>
 
-					<!-- Article Content -->
-					<article class="bg-card border border-border rounded-lg p-6 md:p-8">
+						<!-- Article Content -->
+						<article class="bg-card border border-border rounded-lg p-6 md:p-8">
 						<!-- Feed Info -->
 						<div class="flex items-center gap-3 mb-4">
 							{#if selectedEntry.feed_image}
@@ -856,6 +915,7 @@
 							{/if}
 						</div>
 					</article>
+					</div>
 				{:else}
 					<!-- Posts List View -->
 					<!-- Header with Search and Filter -->
@@ -1076,13 +1136,18 @@
 
 						<div class="space-y-2">
 							{#each filteredEntries() as entry (entry.entry_id)}
-								<EntryCard
-									{entry}
-									onToggleStar={handleToggleStar}
-									onMarkRead={handleMarkRead}
-									onClick={handleEntryClick}
-									isSelected={false}
-								/>
+								<div
+									style={animatingEntryId === entry.entry_id ? 'view-transition-name: hero-card' : ''}
+									class="entry-card-wrapper"
+								>
+									<EntryCard
+										{entry}
+										onToggleStar={handleToggleStar}
+										onMarkRead={handleMarkRead}
+										onClick={handleEntryClick}
+										isSelected={false}
+									/>
+								</div>
 							{/each}
 						</div>
 
@@ -1356,5 +1421,60 @@
 	/* Handle divs with inline styles for alignment */
 	:global(.article-content div) {
 		float: none !important;
+	}
+
+	/* View Transitions API - Hero Animation */
+	@supports (view-transition-name: hero-card) {
+		::view-transition-old(hero-card),
+		::view-transition-new(hero-card) {
+			animation-duration: 300ms;
+			animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		::view-transition-old(hero-card) {
+			animation-name: hero-fade-out;
+		}
+
+		::view-transition-new(hero-card) {
+			animation-name: hero-fade-in;
+		}
+
+		@keyframes hero-fade-out {
+			from {
+				opacity: 1;
+				transform: scale(1);
+			}
+			to {
+				opacity: 0;
+				transform: scale(0.95);
+			}
+		}
+
+		@keyframes hero-fade-in {
+			from {
+				opacity: 0;
+				transform: scale(0.95);
+			}
+			to {
+				opacity: 1;
+				transform: scale(1);
+			}
+		}
+
+		/* Cross-fade the root for smoother transitions */
+		::view-transition-old(root),
+		::view-transition-new(root) {
+			animation-duration: 200ms;
+			animation-timing-function: ease-out;
+		}
+	}
+
+	/* Entry card wrapper for transitions */
+	.entry-card-wrapper {
+		contain: layout;
+	}
+
+	.article-view-wrapper {
+		contain: layout;
 	}
 </style>
