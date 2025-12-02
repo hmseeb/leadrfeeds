@@ -220,6 +220,20 @@
 			// Get saved scroll position before any state changes
 			const savedPosition = event.state?.scrollPosition ?? scrollPositions.get(filter) ?? 0;
 			const isClosingArticle = !entryId && selectedEntry;
+			const isOpeningArticle = entryId && !selectedEntry;
+
+			// When closing article, skip View Transition to avoid scroll flash
+			if (isClosingArticle) {
+				selectedEntry = null;
+				// Restore scroll position after DOM update
+				requestAnimationFrame(() => {
+					if (timelineScrollContainer) {
+						timelineScrollContainer.scrollTop = savedPosition;
+					}
+					isHistoryNavigation = false;
+				});
+				return;
+			}
 
 			const performTransition = () => {
 				if (entryId) {
@@ -236,40 +250,20 @@
 						// Entry not in current list, clear selection
 						selectedEntry = null;
 					}
-				} else {
-					// No entry param, close detail view
-					animatingEntryId = selectedEntry?.entry_id || null;
-					selectedEntry = null;
-					// Restore scroll position immediately so the card is in the right place for the animation
-					if (timelineScrollContainer) {
-						timelineScrollContainer.scrollTop = savedPosition;
-					}
 				}
 				return Promise.resolve();
 			};
 
-			// Use View Transitions API if available
-			if ('startViewTransition' in document) {
+			// Use View Transitions API for opening articles (hero animation)
+			if (isOpeningArticle && 'startViewTransition' in document) {
 				isAnimating = true;
 				(document as any).startViewTransition(performTransition).finished.then(() => {
 					isAnimating = false;
 					animatingEntryId = null;
 					isHistoryNavigation = false;
-					// Restore scroll position AFTER transition completes when closing article
-					if (isClosingArticle && timelineScrollContainer) {
-						timelineScrollContainer.scrollTop = savedPosition;
-					}
 				});
 			} else {
 				performTransition();
-				// Restore scroll position after DOM update when closing article (fallback)
-				if (isClosingArticle && timelineScrollContainer) {
-					requestAnimationFrame(() => {
-						if (timelineScrollContainer) {
-							timelineScrollContainer.scrollTop = savedPosition;
-						}
-					});
-				}
 				// Small delay to ensure state is updated before allowing new effects
 				requestAnimationFrame(() => {
 					isHistoryNavigation = false;
@@ -736,56 +730,25 @@
 	}
 
 	function closeEntryDetail() {
-		const previousEntryId = selectedEntry?.entry_id;
 		const savedPosition = scrollPositions.get(filter) || 0;
 
-		// Use View Transitions API if available for hero animation
-		if (browser && 'startViewTransition' in document && previousEntryId) {
-			animatingEntryId = previousEntryId;
-			isAnimating = true;
+		// Don't use View Transition when closing - just instantly restore
+		// This avoids the scroll flash issue
+		selectedEntry = null;
 
-			(document as any).startViewTransition(() => {
-				selectedEntry = null;
-
-				// Update browser history
-				const url = new URL(window.location.href);
-				url.searchParams.delete('entry');
-				window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
-
-				// Restore scroll position inside callback so the "new" state is captured correctly for animation
-				if (timelineScrollContainer) {
-					timelineScrollContainer.scrollTop = savedPosition;
-				}
-
-				return Promise.resolve();
-			}).finished.then(() => {
-				isAnimating = false;
-				animatingEntryId = null;
-				// Also restore after transition to ensure it sticks
-				if (timelineScrollContainer) {
-					timelineScrollContainer.scrollTop = savedPosition;
-				}
-			});
-		} else {
-			// Fallback for browsers without View Transitions API
-			selectedEntry = null;
-
-			// Update browser history - go back or update URL
-			if (browser) {
-				const url = new URL(window.location.href);
-				url.searchParams.delete('entry');
-				window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
-			}
-
-			// Restore scroll position for current view after closing article
-			if (timelineScrollContainer) {
-				requestAnimationFrame(() => {
-					if (timelineScrollContainer) {
-						timelineScrollContainer.scrollTop = savedPosition;
-					}
-				});
-			}
+		// Update browser history
+		if (browser) {
+			const url = new URL(window.location.href);
+			url.searchParams.delete('entry');
+			window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
 		}
+
+		// Restore scroll position after DOM update
+		requestAnimationFrame(() => {
+			if (timelineScrollContainer) {
+				timelineScrollContainer.scrollTop = savedPosition;
+			}
+		});
 	}
 
 	// Compute the current view title for breadcrumbs
