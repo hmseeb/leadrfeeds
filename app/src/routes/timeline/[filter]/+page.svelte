@@ -752,11 +752,16 @@
 				url.searchParams.delete('entry');
 				window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
 
+				// Restore scroll position inside callback so the "new" state is captured correctly for animation
+				if (timelineScrollContainer) {
+					timelineScrollContainer.scrollTop = savedPosition;
+				}
+
 				return Promise.resolve();
 			}).finished.then(() => {
 				isAnimating = false;
 				animatingEntryId = null;
-				// Restore scroll position AFTER transition completes to ensure it sticks
+				// Also restore after transition to ensure it sticks
 				if (timelineScrollContainer) {
 					timelineScrollContainer.scrollTop = savedPosition;
 				}
