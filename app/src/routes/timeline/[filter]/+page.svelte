@@ -255,6 +255,10 @@
 					isAnimating = false;
 					animatingEntryId = null;
 					isHistoryNavigation = false;
+					// Restore scroll position AFTER transition completes when closing article
+					if (isClosingArticle && timelineScrollContainer) {
+						timelineScrollContainer.scrollTop = savedPosition;
+					}
 				});
 			} else {
 				performTransition();
@@ -748,15 +752,14 @@
 				url.searchParams.delete('entry');
 				window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
 
-				// Restore scroll position immediately so the card is in the right place for the animation
-				if (timelineScrollContainer) {
-					timelineScrollContainer.scrollTop = savedPosition;
-				}
-
 				return Promise.resolve();
 			}).finished.then(() => {
 				isAnimating = false;
 				animatingEntryId = null;
+				// Restore scroll position AFTER transition completes to ensure it sticks
+				if (timelineScrollContainer) {
+					timelineScrollContainer.scrollTop = savedPosition;
+				}
 			});
 		} else {
 			// Fallback for browsers without View Transitions API
@@ -770,7 +773,7 @@
 			}
 
 			// Restore scroll position for current view after closing article
-			if (timelineScrollContainer && isDesktopMode) {
+			if (timelineScrollContainer) {
 				requestAnimationFrame(() => {
 					if (timelineScrollContainer) {
 						timelineScrollContainer.scrollTop = savedPosition;
