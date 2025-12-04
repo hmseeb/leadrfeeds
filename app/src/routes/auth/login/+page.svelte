@@ -76,9 +76,17 @@
 					</div>
 
 					<div>
-						<label for="password" class="block text-sm font-medium text-foreground mb-2">
-							Password
-						</label>
+						<div class="flex items-center justify-between mb-2">
+							<label for="password" class="block text-sm font-medium text-foreground">
+								Password
+							</label>
+							<a
+								href="/auth/forgot-password"
+								class="text-sm text-primary hover:text-primary/90 font-medium"
+							>
+								Forgot password?
+							</a>
+						</div>
 						<input
 							id="password"
 							type="password"

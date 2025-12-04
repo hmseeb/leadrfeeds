@@ -48,16 +48,42 @@ app/
 │   │   ├── stores/        # Svelte stores (auth, screenSize)
 │   │   └── types/         # TypeScript types (database.ts)
 │   └── routes/            # SvelteKit file-based routing
-│       ├── auth/          # Login, register, callback
+│       ├── auth/          # Authentication routes
+│       │   ├── login/     # Email/password sign in
+│       │   ├── register/  # User registration
+│       │   ├── callback/  # OAuth & password recovery handler
+│       │   ├── forgot-password/  # Request reset link
+│       │   └── reset-password/   # Set new password
 │       ├── discover/      # Feed discovery + suggestions
 │       ├── settings/      # User settings
 │       └── timeline/[filter]/  # Main feed reader
 ```
 
 ### Core Data Flow
-1. **Feed Sync**: External service (Folo) sends webhooks → n8n → Supabase
-2. **User Data**: Subscriptions, read status, stars stored in Supabase with RLS
-3. **Timeline**: Uses `get_user_timeline` RPC function for efficient entry retrieval
+1. **Authentication**: Supabase Auth with email/password, password recovery via email
+2. **Feed Sync**: External service (Folo) sends webhooks → n8n → Supabase
+3. **User Data**: Subscriptions, read status, stars stored in Supabase with RLS
+4. **Timeline**: Uses `get_user_timeline` RPC function for efficient entry retrieval
+
+### Authentication Flow
+
+**Auth Store** (`lib/stores/auth.ts`):
+- Exports writable stores: `user`, `session`, `loading`
+- Helper functions: `signUp`, `signIn`, `signOut`, `resetPasswordForEmail`, `updatePassword`
+- Auto-initializes via `supabase.auth.getSession()` and `onAuthStateChange` listener
+
+**Password Recovery Flow**:
+1. User requests reset at `/auth/forgot-password` → calls `resetPasswordForEmail(email)`
+2. Supabase sends email with recovery link (redirectTo: `/auth/reset-password`)
+3. User clicks link → redirected to `/auth/callback?type=recovery`
+4. Callback handler detects `type=recovery` → redirects to `/auth/reset-password`
+5. Reset page verifies session exists (recovery tokens create temporary session)
+6. User sets new password → calls `updatePassword()` → redirects to login
+
+**Login Redirect Logic**:
+- After login, checks if user has subscriptions
+- If subscriptions exist → `/timeline/all`
+- If no subscriptions → `/discover`
 
 ### Responsive Design
 The app uses a custom `useDesktopLayout` store (`lib/stores/screenSize.ts`) that adapts to:
