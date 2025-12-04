@@ -76,17 +76,9 @@
 					</div>
 
 					<div>
-						<div class="flex items-center justify-between mb-2">
-							<label for="password" class="block text-sm font-medium text-foreground">
-								Password
-							</label>
-							<a
-								href="/auth/forgot-password"
-								class="text-sm text-primary hover:text-primary/90 font-medium"
-							>
-								Forgot password?
-							</a>
-						</div>
+						<label for="password" class="block text-sm font-medium text-foreground mb-2">
+							Password
+						</label>
 						<input
 							id="password"
 							type="password"
@@ -95,6 +87,12 @@
 							placeholder="••••••••"
 							disabled={loading}
 						/>
+						<a
+							href="/auth/forgot-password"
+							class="block text-sm text-primary hover:text-primary/90 font-medium mt-2 text-right"
+						>
+							Forgot password?
+						</a>
 					</div>
 
 					{#if error}
