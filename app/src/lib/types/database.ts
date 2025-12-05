@@ -471,6 +471,7 @@ export type Database = {
           starred_only?: boolean
           unread_only?: boolean
           hours_lookback?: number
+          search_query?: string
         }
         Returns: {
           entry_id: string

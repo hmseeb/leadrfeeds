@@ -1429,6 +1429,7 @@
 					: null}
 				timelineEntries={entries}
 				{feeds}
+				searchQuery={activeSearchQuery}
 			/>
 		{:else}
 			<!-- Mobile FAB for AI Chat (hidden when chat is open) -->
@@ -1466,6 +1467,7 @@
 						{feeds}
 						isMobileOverlay={true}
 						onClose={() => isChatOpen = false}
+						searchQuery={activeSearchQuery}
 					/>
 				</div>
 			{/if}

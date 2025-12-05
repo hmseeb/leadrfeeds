@@ -56,6 +56,7 @@
     feeds?: any[];
     isMobileOverlay?: boolean;
     onClose?: () => void;
+    searchQuery?: string;
   }
 
   let {
@@ -69,6 +70,7 @@
     feeds = [],
     isMobileOverlay = false,
     onClose,
+    searchQuery = "",
   }: Props = $props();
 
   type ChatMessage = Tables<"chat_messages">;
@@ -227,11 +229,13 @@ OUTPUT STYLE:
   async function fetchAIContext(
     viewType: 'all' | 'starred' | 'unread' | 'feed' | 'category',
     feedId?: string,
-    category?: string
+    category?: string,
+    searchQueryParam?: string
   ): Promise<AIContextEntry[]> {
     if (!$user) return [];
 
-    const cacheKey = `${viewType}-${feedId || ''}-${category || ''}`;
+    // Include search query in cache key
+    const cacheKey = `${viewType}-${feedId || ''}-${category || ''}-${searchQueryParam || ''}`;
     const cached = aiContextCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
       return cached.entries;
@@ -245,7 +249,8 @@ OUTPUT STYLE:
         feed_id_filter: viewType === 'feed' ? feedId : undefined,
         starred_only: viewType === 'starred',
         unread_only: viewType === 'unread',
-        hours_lookback: 24
+        hours_lookback: 24,
+        search_query: searchQueryParam || undefined
       });
 
       if (error) {
@@ -862,9 +867,15 @@ Skip theory and background. Only include items someone can actually act on. If t
 
     let contextParts: string[] = [];
 
+    // Helper to build context header with optional search query
+    const buildHeader = (viewName: string, entryCount: number) => {
+      const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+      return `## ${viewName}${searchSuffix} (last 24h, ${entryCount} entries, ordered newest to oldest):`;
+    };
+
     for (const context of activeContexts) {
       if (context.type === "view" && (context.label === "All" || context.label === "All Posts")) {
-        const entries = await fetchAIContext('all');
+        const entries = await fetchAIContext('all', undefined, undefined, searchQuery);
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const entrySummaries = entries
@@ -876,10 +887,12 @@ Skip theory and background. Only include items someone can actually act on. If t
               return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## All Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
+          contextParts.push(`${buildHeader('All Posts', entries.length)}\n\n${entrySummaries}`);
+        } else if (searchQuery) {
+          contextParts.push(`## Context: User searched for "${searchQuery}" in All Posts (no matching entries from last 24h)`);
         }
       } else if (context.type === "view" && (context.label === "Starred" || context.label === "Starred Posts")) {
-        const entries = await fetchAIContext('starred');
+        const entries = await fetchAIContext('starred', undefined, undefined, searchQuery);
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const entrySummaries = entries
@@ -890,12 +903,13 @@ Skip theory and background. Only include items someone can actually act on. If t
               return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## Starred Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
+          contextParts.push(`${buildHeader('Starred Posts', entries.length)}\n\n${entrySummaries}`);
         } else {
-          contextParts.push(`## Context: User is viewing their starred/saved posts (none from last 24h)`);
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## Context: User is viewing their starred/saved posts${searchSuffix} (none from last 24h)`);
         }
       } else if (context.type === "view" && (context.label === "Unread" || context.label === "Unread Posts")) {
-        const entries = await fetchAIContext('unread');
+        const entries = await fetchAIContext('unread', undefined, undefined, searchQuery);
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const entrySummaries = entries
@@ -906,12 +920,13 @@ Skip theory and background. Only include items someone can actually act on. If t
               return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## Unread Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${entrySummaries}`);
+          contextParts.push(`${buildHeader('Unread Posts', entries.length)}\n\n${entrySummaries}`);
         } else {
-          contextParts.push(`## Context: User is viewing their unread posts (none from last 24h)`);
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## Context: User is viewing their unread posts${searchSuffix} (none from last 24h)`);
         }
       } else if (context.type === "category") {
-        const entries = await fetchAIContext('category', undefined, context.data.category);
+        const entries = await fetchAIContext('category', undefined, context.data.category, searchQuery);
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const summaries = entries
@@ -922,11 +937,13 @@ Skip theory and background. Only include items someone can actually act on. If t
               return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## ${context.label} Posts (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
+          contextParts.push(`${buildHeader(`${context.label} Posts`, entries.length)}\n\n${summaries}`);
+        } else if (searchQuery) {
+          contextParts.push(`## Context: User searched for "${searchQuery}" in ${context.label} (no matching entries from last 24h)`);
         }
       } else if (context.type === "feed") {
         const feedId = context.data.feed_id || context.data.id;
-        const entries = await fetchAIContext('feed', feedId);
+        const entries = await fetchAIContext('feed', feedId, undefined, searchQuery);
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const summaries = entries
@@ -937,9 +954,11 @@ Skip theory and background. Only include items someone can actually act on. If t
               return `[Post ${postNum}]\nTitle: ${titleLink}\nDescription: ${description || "N/A"}`;
             })
             .join("\n\n---\n\n");
-          contextParts.push(`## ${context.label} Feed (last 24h, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## ${context.label} Feed${searchSuffix} (last 24h, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
         } else {
-          contextParts.push(`## Context: User is asking about the "${context.label}" feed (no posts from last 24h)`);
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## Context: User is asking about the "${context.label}" feed${searchSuffix} (no posts from last 24h)`);
         }
       } else if (context.type === "entry") {
         const rawContent = context.data.entry_content || context.data.entry_description || "";
