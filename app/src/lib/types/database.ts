@@ -344,6 +344,70 @@ export type Database = {
           },
         ]
       }
+      feed_collections: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          icon_name: string
+          display_order: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          icon_name?: string
+          display_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          icon_name?: string
+          display_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      collection_feeds: {
+        Row: {
+          id: string
+          collection_id: string
+          feed_id: string
+          added_at: string | null
+        }
+        Insert: {
+          id?: string
+          collection_id: string
+          feed_id: string
+          added_at?: string | null
+        }
+        Update: {
+          id?: string
+          collection_id?: string
+          feed_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_feeds_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "feed_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_feeds_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -497,6 +561,69 @@ export type Database = {
       toggle_entry_star: {
         Args: { entry_id_param: string; user_id_param: string }
         Returns: boolean
+      }
+      get_user_collections_with_counts: {
+        Args: { user_id_param: string }
+        Returns: {
+          collection_id: string
+          collection_name: string
+          icon_name: string
+          display_order: number
+          feed_count: number
+          unread_count: number
+        }[]
+      }
+      get_collection_timeline: {
+        Args: {
+          user_id_param: string
+          collection_id_param: string
+          starred_only?: boolean
+          unread_only?: boolean
+          limit_param?: number
+          offset_param?: number
+          search_query?: string
+        }
+        Returns: {
+          entry_id: string
+          entry_title: string | null
+          entry_url: string | null
+          entry_description: string | null
+          entry_content: string | null
+          entry_author: string | null
+          entry_published_at: string
+          feed_id: string
+          feed_title: string | null
+          feed_category: string | null
+          feed_image: string | null
+          is_read: boolean
+          is_starred: boolean
+        }[]
+      }
+      get_collection_ai_context: {
+        Args: {
+          user_id_param: string
+          collection_id_param: string
+          starred_only?: boolean
+          unread_only?: boolean
+          hours_lookback?: number
+          search_query?: string
+        }
+        Returns: {
+          entry_id: string
+          entry_title: string | null
+          entry_description: string | null
+          entry_content: string | null
+          entry_author: string | null
+          entry_url: string | null
+          entry_published_at: string
+          feed_id: string
+          feed_title: string | null
+          feed_category: string | null
+          feed_url: string | null
+          feed_site_url: string | null
+          is_starred: boolean
+          is_read: boolean
+        }[]
       }
     }
     Enums: {

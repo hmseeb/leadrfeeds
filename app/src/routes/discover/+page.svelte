@@ -15,7 +15,7 @@
   let subscribedFeedIds = $state<Set<string>>(new Set());
   let searchQuery = $state("");
   let selectedCategory = $state<string>("");
-  let showSubscribedOnly = $state(false);
+  let subscriptionFilter = $state<"all" | "subscribed" | "not_subscribed">("all");
   let loading = $state(true);
   let subscribingIds = $state<Set<string>>(new Set());
 
@@ -49,8 +49,11 @@
     let result = feeds;
     // Hide feeds with no posts (last_entry_at is null means no posts synced yet)
     result = result.filter((f) => f.last_entry_at !== null);
-    if (showSubscribedOnly) {
+    // Apply subscription filter
+    if (subscriptionFilter === "subscribed") {
       result = result.filter((f) => subscribedFeedIds.has(f.feed_id));
+    } else if (subscriptionFilter === "not_subscribed") {
+      result = result.filter((f) => !subscribedFeedIds.has(f.feed_id));
     }
     // Filter by selected category (using display category logic)
     if (selectedCategory) {
@@ -64,6 +67,11 @@
       }
     }
     return result;
+  });
+
+  // Count of not subscribed feeds (for the filter badge)
+  const notSubscribedCount = $derived.by(() => {
+    return feeds.filter((f) => f.last_entry_at !== null && !subscribedFeedIds.has(f.feed_id)).length;
   });
 
   // Get a readable feed title from URL if no title exists
@@ -209,6 +217,13 @@
         const newSet = new Set(subscribedFeedIds);
         newSet.delete(feedId);
         subscribedFeedIds = newSet;
+
+        // Update subscriber count in feeds array
+        feeds = feeds.map((f) =>
+          f.feed_id === feedId
+            ? { ...f, subscriber_count: Math.max(0, (f.subscriber_count || 1) - 1) }
+            : f
+        );
       }
     } else {
       // Subscribe
@@ -219,6 +234,13 @@
 
       if (!error) {
         subscribedFeedIds = new Set(subscribedFeedIds).add(feedId);
+
+        // Update subscriber count in feeds array
+        feeds = feeds.map((f) =>
+          f.feed_id === feedId
+            ? { ...f, subscriber_count: (f.subscriber_count || 0) + 1 }
+            : f
+        );
       }
     }
 
@@ -277,19 +299,32 @@
       <!-- Filters -->
       <div class="mb-8">
         <div class="flex flex-wrap gap-2">
-          <!-- Subscribed filter -->
+          <!-- Subscription filters -->
           <button
             onclick={() => {
-              showSubscribedOnly = !showSubscribedOnly;
-              if (showSubscribedOnly) {
+              subscriptionFilter = subscriptionFilter === "subscribed" ? "all" : "subscribed";
+              if (subscriptionFilter !== "all") {
                 selectedCategory = "";
               }
             }}
-            class="px-4 py-2 rounded-full text-sm font-medium transition-colors {showSubscribedOnly
+            class="px-4 py-2 rounded-full text-sm font-medium transition-colors {subscriptionFilter === 'subscribed'
               ? 'bg-accent text-accent-foreground'
               : 'bg-card border border-border text-foreground hover:bg-accent'}"
           >
             Subscribed ({subscribedFeedIds.size})
+          </button>
+          <button
+            onclick={() => {
+              subscriptionFilter = subscriptionFilter === "not_subscribed" ? "all" : "not_subscribed";
+              if (subscriptionFilter !== "all") {
+                selectedCategory = "";
+              }
+            }}
+            class="px-4 py-2 rounded-full text-sm font-medium transition-colors {subscriptionFilter === 'not_subscribed'
+              ? 'bg-accent text-accent-foreground'
+              : 'bg-card border border-border text-foreground hover:bg-accent'}"
+          >
+            Not Subscribed ({notSubscribedCount})
           </button>
 
           <span class="border-l border-border mx-1"></span>
@@ -298,10 +333,10 @@
           <button
             onclick={() => {
               filterByCategory("");
-              showSubscribedOnly = false;
+              subscriptionFilter = "all";
             }}
             class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory ===
-              '' && !showSubscribedOnly
+              '' && subscriptionFilter === 'all'
               ? 'bg-primary text-primary-foreground'
               : 'bg-card border border-border text-foreground hover:bg-accent'}"
           >
@@ -311,7 +346,7 @@
             <button
               onclick={() => {
                 filterByCategory(category);
-                showSubscribedOnly = false;
+                subscriptionFilter = "all";
               }}
               class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedCategory ===
               category
@@ -348,8 +383,10 @@
       {:else if displayedFeeds.length === 0}
         <div class="text-center py-12">
           <p class="text-muted-foreground">
-            {#if showSubscribedOnly}
+            {#if subscriptionFilter === "subscribed"}
               No subscribed feeds yet
+            {:else if subscriptionFilter === "not_subscribed"}
+              You're subscribed to all available feeds!
             {:else}
               No feeds found
             {/if}

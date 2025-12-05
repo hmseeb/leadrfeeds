@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { loading } from '$lib/stores/auth';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { children } = $props();
 </script>
@@ -16,3 +17,5 @@
 {:else}
 	{@render children()}
 {/if}
+
+<Toast />
