@@ -18,6 +18,8 @@ interface SidebarState {
 	pendingSuggestionsCount: number;
 	isLoading: boolean;
 	lastLoadedAt: number | null;
+	isCollapsed: boolean;
+	collapsedLoaded: boolean;
 }
 
 const initialState: SidebarState = {
@@ -25,7 +27,9 @@ const initialState: SidebarState = {
 	totalUnread: 0,
 	pendingSuggestionsCount: 0,
 	isLoading: false,
-	lastLoadedAt: null
+	lastLoadedAt: null,
+	isCollapsed: true,
+	collapsedLoaded: false
 };
 
 function createSidebarStore() {
@@ -197,6 +201,43 @@ function createSidebarStore() {
 		});
 	}
 
+	async function loadCollapsedState() {
+		const currentUser = get(user);
+		if (!currentUser) return;
+
+		const state = get({ subscribe });
+		// Skip if already loaded
+		if (state.collapsedLoaded) return;
+
+		const { data } = await supabase
+			.from('user_settings')
+			.select('sidebar_collapsed')
+			.eq('user_id', currentUser.id)
+			.single();
+
+		update(s => ({
+			...s,
+			isCollapsed: data?.sidebar_collapsed ?? true,
+			collapsedLoaded: true
+		}));
+	}
+
+	async function setCollapsed(collapsed: boolean) {
+		const currentUser = get(user);
+
+		update(s => ({ ...s, isCollapsed: collapsed }));
+
+		if (!currentUser) return;
+
+		await supabase
+			.from('user_settings')
+			.upsert({
+				user_id: currentUser.id,
+				sidebar_collapsed: collapsed,
+				updated_at: new Date().toISOString()
+			}, { onConflict: 'user_id' });
+	}
+
 	return {
 		subscribe,
 		loadFeeds,
@@ -204,7 +245,9 @@ function createSidebarStore() {
 		startRefreshInterval,
 		stopRefreshInterval,
 		reset,
-		decrementUnreadCount
+		decrementUnreadCount,
+		loadCollapsedState,
+		setCollapsed
 	};
 }
 

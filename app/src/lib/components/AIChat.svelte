@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { user } from "$lib/stores/auth";
+  import { collectionsStore } from "$lib/stores/collections";
   import { Send, X, Plus, Sparkles, MessageSquare, Zap, FileText, BarChart3, GitCompare, Trash2, HelpCircle, ChevronDown, Bot, User, Loader2, AlertCircle, Command, GripVertical } from "lucide-svelte";
   import type { Tables } from "$lib/types/database";
   import { marked, Renderer } from "marked";
@@ -16,7 +17,7 @@
 
   interface ContextBadge {
     id: string;
-    type: "view" | "category" | "feed" | "entry";
+    type: "view" | "category" | "feed" | "entry" | "collection";
     label: string;
     data?: any;
   }
@@ -43,6 +44,7 @@
     currentView?: "all" | "starred" | "unread" | string;
     currentCategory?: string | null;
     currentFeed?: { feed_id: string; feed_title: string } | null;
+    currentCollection?: { collection_id: string; collection_name: string } | null;
     currentEntry?: {
       entry_id: string;
       entry_title: string | null;
@@ -65,6 +67,7 @@
     currentView = "all",
     currentCategory = null,
     currentFeed = null,
+    currentCollection = null,
     currentEntry = null,
     timelineEntries = [],
     feeds = [],
@@ -194,6 +197,8 @@ OUTPUT STYLE:
         return { bg: "bg-green-500/15", border: "border-green-500/40", text: "text-green-300" };
       case "entry":
         return { bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-300" };
+      case "collection":
+        return { bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-300" };
       default:
         return { bg: "bg-gray-500/15", border: "border-gray-500/40", text: "text-gray-300" };
     }
@@ -306,6 +311,49 @@ OUTPUT STYLE:
     return activeContexts.some(c =>
       c.type === "entry" && (c.data?.entry_id === entryId || c.id.includes(entryId))
     );
+  }
+
+  // Helper to check if a collection context is already active
+  function hasCollectionContext(collectionId: string): boolean {
+    return activeContexts.some(c =>
+      c.type === "collection" && (c.data?.collection_id === collectionId || c.id.includes(collectionId))
+    );
+  }
+
+  // Fetch AI context for a collection
+  async function fetchCollectionAIContext(
+    collectionId: string,
+    searchQueryParam?: string
+  ): Promise<AIContextEntry[]> {
+    if (!$user) return [];
+
+    const cacheKey = `collection-${collectionId}-${searchQueryParam || ''}`;
+    const cached = aiContextCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+      return cached.entries;
+    }
+
+    isLoadingContext = true;
+
+    try {
+      const { data, error } = await supabase.rpc('get_collection_ai_context', {
+        user_id_param: $user.id,
+        collection_id_param: collectionId,
+        hours_lookback: 24,
+        search_query: searchQueryParam || undefined
+      });
+
+      if (error) {
+        console.error('Error fetching collection AI context:', error);
+        return [];
+      }
+
+      const entries: AIContextEntry[] = data || [];
+      aiContextCache.set(cacheKey, { entries, timestamp: Date.now() });
+      return entries;
+    } finally {
+      isLoadingContext = false;
+    }
   }
 
   function removeContext(contextId: string) {
@@ -530,6 +578,15 @@ OUTPUT STYLE:
           data: currentFeed,
         });
       }
+
+      if (currentCollection) {
+        newContexts.push({
+          id: `collection-${currentCollection.collection_id}`,
+          type: "collection",
+          label: currentCollection.collection_name,
+          data: currentCollection,
+        });
+      }
     }
 
     const manualContexts = activeContexts.filter((c) => c.id.startsWith("manual-"));
@@ -541,12 +598,13 @@ OUTPUT STYLE:
 
       // Check if there's already a manual variant of this context
       const hasManualVariant = manualContexts.some((c) => {
-        // Same type and same data (view, feed_id, entry_id, category)
+        // Same type and same data (view, feed_id, entry_id, category, collection_id)
         if (c.type !== context.type) return false;
         if (context.type === "view" && c.data?.view === context.data?.view) return true;
         if (context.type === "feed" && (c.data?.feed_id === context.data?.feed_id || c.data?.id === context.data?.feed_id)) return true;
         if (context.type === "entry" && c.data?.entry_id === context.data?.entry_id) return true;
         if (context.type === "category" && c.data?.category === context.data?.category) return true;
+        if (context.type === "collection" && c.data?.collection_id === context.data?.collection_id) return true;
         return false;
       });
 
@@ -959,6 +1017,29 @@ Skip theory and background. Only include items someone can actually act on. If t
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
           contextParts.push(`## Context: User is asking about the "${context.label}" feed${searchSuffix} (no posts from last 24h)`);
+        }
+      } else if (context.type === "collection") {
+        const collectionId = context.data.collection_id;
+        const entries = await fetchCollectionAIContext(collectionId, searchQuery);
+        if (entries.length > 0) {
+          // Get unique feed names in this collection
+          const feedNames = [...new Set(entries.map(e => e.feed_title).filter(Boolean))];
+          const feedListStr = feedNames.length > 0 ? ` (${feedNames.length} feeds: ${feedNames.join(', ')})` : '';
+
+          const totalEntries = entries.length;
+          const summaries = entries
+            .map((entry, index) => {
+              const description = stripHtml(entry.entry_description || "");
+              const postNum = totalEntries - index;
+              const titleLink = entry.entry_url ? `[${entry.entry_title}](${entry.entry_url})` : entry.entry_title;
+              return `[Post ${postNum}]\nTitle: ${titleLink}\nSource: ${entry.feed_title}\nDescription: ${description || "N/A"}`;
+            })
+            .join("\n\n---\n\n");
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## ${context.label} Collection${feedListStr}${searchSuffix} (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
+        } else {
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## Context: User is viewing the "${context.label}" collection${searchSuffix} (no entries from last 24h)`);
         }
       } else if (context.type === "entry") {
         const rawContent = context.data.entry_content || context.data.entry_description || "";
@@ -1522,6 +1603,28 @@ Skip theory and background. Only include items someone can actually act on. If t
                     </button>
                   {/if}
                 </div>
+
+                <!-- Collections -->
+                {#if $collectionsStore.collections.length > 0}
+                  {@const availableCollections = $collectionsStore.collections.filter((c) => !hasCollectionContext(c.collection_id) && (!contextSearch || c.collection_name?.toLowerCase().includes(contextSearch.toLowerCase())))}
+                  {#if availableCollections.length > 0}
+                    <div class="p-2 border-t border-gray-800/50">
+                      <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Collections</p>
+                      {#each availableCollections.slice(0, 6) as collection}
+                        <button
+                          type="button"
+                          onclick={() => { addContext({ id: `manual-collection-${collection.collection_id}`, type: "collection", label: collection.collection_name, data: { collection_id: collection.collection_id, collection_name: collection.collection_name } }); showContextMenu = false; contextSearch = ""; }}
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors truncate"
+                        >
+                          <div class="w-6 h-6 rounded-md bg-violet-500/15 flex items-center justify-center flex-shrink-0">
+                            <FileText size={12} class="text-violet-400" />
+                          </div>
+                          <span class="truncate">{collection.collection_name}</span>
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                {/if}
 
                 <!-- Feeds -->
                 {#if feeds.length > 0}

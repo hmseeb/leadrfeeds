@@ -3,7 +3,14 @@
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { ThumbsUp, ThumbsDown, ArrowLeft, Trash2, Users, Link, Search, ChevronDown } from 'lucide-svelte';
+	import { ThumbsUp, ThumbsDown, Trash2, Users, Link, Search, ChevronDown } from 'lucide-svelte';
+	import { useDesktopLayout } from '$lib/stores/screenSize';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import MobileHeader from '$lib/components/MobileHeader.svelte';
+
+	// Responsive state
+	const isDesktopMode = $derived($useDesktopLayout);
+	let isSidebarOpen = $state(false);
 
 	let suggestions = $state<any[]>([]);
 	let loading = $state(true);
@@ -398,31 +405,41 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background">
-	<div class="max-w-7xl mx-auto px-4 py-8">
-		<!-- Header -->
-		<div class="mb-8">
-			<a
-				href="/timeline/all"
-				class="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
-			>
-				<ArrowLeft size={20} />
-				Back to Timeline
-			</a>
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-3xl font-bold text-foreground mb-2">Feed Suggestions</h1>
-					<p class="text-muted-foreground">
-						Review and manage feed suggestions from users
-						{#if pendingCount > 0}
-							<span class="ml-2 px-2 py-0.5 bg-primary/20 text-primary rounded-full text-sm font-medium">
-								{pendingCount} pending
-							</span>
-						{/if}
-					</p>
+<!-- Mobile Header -->
+{#if !isDesktopMode}
+	<MobileHeader onMenuClick={() => (isSidebarOpen = true)} />
+{/if}
+
+<!-- Mobile Sidebar -->
+{#if !isDesktopMode && isSidebarOpen}
+	<Sidebar isMobileOpen={true} onMobileClose={() => (isSidebarOpen = false)} />
+{/if}
+
+<div class="flex h-screen bg-background {!isDesktopMode ? 'pt-14' : ''}">
+	<!-- Desktop Sidebar -->
+	{#if isDesktopMode}
+		<Sidebar />
+	{/if}
+
+	<!-- Main Content -->
+	<div class="flex-1 overflow-y-auto">
+		<div class="max-w-7xl mx-auto px-4 py-8">
+			<!-- Header -->
+			<div class="mb-8">
+				<div class="flex items-center justify-between">
+					<div>
+						<h1 class="text-3xl font-bold text-foreground mb-2">Feed Suggestions</h1>
+						<p class="text-muted-foreground">
+							Review and manage feed suggestions from users
+							{#if pendingCount > 0}
+								<span class="ml-2 px-2 py-0.5 bg-primary/20 text-primary rounded-full text-sm font-medium">
+									{pendingCount} pending
+								</span>
+							{/if}
+						</p>
+					</div>
 				</div>
 			</div>
-		</div>
 
 		<!-- Filter tabs -->
 		<div class="mb-6 flex gap-2">
@@ -1034,6 +1051,7 @@
 					</div>
 				{/each}
 			{/if}
+			</div>
 		</div>
 	</div>
 </div>

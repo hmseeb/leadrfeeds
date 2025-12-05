@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { supabase } from '$lib/services/supabase';
 	import { user, signOut } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
-	import { Home, Star, Circle, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-svelte';
+	import { Home, Star, Circle, Settings, LogOut, Search, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, X, FolderHeart } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import { sidebarStore, type FeedWithUnread } from '$lib/stores/sidebar';
+	import { collectionsStore } from '$lib/stores/collections';
+	import CollectionItem from './collections/CollectionItem.svelte';
 	import Skeleton from './Skeleton.svelte';
 
 	// Check if current user is owner
@@ -15,12 +16,14 @@
 	let {
 		activeFeedId = null,
 		activeCategory = null,
+		activeCollectionId = null,
 		onCollapseChange,
 		isMobileOpen = false,
 		onMobileClose
 	}: {
 		activeFeedId?: string | null;
 		activeCategory?: string | null;
+		activeCollectionId?: string | null;
 		onCollapseChange?: (collapsed: boolean) => void;
 		isMobileOpen?: boolean;
 		onMobileClose?: () => void;
@@ -38,46 +41,23 @@
 	// Show shimmer if loading OR if feeds haven't been loaded yet
 	const showFeedsShimmer = $derived((isLoadingFeeds || !hasLoadedFeeds) && feeds.length === 0);
 
-	let isCollapsed = $state(true);
-	let isLoadingSettings = $state(true);
+	// Get collections data from store
+	const collections = $derived($collectionsStore.collections);
+	const isLoadingCollections = $derived($collectionsStore.isLoading);
+	const hasLoadedCollections = $derived($collectionsStore.lastLoadedAt !== null);
+	const showCollectionsShimmer = $derived((isLoadingCollections || !hasLoadedCollections) && collections.length === 0);
+
+	// Get collapsed state from store (persists across page navigations)
+	const isCollapsed = $derived($sidebarStore.isCollapsed);
+	const collapsedLoaded = $derived($sidebarStore.collapsedLoaded);
 	let expandedFeeds = $state<Set<string>>(new Set());
 
 	$effect(() => {
 		onCollapseChange?.(isCollapsed);
 	});
 
-	// Save sidebar collapsed state to database when it changes
-	async function saveSidebarState(collapsed: boolean) {
-		if (!$user || isLoadingSettings) return;
-
-		await supabase
-			.from('user_settings')
-			.upsert({
-				user_id: $user.id,
-				sidebar_collapsed: collapsed,
-				updated_at: new Date().toISOString()
-			}, { onConflict: 'user_id' });
-	}
-
-	// Load sidebar state from database
-	async function loadSidebarState() {
-		if (!$user) return;
-
-		const { data } = await supabase
-			.from('user_settings')
-			.select('sidebar_collapsed')
-			.eq('user_id', $user.id)
-			.single();
-
-		if (data?.sidebar_collapsed !== null && data?.sidebar_collapsed !== undefined) {
-			isCollapsed = data.sidebar_collapsed;
-		}
-		isLoadingSettings = false;
-	}
-
 	function toggleSidebar() {
-		isCollapsed = !isCollapsed;
-		saveSidebarState(isCollapsed);
+		sidebarStore.setCollapsed(!isCollapsed);
 	}
 
 	// Reactive current path from page store
@@ -91,11 +71,14 @@
 				return;
 			}
 
-			// Load sidebar state (local preference)
-			await loadSidebarState();
+			// Load collapsed state from store (persists across navigations)
+			await sidebarStore.loadCollapsedState();
 
 			// Load feeds from store (will skip if recently loaded)
 			await sidebarStore.loadFeeds();
+
+			// Load collections from store
+			await collectionsStore.loadCollections();
 
 			if (isOwner) {
 				await sidebarStore.loadPendingSuggestionsCount();
@@ -221,6 +204,15 @@
 						<span class="flex-1 min-w-0 truncate">Discover</span>
 					</a>
 
+					<a
+						href="/collections"
+						onclick={handleNavClick}
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/collections' ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+					>
+						<FolderHeart size={18} class="{currentPath === '/collections' ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<span class="flex-1 min-w-0 truncate">Collections</span>
+					</a>
+
 					<!-- Suggestions Link (Owner Only) -->
 					{#if isOwner}
 						<a
@@ -238,6 +230,45 @@
 						</a>
 					{/if}
 				</div>
+
+				<!-- Collections Section -->
+				{#if collections.length > 0 || showCollectionsShimmer}
+					<!-- Divider -->
+					<div class="mx-4 my-2 border-t border-gray-800"></div>
+
+					<div class="px-4 py-2 flex items-center justify-between">
+						<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collections</h2>
+						<a
+							href="/collections"
+							onclick={handleNavClick}
+							class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+						>
+							Manage
+						</a>
+					</div>
+
+					{#if showCollectionsShimmer}
+						<div class="px-2 space-y-0.5">
+							{#each Array(2) as _}
+								<div class="flex items-center gap-3 px-3 py-2">
+									<Skeleton variant="circular" width="20px" height="20px" class="flex-shrink-0" />
+									<Skeleton variant="text" height="16px" class="flex-1" />
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<div class="px-2 space-y-0.5">
+							{#each collections as collection}
+								<CollectionItem
+									{collection}
+									isActive={activeCollectionId === collection.collection_id}
+									isCollapsed={false}
+									onNavigate={handleNavClick}
+								/>
+							{/each}
+						</div>
+					{/if}
+				{/if}
 
 				<!-- Divider -->
 				<div class="mx-4 my-2 border-t border-gray-800"></div>
@@ -360,7 +391,7 @@
 <!-- DESKTOP SIDEBAR -->
 {#if isDesktopMode}
 <div
-	class="{isCollapsed ? 'w-16' : ''} bg-[#121212] flex flex-col h-screen text-gray-200 transition-all duration-300 relative overflow-visible"
+	class="{isCollapsed ? 'w-16' : ''} bg-[#121212] flex flex-col h-screen text-gray-200 {collapsedLoaded ? 'transition-all duration-300' : ''} relative overflow-visible"
 	style:width={!isCollapsed ? 'clamp(220px, 16vw, 320px)' : undefined}
 >
 	<!-- Header -->
@@ -445,6 +476,18 @@
 				{/if}
 			</a>
 
+			<a
+				href="/collections"
+				onclick={handleNavClick}
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/collections' ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				title={isCollapsed ? 'Collections' : ''}
+			>
+				<FolderHeart size={18} class="{currentPath === '/collections' ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				{#if !isCollapsed}
+					<span class="flex-1 min-w-0 truncate">Collections</span>
+				{/if}
+			</a>
+
 			<!-- Suggestions Link (Owner Only) -->
 			{#if isOwner}
 				<a
@@ -465,6 +508,57 @@
 				</a>
 			{/if}
 		</div>
+
+		<!-- Collections Section -->
+		{#if collections.length > 0 || showCollectionsShimmer}
+			<!-- Divider -->
+			<div class="mx-4 my-2 border-t border-gray-800"></div>
+
+			{#if !isCollapsed}
+				<div class="px-4 py-2 flex items-center justify-between">
+					<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collections</h2>
+					<a
+						href="/collections"
+						onclick={handleNavClick}
+						class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+					>
+						Manage
+					</a>
+				</div>
+			{/if}
+
+			{#if showCollectionsShimmer}
+				{#if !isCollapsed}
+					<div class="px-2 space-y-0.5">
+						{#each Array(2) as _}
+							<div class="flex items-center gap-3 px-3 py-2">
+								<Skeleton variant="circular" width="20px" height="20px" class="flex-shrink-0" />
+								<Skeleton variant="text" height="16px" class="flex-1" />
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="px-2 space-y-1">
+						{#each Array(2) as _}
+							<div class="flex items-center justify-center p-2">
+								<Skeleton variant="circular" width="24px" height="24px" />
+							</div>
+						{/each}
+					</div>
+				{/if}
+			{:else}
+				<div class="px-2 space-y-0.5">
+					{#each collections as collection}
+						<CollectionItem
+							{collection}
+							isActive={activeCollectionId === collection.collection_id}
+							{isCollapsed}
+							onNavigate={handleNavClick}
+						/>
+					{/each}
+				</div>
+			{/if}
+		{/if}
 
 		<!-- Divider -->
 		<div class="mx-4 my-2 border-t border-gray-800"></div>

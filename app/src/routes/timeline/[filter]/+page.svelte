@@ -13,6 +13,7 @@
 	import { MessageCircle, ChevronRight, Filter, X, Check, Search } from 'lucide-svelte';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import { sidebarStore } from '$lib/stores/sidebar';
+	import { collectionsStore } from '$lib/stores/collections';
 	import type { Database } from '$lib/types/database';
 
 	type TimelineEntry = Database['public']['Functions']['get_user_timeline']['Returns'][0];
@@ -34,6 +35,8 @@
 	const urlEntryId = $derived($page.url.searchParams.get('entry'));
 	let activeFeedId = $state<string | null>(null);
 	let activeCategory = $state<string | null>(null);
+	let activeCollectionId = $state<string | null>(null);
+	let currentCollection = $state<{ collection_id: string; collection_name: string } | null>(null);
 	let selectedEntry = $state<TimelineEntry | null>(null);
 	let feeds = $state<any[]>([]);
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
@@ -480,23 +483,65 @@
 			starredOnly = true;
 			activeFeedId = null;
 			activeCategory = null;
+			activeCollectionId = null;
+			currentCollection = null;
 			currentFeed = null;
 		} else if (filter === 'unread') {
 			unreadOnly = true;
 			activeFeedId = null;
 			activeCategory = null;
+			activeCollectionId = null;
+			currentCollection = null;
 			currentFeed = null;
+		} else if (filter.startsWith('collection:')) {
+			// Collection filter
+			const collectionId = filter.substring(11); // "collection:".length = 11
+			activeCollectionId = collectionId;
+			activeFeedId = null;
+			activeCategory = null;
+			currentFeed = null;
+
+			// Find the collection name from the store
+			const collection = $collectionsStore.collections.find(c => c.collection_id === collectionId);
+			currentCollection = collection ? { collection_id: collectionId, collection_name: collection.collection_name } : null;
+
+			// Use the get_collection_timeline RPC
+			const { data, error } = await supabase.rpc('get_collection_timeline', {
+				user_id_param: $user.id,
+				collection_id_param: collectionId,
+				starred_only: starredOnly,
+				unread_only: unreadOnly,
+				limit_param: limit,
+				offset_param: offset,
+				search_query: searchQueryParam || undefined
+			});
+
+			if (error) {
+				console.error('Error loading collection timeline:', error);
+			} else if (data) {
+				// Clean up entries (remove null/empty entries if any)
+				const cleanedData = data.filter((entry: any) => entry && entry.entry_id);
+				entries = [...entries, ...cleanedData];
+				hasMore = cleanedData.length === limit;
+				offset += cleanedData.length;
+			}
+			loading = false;
+			return;
 		} else if (filter.startsWith('category:')) {
 			// Category filter
 			categoryFilter = decodeURIComponent(filter.substring(9));
 			activeFeedId = null;
 			activeCategory = categoryFilter;
+			activeCollectionId = null;
+			currentCollection = null;
 			currentFeed = null;
 		} else if (filter !== 'all') {
 			// Assume it's a feed UUID
 			feedIdFilter = filter;
 			activeFeedId = feedIdFilter;
 			activeCategory = null;
+			activeCollectionId = null;
+			currentCollection = null;
 			// Find the feed from the loaded feeds
 			const feed = feeds.find((f) => f.id === feedIdFilter);
 			currentFeed = feed ? { feed_id: feed.id, feed_title: feed.title } : null;
@@ -504,6 +549,8 @@
 			// Clear feed ID in "all" view
 			activeFeedId = null;
 			activeCategory = null;
+			activeCollectionId = null;
+			currentCollection = null;
 			currentFeed = null;
 		}
 
@@ -791,6 +838,8 @@
 			// Update sidebar unread count immediately if the entry was unread
 			if (wasUnread && entry) {
 				sidebarStore.decrementUnreadCount(entry.feed_id);
+				// Also update collection unread counts
+				collectionsStore.loadCollections(true);
 			}
 		}
 	}
@@ -881,6 +930,7 @@
 		if (filter === 'all') return 'All Posts';
 		if (filter === 'starred') return 'Starred Posts';
 		if (filter === 'unread') return 'Unread Posts';
+		if (currentCollection) return currentCollection.collection_name;
 		if (activeCategory) return activeCategory;
 		if (currentFeed) return currentFeed.feed_title;
 		return 'Feed Posts';
@@ -905,6 +955,7 @@
 	<Sidebar
 		{activeFeedId}
 		{activeCategory}
+		{activeCollectionId}
 		isMobileOpen={true}
 		onMobileClose={() => isSidebarOpen = false}
 	/>
@@ -913,7 +964,7 @@
 <div class="flex h-screen bg-background overflow-hidden {!isDesktopMode ? 'pt-14' : ''}">
 	<!-- Desktop Sidebar -->
 	{#if isDesktopMode}
-		<Sidebar {activeFeedId} {activeCategory} onCollapseChange={(collapsed) => isSidebarCollapsed = collapsed} />
+		<Sidebar {activeFeedId} {activeCategory} {activeCollectionId} onCollapseChange={(collapsed) => isSidebarCollapsed = collapsed} />
 	{/if}
 
 	<!-- Main Content -->
@@ -1416,6 +1467,7 @@
 				currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : filter === 'unread' ? 'unread' : 'feed'}
 				currentCategory={activeCategory}
 				{currentFeed}
+				{currentCollection}
 				currentEntry={selectedEntry
 					? {
 							entry_id: selectedEntry.entry_id,
@@ -1452,6 +1504,7 @@
 						currentView={filter === 'all' ? 'all' : filter === 'starred' ? 'starred' : filter === 'unread' ? 'unread' : 'feed'}
 						currentCategory={activeCategory}
 						{currentFeed}
+						{currentCollection}
 						currentEntry={selectedEntry
 							? {
 									entry_id: selectedEntry.entry_id,
