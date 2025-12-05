@@ -443,6 +443,7 @@ export type Database = {
           feed_id_filter?: string
           limit_param?: number
           offset_param?: number
+          search_query?: string
           starred_only?: boolean
           unread_only?: boolean
           user_id_param: string

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
@@ -57,19 +57,15 @@
 	let searchQuery = $state('');
 	let showSearchInput = $state(false);
 	let searchInputRef = $state<HTMLInputElement | null>(null);
+	// Debounce timer for search
+	let searchDebounceTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+	// Track the active search query sent to database
+	let activeSearchQuery = $state('');
+	// Prevent race conditions between search and pagination
+	let searchInProgress = $state(false);
 
-	// Filtered entries based on search
-	const filteredEntries = $derived(() => {
-		if (!searchQuery.trim()) return entries;
-		const query = searchQuery.toLowerCase().trim();
-		return entries.filter(entry => {
-			const title = (entry.entry_title || '').toLowerCase();
-			const description = (entry.entry_description || '').toLowerCase();
-			const author = (entry.entry_author || '').toLowerCase();
-			const feedTitle = (entry.feed_title || '').toLowerCase();
-			return title.includes(query) || description.includes(query) || author.includes(query) || feedTitle.includes(query);
-		});
-	});
+	// Entries are now filtered server-side, so just return them directly
+	const filteredEntries = $derived(() => entries);
 
 	// Get unique categories from feeds
 	const feedCategories = $derived(() => {
@@ -348,6 +344,47 @@
 		};
 	});
 
+	// Debounced search effect - triggers database query when search changes
+	$effect(() => {
+		const query = searchQuery.trim();
+
+		// Use untrack for all state reads that we don't want to trigger re-runs
+		const currentActiveQuery = untrack(() => activeSearchQuery);
+		const currentTimer = untrack(() => searchDebounceTimer);
+
+		// Clear existing debounce timer
+		if (currentTimer) {
+			clearTimeout(currentTimer);
+			searchDebounceTimer = null;
+		}
+
+		// If search is cleared and we had an active search, reset immediately
+		if (!query && currentActiveQuery) {
+			// Use queueMicrotask to run state changes outside the effect
+			queueMicrotask(() => {
+				activeSearchQuery = '';
+				resetAndLoadWithSearch('');
+			});
+			return;
+		}
+
+		// If search query changed, debounce the database query
+		if (query && query !== currentActiveQuery) {
+			const timer = setTimeout(() => {
+				activeSearchQuery = query;
+				resetAndLoadWithSearch(query);
+			}, 300); // 300ms debounce
+			searchDebounceTimer = timer;
+		}
+
+		return () => {
+			const timerToClean = untrack(() => searchDebounceTimer);
+			if (timerToClean) {
+				clearTimeout(timerToClean);
+			}
+		};
+	});
+
 	async function loadFeeds() {
 		if (!$user) return;
 
@@ -404,6 +441,7 @@
 		hasMore = true;
 		selectedEntry = null; // Clear selected entry when switching views
 		searchQuery = ''; // Clear search when switching views
+		activeSearchQuery = ''; // Clear active search query
 		showSearchInput = false;
 		// Reset scroll to top when switching views
 		if (timelineScrollContainer) {
@@ -412,7 +450,22 @@
 		await loadEntries();
 	}
 
-	async function loadEntries() {
+	// Reset and load with a specific search query (used by debounced search)
+	async function resetAndLoadWithSearch(query: string) {
+		searchInProgress = true;
+		entries = [];
+		offset = 0;
+		hasMore = true;
+		selectedEntry = null;
+		// Reset scroll to top when searching
+		if (timelineScrollContainer) {
+			timelineScrollContainer.scrollTop = 0;
+		}
+		await loadEntries(query);
+		searchInProgress = false;
+	}
+
+	async function loadEntries(searchQueryParam?: string) {
 		if (!$user) return;
 
 		loading = true;
@@ -454,8 +507,9 @@
 			currentFeed = null;
 		}
 
-		if (categoryFilter) {
+		if (categoryFilter && !searchQueryParam) {
 			// Filter feeds by domain category, excluding any filtered feeds
+			// Note: When search is active, we skip this path and use the RPC which handles search
 			const categoryFeeds = feeds.filter(f => {
 				const domainCat = getDomainCategory(f.url, f.site_url);
 				return domainCat === categoryFilter && !excludedFeedIds.has(f.id);
@@ -517,12 +571,45 @@
 				hasMore = data.length === limit;
 				offset += data.length;
 			}
+		} else if (categoryFilter && searchQueryParam) {
+			// Category view with search - use RPC for search, then filter client-side by category
+			// The RPC supports search but not category filtering, so we search then filter
+			const { data, error } = await supabase.rpc('get_user_timeline', {
+				user_id_param: $user.id,
+				starred_only: false,
+				unread_only: false,
+				limit_param: limit,
+				offset_param: offset,
+				search_query: searchQueryParam
+			});
+
+			if (error) {
+				console.error('Error loading entries:', error);
+			} else if (data) {
+				// Filter by category client-side and clean up feed_image URLs
+				const filteredData = data
+					.filter(entry => {
+						// Find the feed to check its category
+						const feed = feeds.find(f => f.id === entry.feed_id);
+						if (!feed) return false;
+						const domainCat = getDomainCategory(feed.url, feed.site_url);
+						return domainCat === categoryFilter && !excludedFeedIds.has(entry.feed_id);
+					})
+					.map(entry => ({
+						...entry,
+						feed_image: entry.feed_image?.replace(/\/+$/, '') || null
+					}));
+
+				entries = [...entries, ...filteredData];
+				hasMore = data.length === limit;
+				offset += data.length;
+			}
 		} else {
 			// Check if we have filters applied (not viewing a specific feed)
 			const hasFilters = !feedIdFilter && (excludedFeedIds.size > 0 || excludedCategories.size > 0);
 
-			if (hasFilters) {
-				// When filters are active, compute included feed IDs and query directly
+			if (hasFilters && !searchQueryParam) {
+				// When filters are active (but no search), compute included feed IDs and query directly
 				// This ensures we get entries from the correct feeds instead of filtering client-side
 				const includedFeedIds = feeds
 					.filter(f => {
@@ -590,6 +677,43 @@
 					hasMore = data.length === limit;
 					offset += data.length;
 				}
+			} else if (hasFilters && searchQueryParam) {
+				// Filters + search: use RPC for search, then filter client-side by excluded feeds/categories
+				const { data, error } = await supabase.rpc('get_user_timeline', {
+					user_id_param: $user.id,
+					feed_id_filter: feedIdFilter,
+					starred_only: starredOnly,
+					unread_only: unreadOnly,
+					limit_param: limit,
+					offset_param: offset,
+					search_query: searchQueryParam
+				});
+
+				if (error) {
+					console.error('Error loading entries:', error);
+				} else if (data) {
+					// Filter out excluded feeds/categories client-side
+					const filteredData = data
+						.filter(entry => {
+							// Check if feed is excluded
+							if (excludedFeedIds.has(entry.feed_id)) return false;
+							// Check if category is excluded
+							const feed = feeds.find(f => f.id === entry.feed_id);
+							if (feed) {
+								const cat = getDomainCategory(feed.url, feed.site_url);
+								if (excludedCategories.has(cat)) return false;
+							}
+							return true;
+						})
+						.map(entry => ({
+							...entry,
+							feed_image: entry.feed_image?.replace(/\/+$/, '') || null
+						}));
+
+					entries = [...entries, ...filteredData];
+					hasMore = data.length === limit;
+					offset += data.length;
+				}
 			} else {
 				// No filters - use the existing RPC function
 				const { data, error } = await supabase.rpc('get_user_timeline', {
@@ -598,7 +722,8 @@
 					starred_only: starredOnly,
 					unread_only: unreadOnly,
 					limit_param: limit,
-					offset_param: offset
+					offset_param: offset,
+					search_query: searchQueryParam || undefined
 				});
 
 				if (error) {
@@ -762,8 +887,8 @@
 	});
 
 	async function loadMore() {
-		if (!loading && hasMore) {
-			await loadEntries();
+		if (!loading && hasMore && !searchInProgress) {
+			await loadEntries(activeSearchQuery || undefined);
 		}
 	}
 </script>
