@@ -206,6 +206,8 @@
 			// Load filter preferences from Supabase
 			await loadFilterPreferences();
 			await loadFeeds();
+			// Load collections before entries (needed for collection page direct links)
+			await collectionsStore.loadCollections();
 			await loadEntries();
 		})();
 
