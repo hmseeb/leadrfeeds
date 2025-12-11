@@ -192,11 +192,11 @@
       color: "text-blue-400",
     },
     {
-      name: "actionable",
-      label: "Actionable",
-      description: "Extract action items and next steps",
-      icon: BarChart3,
-      color: "text-green-400",
+      name: "updates",
+      label: "Updates",
+      description: "Changelog-style summary of what's new",
+      icon: Newspaper,
+      color: "text-cyan-400",
     },
     {
       name: "analyze",
@@ -206,18 +206,18 @@
       color: "text-purple-400",
     },
     {
+      name: "actionable",
+      label: "Actionable",
+      description: "Extract action items and next steps",
+      icon: BarChart3,
+      color: "text-green-400",
+    },
+    {
       name: "compare",
       label: "Compare",
       description: "Compare sources with synthesis",
       icon: GitCompare,
       color: "text-orange-400",
-    },
-    {
-      name: "updates",
-      label: "Updates",
-      description: "Changelog-style summary of what's new",
-      icon: Newspaper,
-      color: "text-cyan-400",
     },
     {
       name: "clear",
