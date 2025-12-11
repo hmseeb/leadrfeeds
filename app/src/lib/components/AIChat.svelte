@@ -3,7 +3,7 @@
   import { supabase } from "$lib/services/supabase";
   import { user } from "$lib/stores/auth";
   import { collectionsStore } from "$lib/stores/collections";
-  import { Send, X, Plus, Sparkles, MessageSquare, Zap, FileText, BarChart3, GitCompare, Trash2, HelpCircle, ChevronDown, Bot, User, Loader2, AlertCircle, Command, GripVertical } from "lucide-svelte";
+  import { Send, X, Plus, Sparkles, MessageSquare, Zap, FileText, BarChart3, GitCompare, Trash2, HelpCircle, ChevronDown, Bot, User, Loader2, AlertCircle, Command, GripVertical, Newspaper } from "lucide-svelte";
   import type { Tables } from "$lib/types/database";
   import { marked, Renderer } from "marked";
 
@@ -106,6 +106,67 @@
   let isLoadingContext = $state(false);
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
+  // Time range options for AI context
+  const TIME_RANGES = [
+    { hours: 24, label: "24h" },
+    { hours: 72, label: "3d" },
+    { hours: 168, label: "7d" }
+  ];
+  let selectedHoursLookback = $state(24);
+  let showTimeRangeMenu = $state(false);
+
+  function clearContextCache() {
+    aiContextCache = new Map();
+  }
+
+  // Pagination helper to fetch all entries from RPC calls (bypassing PostgREST 1000 row limit)
+  const PAGE_SIZE = 1000;
+
+  async function fetchAllPaginated<T>(
+    rpcName: 'get_ai_context' | 'get_collection_ai_context',
+    params: Record<string, unknown>
+  ): Promise<T[]> {
+    let allResults: T[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase.rpc(rpcName, {
+        ...params,
+        result_limit: PAGE_SIZE,
+        result_offset: offset
+      } as any);
+
+      if (error) {
+        console.error(`Error fetching from ${rpcName}:`, error);
+        break;
+      }
+
+      const results = (data || []) as T[];
+      allResults = [...allResults, ...results];
+
+      // If we got fewer results than PAGE_SIZE, we've reached the end
+      if (results.length < PAGE_SIZE) {
+        hasMore = false;
+      } else {
+        offset += PAGE_SIZE;
+      }
+    }
+
+    return allResults;
+  }
+
+  function selectTimeRange(hours: number) {
+    selectedHoursLookback = hours;
+    showTimeRangeMenu = false;
+    clearContextCache();
+  }
+
+  // Get current time range label
+  const currentTimeRangeLabel = $derived(
+    TIME_RANGES.find(r => r.hours === selectedHoursLookback)?.label || '24h'
+  );
+
   // Slash commands with icons
   interface SlashCommand {
     name: string;
@@ -150,6 +211,13 @@
       description: "Compare sources with synthesis",
       icon: GitCompare,
       color: "text-orange-400",
+    },
+    {
+      name: "updates",
+      label: "Updates",
+      description: "Changelog-style summary of what's new",
+      icon: Newspaper,
+      color: "text-cyan-400",
     },
     {
       name: "clear",
@@ -239,8 +307,8 @@ OUTPUT STYLE:
   ): Promise<AIContextEntry[]> {
     if (!$user) return [];
 
-    // Include search query in cache key
-    const cacheKey = `${viewType}-${feedId || ''}-${category || ''}-${searchQueryParam || ''}`;
+    // Include search query and hours lookback in cache key
+    const cacheKey = `${viewType}-${feedId || ''}-${category || ''}-${searchQueryParam || ''}-${selectedHoursLookback}h`;
     const cached = aiContextCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
       return cached.entries;
@@ -249,21 +317,15 @@ OUTPUT STYLE:
     isLoadingContext = true;
 
     try {
-      const { data, error } = await supabase.rpc('get_ai_context', {
+      // Use pagination to bypass PostgREST 1000 row limit
+      let entries: AIContextEntry[] = await fetchAllPaginated<AIContextEntry>('get_ai_context', {
         user_id_param: $user.id,
         feed_id_filter: viewType === 'feed' ? feedId : undefined,
         starred_only: viewType === 'starred',
         unread_only: viewType === 'unread',
-        hours_lookback: 24,
+        hours_lookback: selectedHoursLookback,
         search_query: searchQueryParam || undefined
       });
-
-      if (error) {
-        console.error('Error fetching AI context:', error);
-        return [];
-      }
-
-      let entries: AIContextEntry[] = data || [];
 
       if (viewType === 'category' && category) {
         entries = entries.filter(e => {
@@ -327,7 +389,7 @@ OUTPUT STYLE:
   ): Promise<AIContextEntry[]> {
     if (!$user) return [];
 
-    const cacheKey = `collection-${collectionId}-${searchQueryParam || ''}`;
+    const cacheKey = `collection-${collectionId}-${searchQueryParam || ''}-${selectedHoursLookback}h`;
     const cached = aiContextCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
       return cached.entries;
@@ -336,19 +398,14 @@ OUTPUT STYLE:
     isLoadingContext = true;
 
     try {
-      const { data, error } = await supabase.rpc('get_collection_ai_context', {
+      // Use pagination to bypass PostgREST 1000 row limit
+      const entries: AIContextEntry[] = await fetchAllPaginated<AIContextEntry>('get_collection_ai_context', {
         user_id_param: $user.id,
         collection_id_param: collectionId,
-        hours_lookback: 24,
+        hours_lookback: selectedHoursLookback,
         search_query: searchQueryParam || undefined
       });
 
-      if (error) {
-        console.error('Error fetching collection AI context:', error);
-        return [];
-      }
-
-      const entries: AIContextEntry[] = data || [];
       aiContextCache.set(cacheKey, { entries, timestamp: Date.now() });
       return entries;
     } finally {
@@ -486,6 +543,9 @@ OUTPUT STYLE:
       const target = event.target as HTMLElement;
       if (showContextMenu && !target.closest(".context-menu-container")) {
         showContextMenu = false;
+      }
+      if (showTimeRangeMenu && !target.closest(".time-range-menu-container")) {
+        showTimeRangeMenu = false;
       }
     };
 
@@ -697,6 +757,7 @@ If multiple posts are provided, summarize the key themes across all of them.`;
 | \`/actionable\` | Extract action items and next steps |
 | \`/analyze\` | MECE analysis with patterns |
 | \`/compare\` | Compare sources (requires 2+ contexts) |
+| \`/updates\` | Changelog-style summary of what's new |
 | \`/clear\` | Clear conversation history |
 | \`/help\` | Show this message |
 
@@ -792,6 +853,47 @@ OUTPUT FORMAT:
 
 Skip theory and background. Only include items someone can actually act on. If there are no actionable items, say so directly.`;
     await sendMessageWithPrompt("/actionable", actionablePrompt);
+  }
+
+  async function handleUpdates() {
+    const updatesPrompt = `Analyze the content and present updates in a structured changelog format.
+
+DETECTION: First, identify if this content contains:
+- Product/software updates (releases, features, changes)
+- General news/articles
+
+OUTPUT FORMAT:
+
+If product/software updates detected:
+🚀 **[Product Name] Updates**
+
+✨ **New Features**
+• [Feature] - Brief description of what it does
+
+🔧 **Improvements**
+• [Change] - What was enhanced or optimized
+
+🐛 **Bug Fixes**
+• [Fix] - What was resolved
+
+⚠️ **Breaking Changes** (if any)
+• [Change] - What might affect existing usage
+
+📝 **TL;DR**: One sentence summary of the most impactful change.
+
+---
+
+If multiple products have updates, repeat the format for each product.
+
+If general news/articles (not product updates):
+📰 **What's New**
+• [Headline] - Key development and why it matters
+
+🔥 **Biggest Story**
+The most significant item and its implications.
+
+Be concise. Skip minor/trivial updates. Focus on what actually matters to users.`;
+    await sendMessageWithPrompt("/updates", updatesPrompt);
   }
 
   async function sendMessageWithPrompt(commandText: string, customPrompt: string) {
@@ -925,10 +1027,13 @@ Skip theory and background. Only include items someone can actually act on. If t
 
     let contextParts: string[] = [];
 
+    // Get the time label for display
+    const timeLabel = TIME_RANGES.find(r => r.hours === selectedHoursLookback)?.label || '24h';
+
     // Helper to build context header with optional search query
     const buildHeader = (viewName: string, entryCount: number) => {
       const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-      return `## ${viewName}${searchSuffix} (last 24h, ${entryCount} entries, ordered newest to oldest):`;
+      return `## ${viewName}${searchSuffix} (last ${timeLabel}, ${entryCount} entries, ordered newest to oldest):`;
     };
 
     for (const context of activeContexts) {
@@ -947,7 +1052,7 @@ Skip theory and background. Only include items someone can actually act on. If t
             .join("\n\n---\n\n");
           contextParts.push(`${buildHeader('All Posts', entries.length)}\n\n${entrySummaries}`);
         } else if (searchQuery) {
-          contextParts.push(`## Context: User searched for "${searchQuery}" in All Posts (no matching entries from last 24h)`);
+          contextParts.push(`## Context: User searched for "${searchQuery}" in All Posts (no matching entries from last ${timeLabel})`);
         }
       } else if (context.type === "view" && (context.label === "Starred" || context.label === "Starred Posts")) {
         const entries = await fetchAIContext('starred', undefined, undefined, searchQuery);
@@ -964,7 +1069,7 @@ Skip theory and background. Only include items someone can actually act on. If t
           contextParts.push(`${buildHeader('Starred Posts', entries.length)}\n\n${entrySummaries}`);
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## Context: User is viewing their starred/saved posts${searchSuffix} (none from last 24h)`);
+          contextParts.push(`## Context: User is viewing their starred/saved posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "view" && (context.label === "Unread" || context.label === "Unread Posts")) {
         const entries = await fetchAIContext('unread', undefined, undefined, searchQuery);
@@ -981,7 +1086,7 @@ Skip theory and background. Only include items someone can actually act on. If t
           contextParts.push(`${buildHeader('Unread Posts', entries.length)}\n\n${entrySummaries}`);
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## Context: User is viewing their unread posts${searchSuffix} (none from last 24h)`);
+          contextParts.push(`## Context: User is viewing their unread posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "category") {
         const entries = await fetchAIContext('category', undefined, context.data.category, searchQuery);
@@ -997,7 +1102,7 @@ Skip theory and background. Only include items someone can actually act on. If t
             .join("\n\n---\n\n");
           contextParts.push(`${buildHeader(`${context.label} Posts`, entries.length)}\n\n${summaries}`);
         } else if (searchQuery) {
-          contextParts.push(`## Context: User searched for "${searchQuery}" in ${context.label} (no matching entries from last 24h)`);
+          contextParts.push(`## Context: User searched for "${searchQuery}" in ${context.label} (no matching entries from last ${timeLabel})`);
         }
       } else if (context.type === "feed") {
         const feedId = context.data.feed_id || context.data.id;
@@ -1013,10 +1118,10 @@ Skip theory and background. Only include items someone can actually act on. If t
             })
             .join("\n\n---\n\n");
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## ${context.label} Feed${searchSuffix} (last 24h, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
+          contextParts.push(`## ${context.label} Feed${searchSuffix} (last ${timeLabel}, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## Context: User is asking about the "${context.label}" feed${searchSuffix} (no posts from last 24h)`);
+          contextParts.push(`## Context: User is asking about the "${context.label}" feed${searchSuffix} (no posts from last ${timeLabel})`);
         }
       } else if (context.type === "collection") {
         const collectionId = context.data.collection_id;
@@ -1036,10 +1141,10 @@ Skip theory and background. Only include items someone can actually act on. If t
             })
             .join("\n\n---\n\n");
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## ${context.label} Collection${feedListStr}${searchSuffix} (last 24h, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
+          contextParts.push(`## ${context.label} Collection${feedListStr}${searchSuffix} (last ${timeLabel}, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## Context: User is viewing the "${context.label}" collection${searchSuffix} (no entries from last 24h)`);
+          contextParts.push(`## Context: User is viewing the "${context.label}" collection${searchSuffix} (no entries from last ${timeLabel})`);
         }
       } else if (context.type === "entry") {
         const rawContent = context.data.entry_content || context.data.entry_description || "";
@@ -1069,6 +1174,7 @@ Skip theory and background. Only include items someone can actually act on. If t
         case "actionable": await handleActionable(); return;
         case "analyze": await handleAnalyze(); return;
         case "compare": await handleCompare(); return;
+        case "updates": await handleUpdates(); return;
         case "clear": await handleClear(); return;
         case "help": await handleHelp(); return;
         default:
@@ -1539,16 +1645,17 @@ Skip theory and background. Only include items someone can actually act on. If t
 
       <!-- Bottom Actions -->
       <div class="flex items-center justify-between mt-2.5">
-        <div class="context-menu-container relative">
-          <button
-            type="button"
-            onclick={() => showContextMenu = !showContextMenu}
-            class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-400 bg-gray-800/30 hover:bg-gray-800/60 border border-gray-700/40 rounded-lg transition-all hover:text-gray-300"
-          >
-            <Plus size={14} />
-            <span>Context</span>
-            <ChevronDown size={12} class="transition-transform {showContextMenu ? 'rotate-180' : ''}" />
-          </button>
+        <div class="flex items-center gap-2">
+          <div class="context-menu-container relative">
+            <button
+              type="button"
+              onclick={() => showContextMenu = !showContextMenu}
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-400 bg-gray-800/30 hover:bg-gray-800/60 border border-gray-700/40 rounded-lg transition-all hover:text-gray-300"
+            >
+              <Plus size={14} />
+              <span>Context</span>
+              <ChevronDown size={12} class="transition-transform {showContextMenu ? 'rotate-180' : ''}" />
+            </button>
 
           <!-- Context Menu -->
           {#if showContextMenu}
@@ -1672,12 +1779,36 @@ Skip theory and background. Only include items someone can actually act on. If t
               </div>
             </div>
           {/if}
-        </div>
+          </div>
 
-        <span class="text-[10px] text-gray-600 flex items-center gap-1">
-          <span class="w-1 h-1 rounded-full bg-green-500/60"></span>
-          Auto-context
-        </span>
+          <!-- Time Range Selector -->
+          <div class="time-range-menu-container relative">
+            <button
+              type="button"
+              onclick={() => showTimeRangeMenu = !showTimeRangeMenu}
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-400 bg-gray-800/30 hover:bg-gray-800/60 border border-gray-700/40 rounded-lg transition-all hover:text-gray-300"
+            >
+              <span>{currentTimeRangeLabel}</span>
+              <ChevronDown size={12} class="transition-transform {showTimeRangeMenu ? 'rotate-180' : ''}" />
+            </button>
+
+            {#if showTimeRangeMenu}
+              <div class="absolute bottom-full left-0 mb-2 bg-[#1a1a1a] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
+                <div class="p-1.5">
+                  {#each TIME_RANGES as range}
+                    <button
+                      type="button"
+                      onclick={() => selectTimeRange(range.hours)}
+                      class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors {selectedHoursLookback === range.hours ? 'bg-blue-500/15 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50'}"
+                    >
+                      <span>{range.label}</span>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
       </div>
     </form>
   </div>
