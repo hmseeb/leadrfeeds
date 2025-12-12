@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/services/supabase';
 	import { user } from '$lib/stores/auth';
@@ -38,6 +39,7 @@
 	let activeCollectionId = $state<string | null>(null);
 	let currentCollection = $state<{ collection_id: string; collection_name: string } | null>(null);
 	let selectedEntry = $state<TimelineEntry | null>(null);
+	let isMobileOverlayVisible = $state(false); // Controls mobile overlay visibility for exit animation
 	let feeds = $state<any[]>([]);
 	let currentFeed = $state<{ feed_id: string; feed_title: string } | null>(null);
 	let loadMoreElement = $state<HTMLElement | null>(null);
@@ -223,16 +225,46 @@
 			const isClosingArticle = !entryId && selectedEntry;
 			const isOpeningArticle = entryId && !selectedEntry;
 
-			// When closing article, skip View Transition to avoid scroll flash
+			// When closing article, trigger the exit animation
 			if (isClosingArticle) {
-				selectedEntry = null;
-				// Restore scroll position after DOM update
-				requestAnimationFrame(() => {
-					if (timelineScrollContainer) {
-						timelineScrollContainer.scrollTop = savedPosition;
-					}
-					isHistoryNavigation = false;
-				});
+				// For desktop, use View Transitions API for a simple crossfade (not hero animation)
+				// Hero animation on close doesn't work well because the target card isn't rendered yet
+				if (isDesktopMode && 'startViewTransition' in document) {
+					isAnimating = true;
+
+					(document as any).startViewTransition(() => {
+						selectedEntry = null;
+						// Restore scroll position inside transition callback after list renders
+						requestAnimationFrame(() => {
+							if (timelineScrollContainer) {
+								timelineScrollContainer.scrollTop = savedPosition;
+							}
+						});
+						return Promise.resolve();
+					}).finished.then(() => {
+						isAnimating = false;
+						isHistoryNavigation = false;
+					});
+				} else if (isDesktopMode) {
+					// Fallback for desktop without View Transitions API
+					selectedEntry = null;
+					requestAnimationFrame(() => {
+						if (timelineScrollContainer) {
+							timelineScrollContainer.scrollTop = savedPosition;
+						}
+						isHistoryNavigation = false;
+					});
+				} else {
+					// Mobile: use Svelte fly transition via isMobileOverlayVisible
+					isMobileOverlayVisible = false;
+					// selectedEntry will be cleared by outroend event
+					requestAnimationFrame(() => {
+						if (timelineScrollContainer) {
+							timelineScrollContainer.scrollTop = savedPosition;
+						}
+						isHistoryNavigation = false;
+					});
+				}
 				return;
 			}
 
@@ -243,6 +275,7 @@
 					if (entry) {
 						animatingEntryId = entry.entry_id;
 						selectedEntry = entry;
+						isMobileOverlayVisible = true;
 						// Reset scroll to top for article view
 						if (timelineScrollContainer) {
 							timelineScrollContainer.scrollTop = 0;
@@ -250,6 +283,7 @@
 					} else {
 						// Entry not in current list, clear selection
 						selectedEntry = null;
+						isMobileOverlayVisible = false;
 					}
 				}
 				return Promise.resolve();
@@ -310,6 +344,7 @@
 			const entry = entries.find(e => e.entry_id === urlEntryId);
 			if (entry && selectedEntry?.entry_id !== urlEntryId) {
 				selectedEntry = entry;
+				isMobileOverlayVisible = true;
 			}
 		}
 	});
@@ -445,6 +480,7 @@
 		offset = 0;
 		hasMore = true;
 		selectedEntry = null; // Clear selected entry when switching views
+		isMobileOverlayVisible = false;
 		searchQuery = ''; // Clear search when switching views
 		activeSearchQuery = ''; // Clear active search query
 		showSearchInput = false;
@@ -462,6 +498,7 @@
 		offset = 0;
 		hasMore = true;
 		selectedEntry = null;
+		isMobileOverlayVisible = false;
 		// Reset scroll to top when searching
 		if (timelineScrollContainer) {
 			timelineScrollContainer.scrollTop = 0;
@@ -867,6 +904,7 @@
 
 			(document as any).startViewTransition(() => {
 				selectedEntry = entry;
+				isMobileOverlayVisible = true;
 				animatingEntryId = null;
 
 				// Push state to browser history for back button support
@@ -886,6 +924,7 @@
 		} else {
 			// Fallback for browsers without View Transitions API
 			selectedEntry = entry;
+			isMobileOverlayVisible = true;
 
 			// Push state to browser history for back button support
 			if (browser) {
@@ -908,10 +947,6 @@
 	function closeEntryDetail() {
 		const savedPosition = scrollPositions.get(filter) || 0;
 
-		// Don't use View Transition when closing - just instantly restore
-		// This avoids the scroll flash issue
-		selectedEntry = null;
-
 		// Update browser history
 		if (browser) {
 			const url = new URL(window.location.href);
@@ -919,12 +954,41 @@
 			window.history.pushState({ scrollPosition: savedPosition }, '', url.toString());
 		}
 
-		// Restore scroll position after DOM update
-		requestAnimationFrame(() => {
-			if (timelineScrollContainer) {
-				timelineScrollContainer.scrollTop = savedPosition;
-			}
-		});
+		// For desktop, use View Transitions API for a simple crossfade (not hero animation)
+		// Hero animation on close doesn't work well because the target card isn't rendered yet
+		if (isDesktopMode && browser && 'startViewTransition' in document) {
+			isAnimating = true;
+
+			(document as any).startViewTransition(() => {
+				selectedEntry = null;
+				// Restore scroll position inside transition callback after list renders
+				requestAnimationFrame(() => {
+					if (timelineScrollContainer) {
+						timelineScrollContainer.scrollTop = savedPosition;
+					}
+				});
+				return Promise.resolve();
+			}).finished.then(() => {
+				isAnimating = false;
+			});
+		} else if (isDesktopMode) {
+			// Fallback for desktop without View Transitions API
+			selectedEntry = null;
+			requestAnimationFrame(() => {
+				if (timelineScrollContainer) {
+					timelineScrollContainer.scrollTop = savedPosition;
+				}
+			});
+		} else {
+			// Mobile: use Svelte fly transition via isMobileOverlayVisible
+			isMobileOverlayVisible = false;
+			// selectedEntry will be cleared by onoutroend event
+			requestAnimationFrame(() => {
+				if (timelineScrollContainer) {
+					timelineScrollContainer.scrollTop = savedPosition;
+				}
+			});
+		}
 	}
 
 	// Compute the current view title for breadcrumbs
@@ -1350,7 +1414,12 @@
 
 		<!-- Mobile Entry Detail Overlay -->
 		{#if selectedEntry && !isDesktopMode}
-			<div class="fixed inset-0 z-50 bg-card overflow-y-auto slide-in-right safe-area-inset-top">
+			{#if isMobileOverlayVisible}
+				<div
+					class="fixed inset-0 z-50 bg-card overflow-y-auto safe-area-inset-top"
+					transition:fly={{ x: 400, duration: 300 }}
+					onoutroend={() => { selectedEntry = null; }}
+				>
 				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center z-10 safe-area-inset-top">
 					<button
 						onclick={closeEntryDetail}
@@ -1459,6 +1528,7 @@
 					</div>
 				</div>
 			</div>
+			{/if}
 		{/if}
 
 		<!-- AI Chat Panel (Desktop: always visible, Mobile: overlay with FAB trigger) -->
