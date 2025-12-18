@@ -1,2 +1,6 @@
 credentials.env
 .env
+
+# Git worktrees (Crystal)
+/worktrees/
+/worktree-*/
