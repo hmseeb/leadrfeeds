@@ -1377,7 +1377,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
 </script>
 
 <div
-  class="ai-chat-container {isMobileOverlay ? 'w-full h-full' : 'border-l border-border/30'} bg-gradient-to-b from-[#0f0f0f] to-[#141414] flex flex-col h-full relative {!isMobileOverlay && !isResizing ? 'transition-[width] duration-300 ease-out' : ''}"
+  class="ai-chat-container {isMobileOverlay ? 'w-full h-full' : 'border-l border-border/30'} bg-background flex flex-col h-full relative {!isMobileOverlay && !isResizing ? 'transition-[width] duration-300 ease-out' : ''}"
   style:width={!isMobileOverlay ? `${panelWidth}px` : undefined}
 >
   <!-- Resize Handle (desktop only) -->
@@ -1551,7 +1551,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
   </div>
 
   <!-- Input Area -->
-  <div class="p-4 border-t border-border/50 bg-[#0f0f0f]/80 backdrop-blur-sm">
+  <div class="p-4 border-t border-border/50 bg-background/80 backdrop-blur-sm">
     <!-- Context Badges -->
     {#if activeContexts.length > 0}
       <div class="flex flex-wrap gap-1.5 mb-3">
@@ -1581,7 +1581,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
     >
       <!-- Command Menu -->
       {#if showCommandMenu && filteredCommands.length > 0}
-        <div class="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-border/70/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up">
+        <div class="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up">
           <div class="p-1.5">
             {#each filteredCommands as command, index}
               <button
@@ -1659,7 +1659,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
 
           <!-- Context Menu -->
           {#if showContextMenu}
-            <div class="absolute bottom-full left-0 mb-2 w-72 bg-[#1a1a1a] border border-border/70/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
+            <div class="absolute bottom-full left-0 mb-2 w-72 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
               <div class="p-2 border-b border-border/50">
                 <input
                   type="text"
@@ -1793,7 +1793,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             </button>
 
             {#if showTimeRangeMenu}
-              <div class="absolute bottom-full left-0 mb-2 bg-[#1a1a1a] border border-border/70/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
+              <div class="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
                 <div class="p-1.5">
                   {#each TIME_RANGES as range}
                     <button
