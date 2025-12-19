@@ -9,31 +9,16 @@
 	let { class: className = '', variant = 'rectangular', width, height }: Props = $props();
 
 	const variantClasses = {
-		text: 'rounded',
+		text: '',
 		circular: 'rounded-full',
-		rectangular: 'rounded-lg'
+		rectangular: ''
 	};
+
+	// Build width/height classes using Tailwind arbitrary values
+	const widthClass = width ? `w-[${width}]` : '';
+	const heightClass = height ? `h-[${height}]` : '';
 </script>
 
 <div
-	class="animate-shimmer bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 bg-[length:200%_100%] {variantClasses[
-		variant
-	]} {className}"
-	style:width
-	style:height
+	class="animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%] {variantClasses[variant]} {widthClass} {heightClass} {className}"
 ></div>
-
-<style>
-	@keyframes shimmer {
-		0% {
-			background-position: -200% 0;
-		}
-		100% {
-			background-position: 200% 0;
-		}
-	}
-
-	.animate-shimmer {
-		animation: shimmer 1.5s ease-in-out infinite;
-	}
-</style>

@@ -1036,13 +1036,13 @@
 	<!-- Main Content -->
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Timeline / Article Content Area -->
-		<div bind:this={timelineScrollContainer} class="flex-1 overflow-y-auto bg-secondary">
+		<div bind:this={timelineScrollContainer} class="flex-1 overflow-y-auto bg-background">
 			<div class="max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-4 md:px-6 mx-auto py-4 md:py-6">
 				{#if selectedEntry && isDesktopMode}
 					<!-- Desktop Article View with Breadcrumbs -->
 					<div style="view-transition-name: hero-card" class="article-view-wrapper">
 						<!-- Breadcrumb Navigation - Sticky -->
-						<nav class="sticky top-0 z-10 bg-secondary/95 backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-4">
+						<nav class="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-4 border-b border-border">
 							<button
 								onclick={closeEntryDetail}
 								class="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors group"
@@ -1177,7 +1177,7 @@
 								</div>
 								<button
 									onclick={() => { showSearchInput = false; searchQuery = ''; }}
-									class="p-1.5 text-muted-foreground hover:text-foreground"
+									class="p-2 text-foreground hover:bg-accent hover:text-accent-foreground rounded-md border border-border transition-colors cursor-pointer"
 								>
 									<X size={18} />
 								</button>
@@ -1193,7 +1193,7 @@
 							{#if !showSearchInput}
 								<button
 									onclick={() => { showSearchInput = true; requestAnimationFrame(() => searchInputRef?.focus()); }}
-									class="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+									class="p-2 text-foreground hover:bg-accent hover:text-accent-foreground rounded-md border border-border transition-colors cursor-pointer"
 									title="Search"
 								>
 									<Search size={18} />
@@ -1205,12 +1205,12 @@
 							<div class="relative">
 								<button
 									onclick={() => showFilterMenu = !showFilterMenu}
-									class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors {activeFilterCount > 0 ? 'bg-primary/10 border-primary/50 text-primary' : 'text-muted-foreground'}"
+									class="flex items-center gap-2 px-3 py-2 text-sm rounded-md border border-border hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer {activeFilterCount > 0 ? 'bg-primary text-primary-foreground border-primary' : 'text-foreground'}"
 								>
 									<Filter size={16} />
 									<span class="hidden sm:inline">Filter</span>
 									{#if activeFilterCount > 0}
-										<span class="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
+										<span class="bg-primary-foreground text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">
 											{activeFilterCount}
 										</span>
 									{/if}
@@ -1323,19 +1323,29 @@
 					{#if loading && entries.length === 0}
 						<div class="space-y-2">
 							{#each Array(5) as _, i}
-								<div class="bg-card border border-border rounded-lg p-4">
-									<div class="flex items-start gap-4">
-										<Skeleton variant="circular" width="40px" height="40px" />
-										<div class="flex-1 space-y-3">
-											<Skeleton width="70%" height="20px" />
-											<Skeleton width="100%" height="16px" />
-											<Skeleton width="90%" height="16px" />
-											<Skeleton width="60%" height="16px" />
-											<div class="flex gap-2 mt-4">
-												<Skeleton width="80px" height="32px" />
-												<Skeleton width="80px" height="32px" />
-											</div>
+								<div class="bg-card border border-border rounded-lg p-3 md:p-4">
+									<!-- Feed Info Row -->
+									<div class="flex items-center gap-2 mb-2">
+										<Skeleton variant="circular" width="20px" height="20px" />
+										<Skeleton variant="text" width="120px" height="16px" />
+										<Skeleton variant="rectangular" width="60px" height="20px" class="rounded-full" />
+									</div>
+									<!-- Content with optional thumbnail -->
+									<div class="flex gap-3">
+										<div class="flex-1 space-y-2">
+											<!-- Title -->
+											<Skeleton variant="text" width="90%" height="22px" />
+											<!-- Description -->
+											<Skeleton variant="text" width="100%" height="14px" />
+											<Skeleton variant="text" width="80%" height="14px" />
 										</div>
+										<!-- Thumbnail placeholder -->
+										<Skeleton variant="rectangular" width="80px" height="80px" class="rounded-lg flex-shrink-0 hidden md:block" />
+									</div>
+									<!-- Metadata Row -->
+									<div class="flex items-center gap-2 mt-2">
+										<Skeleton variant="text" width="80px" height="12px" />
+										<Skeleton variant="text" width="60px" height="12px" />
 									</div>
 								</div>
 							{/each}
@@ -1423,7 +1433,7 @@
 				<div class="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center z-10 safe-area-inset-top">
 					<button
 						onclick={closeEntryDetail}
-						class="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-all -ml-2"
+						class="text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg p-2 transition-all -ml-2 cursor-pointer"
 						title="Back"
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1600,124 +1610,3 @@
 	</div>
 </div>
 
-<style>
-	/* Override float styles on images in article content to display in normal flow */
-	:global(.article-content img) {
-		float: none !important;
-		display: block !important;
-		margin-left: auto !important;
-		margin-right: auto !important;
-		margin-top: 1rem !important;
-		margin-bottom: 1rem !important;
-		max-width: 100% !important;
-		height: auto !important;
-		border-radius: 0.5rem;
-	}
-
-	/* First image in article (hero image) gets special treatment */
-	:global(.article-content img:first-of-type) {
-		margin-top: 0 !important;
-		border-radius: 0.75rem;
-	}
-
-	/* Also handle images that might be wrapped in align attributes */
-	:global(.article-content [align]) {
-		text-align: left !important;
-	}
-
-	/* Convert tables used for layout to block elements */
-	:global(.article-content table) {
-		display: block !important;
-		width: 100% !important;
-		float: none !important;
-	}
-
-	:global(.article-content tbody),
-	:global(.article-content thead),
-	:global(.article-content tfoot) {
-		display: block !important;
-	}
-
-	:global(.article-content tr) {
-		display: block !important;
-	}
-
-	:global(.article-content td),
-	:global(.article-content th) {
-		display: block !important;
-		width: 100% !important;
-		float: none !important;
-	}
-
-	:global(.article-content table img) {
-		float: none !important;
-		display: block !important;
-	}
-
-	/* Handle figure elements that might contain floated images */
-	:global(.article-content figure) {
-		float: none !important;
-		margin-left: auto !important;
-		margin-right: auto !important;
-	}
-
-	/* Handle divs with inline styles for alignment */
-	:global(.article-content div) {
-		float: none !important;
-	}
-
-	/* View Transitions API - Hero Animation */
-	@supports (view-transition-name: hero-card) {
-		::view-transition-old(hero-card),
-		::view-transition-new(hero-card) {
-			animation-duration: 300ms;
-			animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-		}
-
-		::view-transition-old(hero-card) {
-			animation-name: hero-fade-out;
-		}
-
-		::view-transition-new(hero-card) {
-			animation-name: hero-fade-in;
-		}
-
-		@keyframes hero-fade-out {
-			from {
-				opacity: 1;
-				transform: scale(1);
-			}
-			to {
-				opacity: 0;
-				transform: scale(0.95);
-			}
-		}
-
-		@keyframes hero-fade-in {
-			from {
-				opacity: 0;
-				transform: scale(0.95);
-			}
-			to {
-				opacity: 1;
-				transform: scale(1);
-			}
-		}
-
-		/* Cross-fade the root for smoother transitions */
-		::view-transition-old(root),
-		::view-transition-new(root) {
-			animation-duration: 200ms;
-			animation-timing-function: ease-out;
-		}
-	}
-
-	/* Entry card wrapper for transitions */
-	.entry-card-wrapper {
-		contain: layout;
-	}
-
-	.article-view-wrapper {
-		contain: layout;
-	}
-</style>

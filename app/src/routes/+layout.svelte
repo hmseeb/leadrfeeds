@@ -2,8 +2,13 @@
 	import '../app.css';
 	import { loading } from '$lib/stores/auth';
 	import Toast from '$lib/components/Toast.svelte';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
+
+	onMount(() => {
+		document.documentElement.classList.add('dark');
+	});
 </script>
 
 <svelte:head>
