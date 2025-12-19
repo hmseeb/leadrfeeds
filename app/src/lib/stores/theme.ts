@@ -1,5 +1,7 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { supabase } from '$lib/services/supabase';
+import { user } from '$lib/stores/auth';
 
 export type ThemeValue = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
@@ -47,8 +49,8 @@ function initSystemPreference() {
 	});
 }
 
-// Load theme preference from localStorage
-export function loadTheme(): void {
+// Load theme preference
+export async function loadTheme(): Promise<void> {
 	if (!browser) return;
 
 	// Initialize system preference listener
@@ -57,18 +59,48 @@ export function loadTheme(): void {
 	// Subscribe to resolved theme changes and apply
 	resolvedTheme.subscribe(applyTheme);
 
-	// Load from localStorage
+	// First, load from localStorage for instant apply (prevents flash)
 	const stored = localStorage.getItem(STORAGE_KEY);
 	if (stored && ['system', 'light', 'dark'].includes(stored)) {
 		theme.set(stored as ThemeValue);
 	}
+
+	// Then, if user is logged in, load from database (source of truth)
+	const currentUser = get(user);
+	if (currentUser) {
+		const { data } = await supabase
+			.from('user_settings')
+			.select('theme')
+			.eq('user_id', currentUser.id)
+			.single();
+
+		if (data?.theme && ['system', 'light', 'dark'].includes(data.theme)) {
+			const dbTheme = data.theme as ThemeValue;
+			theme.set(dbTheme);
+			// Sync localStorage with database value
+			localStorage.setItem(STORAGE_KEY, dbTheme);
+		}
+	}
 }
 
-// Set theme preference and save to localStorage
-export function setTheme(value: ThemeValue): void {
+// Set theme preference
+export async function setTheme(value: ThemeValue): Promise<void> {
 	theme.set(value);
 
+	// Always save to localStorage for flash prevention
 	if (browser) {
 		localStorage.setItem(STORAGE_KEY, value);
+	}
+
+	// If logged in, save to database for cross-device sync
+	const currentUser = get(user);
+	if (currentUser) {
+		await supabase
+			.from('user_settings')
+			.upsert({
+				user_id: currentUser.id,
+				theme: value,
+				updated_at: new Date().toISOString()
+			}, { onConflict: 'user_id' });
 	}
 }
