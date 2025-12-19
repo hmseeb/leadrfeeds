@@ -1,10 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="dark" />
 		<link rel="icon" href="/logo.png" type="image/png" />
 		<link rel="apple-touch-icon" href="/logo.png" />
+		<style>
+			html, body { background-color: oklch(0.145 0 0); }
+		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
