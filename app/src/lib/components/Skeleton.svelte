@@ -13,12 +13,10 @@
 		circular: 'rounded-full',
 		rectangular: ''
 	};
-
-	// Build width/height classes using Tailwind arbitrary values
-	const widthClass = width ? `w-[${width}]` : '';
-	const heightClass = height ? `h-[${height}]` : '';
 </script>
 
 <div
-	class="animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%] {variantClasses[variant]} {widthClass} {heightClass} {className}"
+	class="animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%] {variantClasses[variant]} {className}"
+	style:width
+	style:height
 ></div>
