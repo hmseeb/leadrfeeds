@@ -3,11 +3,12 @@
 	import { loading } from '$lib/stores/auth';
 	import Toast from '$lib/components/Toast.svelte';
 	import { onMount } from 'svelte';
+	import { loadTheme } from '$lib/stores/theme';
 
 	let { children } = $props();
 
 	onMount(() => {
-		document.documentElement.classList.add('dark');
+		loadTheme();
 	});
 </script>
 
