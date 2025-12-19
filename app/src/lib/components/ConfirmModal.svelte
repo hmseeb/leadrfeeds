@@ -41,19 +41,19 @@
 
 	const variantStyles = {
 		danger: {
-			icon: 'text-red-500',
-			iconBg: 'bg-red-500/10',
-			button: 'bg-red-600 hover:bg-red-700 text-white'
+			icon: 'text-destructive',
+			iconBg: 'bg-destructive/10',
+			button: 'bg-destructive hover:bg-destructive/90 text-destructive-foreground border-2 border-border shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none'
 		},
 		warning: {
-			icon: 'text-yellow-500',
-			iconBg: 'bg-yellow-500/10',
-			button: 'bg-yellow-600 hover:bg-yellow-700 text-white'
+			icon: 'text-secondary',
+			iconBg: 'bg-secondary/10',
+			button: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground border-2 border-border shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none'
 		},
 		default: {
 			icon: 'text-primary',
 			iconBg: 'bg-primary/10',
-			button: 'bg-primary hover:bg-primary/90 text-primary-foreground'
+			button: 'bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-border shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none'
 		}
 	};
 
@@ -73,7 +73,7 @@
 	>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="bg-card border border-border rounded-lg w-full max-w-md mx-4 p-6 shadow-2xl"
+			class="bg-card border-2 border-border w-full max-w-md mx-4 p-6 shadow-lg"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 		>
@@ -104,14 +104,14 @@
 				<button
 					type="button"
 					onclick={handleCancel}
-					class="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors"
+					class="px-4 py-2 border-2 border-border text-foreground hover:bg-accent transition-all shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
 				>
 					{cancelText}
 				</button>
 				<button
 					type="button"
 					onclick={handleConfirm}
-					class="px-4 py-2 rounded-lg transition-colors {styles.button}"
+					class="px-4 py-2 transition-all {styles.button}"
 				>
 					{confirmText}
 				</button>

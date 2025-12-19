@@ -65,7 +65,7 @@
 			<p class="text-muted-foreground">Create your account</p>
 		</div>
 
-		<div class="bg-card border border-border rounded-lg p-8">
+		<div class="bg-card border-2 border-border p-8 shadow-lg">
 			<form onsubmit={(e) => { e.preventDefault(); handleRegister(); }}>
 				<div class="space-y-4">
 					<div>
@@ -76,7 +76,7 @@
 							id="email"
 							type="email"
 							bind:value={email}
-							class="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+							class="w-full px-4 py-2 bg-background border-2 border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							placeholder="you@example.com"
 							disabled={loading}
 						/>
@@ -90,7 +90,7 @@
 							id="password"
 							type="password"
 							bind:value={password}
-							class="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+							class="w-full px-4 py-2 bg-background border-2 border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							placeholder="••••••••"
 							disabled={loading}
 						/>
@@ -104,14 +104,14 @@
 							id="confirmPassword"
 							type="password"
 							bind:value={confirmPassword}
-							class="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+							class="w-full px-4 py-2 bg-background border-2 border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							placeholder="••••••••"
 							disabled={loading}
 						/>
 					</div>
 
 					{#if error}
-						<div class="bg-destructive/10 border border-destructive text-destructive-foreground px-4 py-3 rounded-md text-sm">
+						<div class="bg-destructive/10 border-2 border-destructive text-destructive-foreground px-4 py-3 text-sm">
 							{error}
 						</div>
 					{/if}
@@ -119,7 +119,7 @@
 					<button
 						type="submit"
 						disabled={loading}
-						class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+						class="w-full bg-primary text-primary-foreground py-2 px-4 font-medium border-2 border-border shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
 					>
 						{loading ? 'Creating account...' : 'Sign up'}
 					</button>

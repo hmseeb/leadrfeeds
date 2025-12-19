@@ -398,7 +398,7 @@
 										<div class="flex items-center gap-3 p-4">
 											<button
 												onclick={() => toggleExpand(collection.collection_id)}
-												class="p-1 hover:bg-muted rounded transition-colors"
+												class="p-1 hover:bg-accent rounded transition-colors"
 											>
 												{#if isExpanded}
 													<ChevronDown size={18} class="text-muted-foreground" />
@@ -428,7 +428,7 @@
 											<div class="flex items-center gap-1">
 												<button
 													onclick={() => openEditCollectionModal(collection)}
-													class="p-2 hover:bg-muted rounded-lg transition-colors"
+													class="p-2 hover:bg-accent rounded-lg transition-colors"
 													title="Edit collection"
 												>
 													<Pencil size={16} class="text-muted-foreground" />
@@ -532,7 +532,7 @@
 									{#if feedSearch}
 										<button
 											onclick={() => feedSearch = ''}
-											class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded transition-colors"
+											class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-accent rounded transition-colors"
 										>
 											<X size={14} class="text-muted-foreground" />
 										</button>
@@ -558,7 +558,7 @@
 												draggable="true"
 												ondragstart={(e) => handleDragStart(e, feed.feed_id)}
 												ondragend={handleDragEnd}
-												class="flex items-center gap-3 p-2 rounded-md cursor-grab active:cursor-grabbing hover:bg-muted transition-colors {draggedFeedId ===
+												class="flex items-center gap-3 p-2 rounded-md cursor-grab active:cursor-grabbing hover:bg-accent transition-colors {draggedFeedId ===
 												feed.feed_id
 													? 'opacity-50'
 													: ''}"
@@ -588,7 +588,7 @@
 												</span>
 												{#if feed.unread_count > 0}
 													<span
-														class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400"
+														class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/20 text-primary"
 													>
 														{feed.unread_count}
 													</span>
