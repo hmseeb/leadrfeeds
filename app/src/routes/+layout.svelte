@@ -8,7 +8,15 @@
 	let { children } = $props();
 
 	onMount(() => {
-		loadTheme();
+		let cleanup: (() => void) | undefined;
+
+		(async () => {
+			cleanup = await loadTheme();
+		})();
+
+		return () => {
+			cleanup?.();
+		};
 	});
 </script>
 

@@ -37,27 +37,28 @@ function applyTheme(resolved: ResolvedTheme) {
 }
 
 // Initialize system preference detection
-function initSystemPreference() {
+function initSystemPreference(): (() => void) | undefined {
 	if (!browser) return;
 
 	const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 	systemPrefersDark.set(mediaQuery.matches);
 
-	// Listen for system preference changes
-	mediaQuery.addEventListener('change', (e) => {
-		systemPrefersDark.set(e.matches);
-	});
+	// Named handler for cleanup
+	const onChange = (e: MediaQueryListEvent) => systemPrefersDark.set(e.matches);
+	mediaQuery.addEventListener('change', onChange);
+
+	return () => mediaQuery.removeEventListener('change', onChange);
 }
 
 // Load theme preference
-export async function loadTheme(): Promise<void> {
+export async function loadTheme(): Promise<(() => void) | undefined> {
 	if (!browser) return;
 
-	// Initialize system preference listener
-	initSystemPreference();
+	// Initialize system preference listener and capture cleanup
+	const cleanupSystemPref = initSystemPreference();
 
-	// Subscribe to resolved theme changes and apply
-	resolvedTheme.subscribe(applyTheme);
+	// Subscribe to resolved theme changes and capture unsubscribe
+	const unsubscribe = resolvedTheme.subscribe(applyTheme);
 
 	// First, load from localStorage for instant apply (prevents flash)
 	const stored = localStorage.getItem(STORAGE_KEY);
@@ -81,6 +82,12 @@ export async function loadTheme(): Promise<void> {
 			localStorage.setItem(STORAGE_KEY, dbTheme);
 		}
 	}
+
+	// Return combined cleanup function
+	return () => {
+		cleanupSystemPref?.();
+		unsubscribe();
+	};
 }
 
 // Set theme preference
