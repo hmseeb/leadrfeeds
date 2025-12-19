@@ -56,8 +56,7 @@
 			const { data: newSettings } = await supabase
 				.from('user_settings')
 				.insert({
-					user_id: $user.id,
-					theme: 'system'
+					user_id: $user.id
 				})
 				.select()
 				.single();

@@ -1,10 +1,10 @@
-import { writable, derived, get } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { supabase } from '$lib/services/supabase';
-import { user } from '$lib/stores/auth';
 
 export type ThemeValue = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
+
+const STORAGE_KEY = 'theme';
 
 // The user's theme preference
 export const theme = writable<ThemeValue>('system');
@@ -47,8 +47,8 @@ function initSystemPreference() {
 	});
 }
 
-// Load theme preference
-export async function loadTheme(): Promise<void> {
+// Load theme preference from localStorage
+export function loadTheme(): void {
 	if (!browser) return;
 
 	// Initialize system preference listener
@@ -57,38 +57,18 @@ export async function loadTheme(): Promise<void> {
 	// Subscribe to resolved theme changes and apply
 	resolvedTheme.subscribe(applyTheme);
 
-	// Check if user is logged in
-	const currentUser = get(user);
-
-	if (currentUser) {
-		// Load from database
-		const { data } = await supabase
-			.from('user_settings')
-			.select('theme')
-			.eq('user_id', currentUser.id)
-			.single();
-
-		if (data?.theme && ['system', 'light', 'dark'].includes(data.theme)) {
-			theme.set(data.theme as ThemeValue);
-		}
+	// Load from localStorage
+	const stored = localStorage.getItem(STORAGE_KEY);
+	if (stored && ['system', 'light', 'dark'].includes(stored)) {
+		theme.set(stored as ThemeValue);
 	}
-	// Guests just use system preference (default 'system')
 }
 
-// Set theme preference
-export async function setTheme(value: ThemeValue): Promise<void> {
+// Set theme preference and save to localStorage
+export function setTheme(value: ThemeValue): void {
 	theme.set(value);
 
-	const currentUser = get(user);
-
-	if (currentUser) {
-		// Save to database
-		await supabase
-			.from('user_settings')
-			.upsert({
-				user_id: currentUser.id,
-				theme: value,
-				updated_at: new Date().toISOString()
-			}, { onConflict: 'user_id' });
+	if (browser) {
+		localStorage.setItem(STORAGE_KEY, value);
 	}
 }
