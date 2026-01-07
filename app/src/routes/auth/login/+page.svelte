@@ -85,13 +85,13 @@
 			<p class="text-muted-foreground">Sign in to your account</p>
 		</div>
 
-		<div class="bg-card border-2 border-border p-8 shadow-lg">
+		<div class="bg-card border border-border rounded-lg p-8">
 			<!-- Google Sign In Button -->
 			<button
 				type="button"
 				onclick={handleGoogleSignIn}
 				disabled={loading || googleLoading}
-				class="w-full bg-background text-foreground py-2 px-4 font-medium border-2 border-border shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+				class="w-full bg-background text-foreground py-2 px-4 rounded-md font-medium border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
 			>
 				{#if googleLoading}
 					<LoadingSpinner size={20} />
@@ -110,7 +110,7 @@
 			<!-- Divider -->
 			<div class="relative my-6">
 				<div class="absolute inset-0 flex items-center">
-					<div class="w-full border-t-2 border-border"></div>
+					<div class="w-full border-t border-border"></div>
 				</div>
 				<div class="relative flex justify-center text-sm">
 					<span class="bg-card px-4 text-muted-foreground">or</span>
@@ -127,7 +127,7 @@
 							id="email"
 							type="email"
 							bind:value={email}
-							class="w-full px-4 py-2 bg-background border-2 border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+							class="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
 							placeholder="you@example.com"
 							disabled={loading || googleLoading}
 						/>
@@ -141,7 +141,7 @@
 							id="password"
 							type="password"
 							bind:value={password}
-							class="w-full px-4 py-2 bg-background border-2 border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+							class="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
 							placeholder="••••••••"
 							disabled={loading || googleLoading}
 						/>
@@ -154,7 +154,7 @@
 					</div>
 
 					{#if error}
-						<div class="bg-destructive/10 border-2 border-destructive text-destructive-foreground px-4 py-3 text-sm">
+						<div class="bg-destructive/10 border border-destructive text-destructive-foreground px-4 py-3 rounded-md text-sm">
 							{error}
 						</div>
 					{/if}
@@ -162,7 +162,7 @@
 					<button
 						type="submit"
 						disabled={loading || googleLoading}
-						class="w-full bg-primary text-primary-foreground py-2 px-4 font-medium border-2 border-border shadow-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+						class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 					>
 						{loading ? 'Signing in...' : 'Sign in'}
 					</button>

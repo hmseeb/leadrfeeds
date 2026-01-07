@@ -634,9 +634,20 @@
 			if (error) {
 				console.error('Error loading category entries:', error);
 			} else if (data) {
+				// Fetch user entry status for these entries
+				const entryIds = data.map(e => e.id);
+				const { data: statusData } = await supabase
+					.from('user_entry_status')
+					.select('entry_id, is_read, is_starred')
+					.eq('user_id', $user.id)
+					.in('entry_id', entryIds);
+
+				const statusMap = new Map(statusData?.map(s => [s.entry_id, s]) || []);
+
 				// Transform data to match timeline entry format
 				const transformedData = data.map(entry => {
 					const feed = Array.isArray(entry.feed) ? entry.feed[0] : entry.feed;
+					const status = statusMap.get(entry.id);
 					return {
 						entry_id: entry.id,
 						entry_title: entry.title,
@@ -649,8 +660,8 @@
 						feed_title: feed.title,
 						feed_category: feed.category,
 						feed_image: feed.image?.replace(/\/+$/, '') || null,
-						is_read: false,
-						is_starred: false
+						is_read: status?.is_read ?? false,
+						is_starred: status?.is_starred ?? false
 					};
 				});
 				entries = [...entries, ...transformedData];
@@ -740,9 +751,20 @@
 				if (error) {
 					console.error('Error loading filtered entries:', error);
 				} else if (data) {
+					// Fetch user entry status for these entries
+					const entryIds = data.map(e => e.id);
+					const { data: statusData } = await supabase
+						.from('user_entry_status')
+						.select('entry_id, is_read, is_starred')
+						.eq('user_id', $user.id)
+						.in('entry_id', entryIds);
+
+					const statusMap = new Map(statusData?.map(s => [s.entry_id, s]) || []);
+
 					// Transform data to match timeline entry format
 					const transformedData = data.map(entry => {
 						const feed = Array.isArray(entry.feed) ? entry.feed[0] : entry.feed;
+						const status = statusMap.get(entry.id);
 						return {
 							entry_id: entry.id,
 							entry_title: entry.title,
@@ -755,8 +777,8 @@
 							feed_title: feed?.title,
 							feed_category: feed?.category,
 							feed_image: feed?.image?.replace(/\/+$/, '') || null,
-							is_read: false,
-							is_starred: false
+							is_read: status?.is_read ?? false,
+							is_starred: status?.is_starred ?? false
 						};
 					});
 					entries = [...entries, ...transformedData];
@@ -834,20 +856,27 @@
 	async function handleToggleStar(entryId: string) {
 		if (!$user) return;
 
+		// Get current starred state for optimistic update
+		const currentEntry = entries.find(e => e.entry_id === entryId);
+		const wasStarred = currentEntry?.is_starred ?? false;
+
 		const { data, error } = await supabase.rpc('toggle_entry_star', {
 			entry_id_param: entryId,
 			user_id_param: $user.id
 		});
 
-		if (!error && typeof data === 'boolean') {
+		if (!error) {
+			// data is boolean on toggle, null on first star (creates record as starred)
+			const isStarred = typeof data === 'boolean' ? data : !wasStarred;
+
 			// Update entries list
 			entries = entries.map(e =>
-				e.entry_id === entryId ? { ...e, is_starred: data } : e
+				e.entry_id === entryId ? { ...e, is_starred: isStarred } : e
 			);
 
 			// Update selected entry if it's the one being starred
 			if (selectedEntry && selectedEntry.entry_id === entryId) {
-				selectedEntry = { ...selectedEntry, is_starred: data };
+				selectedEntry = { ...selectedEntry, is_starred: isStarred };
 			}
 		}
 	}
