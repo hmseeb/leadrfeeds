@@ -94,19 +94,19 @@
 <a
 	href="/timeline/collection:{collection.collection_id}"
 	onclick={onNavigate}
-	class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0
-		{isActive ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+	class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0
+		{isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' : 'text-sidebar-foreground/80'}"
 	title={isCollapsed ? collection.collection_name : undefined}
 >
 	<IconComponent
 		size={18}
-		class="{isActive ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0"
+		class="{isActive ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0"
 	/>
 	{#if !isCollapsed}
 		<span class="flex-1 min-w-0 truncate">{collection.collection_name}</span>
 		{#if collection.unread_count > 0}
 			<span
-				class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0"
+				class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {isActive ? 'bg-white/30 text-white' : 'bg-primary/20 text-primary'}"
 			>
 				{collection.unread_count}
 			</span>

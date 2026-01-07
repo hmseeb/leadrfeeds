@@ -137,22 +137,22 @@
 	<div class="fixed inset-0 z-40">
 		<!-- Backdrop -->
 		<button
-			class="absolute inset-0 bg-black/50"
+			class="absolute inset-0 bg-background/50"
 			onclick={onMobileClose}
 			aria-label="Close menu"
 		></button>
 
 		<!-- Sidebar Panel -->
-		<div class="absolute inset-y-0 left-0 w-72 bg-[#121212] flex flex-col h-full text-gray-200 z-10 slide-in-left">
+		<div class="absolute inset-y-0 left-0 w-72 bg-sidebar flex flex-col h-full text-sidebar-foreground z-10 slide-in-left">
 			<!-- Header -->
-			<div class="px-4 pt-6 pb-4 flex items-center justify-center border-b border-gray-800/50 flex-shrink-0 safe-area-inset-top">
+			<div class="px-4 pt-6 pb-4 flex items-center justify-center border-b border-sidebar-border/50 flex-shrink-0 safe-area-inset-top">
 				<div class="flex items-center gap-2 justify-center">
 					<img src="/logo.png" alt="LeadrFeeds" class="h-8 object-contain" />
-					<span class="text-xl font-bold tracking-tight text-white">LeadrFeeds</span>
+					<span class="text-xl font-bold tracking-tight text-sidebar-foreground">LeadrFeeds</span>
 				</div>
 				<button
 					onclick={onMobileClose}
-					class="absolute right-3 p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-200"
+					class="absolute right-3 p-1 hover:bg-sidebar-accent rounded transition-colors text-muted-foreground hover:text-sidebar-foreground"
 					aria-label="Close menu"
 				>
 					<X size={20} />
@@ -166,30 +166,30 @@
 					<a
 						href="/timeline/all"
 						onclick={handleNavClick}
-						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'bg-gray-800/70 shadow-md shadow-black/10 text-blue-400' : 'text-gray-300'}"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' : 'text-sidebar-foreground/80'}"
 					>
-						<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">All Posts</span>
 					</a>
 
 					<a
 						href="/timeline/starred"
 						onclick={handleNavClick}
-						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 					>
-						<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">Starred</span>
 					</a>
 
 					<a
 						href="/timeline/unread"
 						onclick={handleNavClick}
-						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 					>
-						<Circle size={18} class="{currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<Circle size={18} class="{currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">Unread</span>
 						{#if totalUnread > 0}
-							<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+							<span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-white/30 text-white' : 'bg-sidebar-primary/20 text-sidebar-primary'}">
 								{totalUnread}
 							</span>
 						{/if}
@@ -198,18 +198,18 @@
 					<a
 						href="/discover"
 						onclick={handleNavClick}
-						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 					>
-						<Search size={18} class="{currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<Search size={18} class="{currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">Discover</span>
 					</a>
 
 					<a
 						href="/collections"
 						onclick={handleNavClick}
-						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/collections' ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/collections' ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 					>
-						<FolderHeart size={18} class="{currentPath === '/collections' ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+						<FolderHeart size={18} class="{currentPath === '/collections' ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 						<span class="flex-1 min-w-0 truncate">Collections</span>
 					</a>
 
@@ -218,12 +218,12 @@
 						<a
 							href="/discover/suggestions"
 							onclick={handleNavClick}
-							class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath.includes('/discover/suggestions') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+							class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath.includes('/discover/suggestions') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 						>
-							<Lightbulb size={18} class="{currentPath.includes('/discover/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+							<Lightbulb size={18} class="{currentPath.includes('/discover/suggestions') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 							<span class="flex-1 min-w-0 truncate">Suggestions</span>
 							{#if pendingSuggestionsCount > 0}
-								<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-400 flex-shrink-0">
+								<span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {currentPath.includes('/discover/suggestions') ? 'bg-white/30 text-white' : 'bg-secondary/20 text-secondary'}">
 									{pendingSuggestionsCount}
 								</span>
 							{/if}
@@ -234,14 +234,14 @@
 				<!-- Collections Section -->
 				{#if collections.length > 0 || showCollectionsShimmer}
 					<!-- Divider -->
-					<div class="mx-4 my-2 border-t border-gray-800"></div>
+					<div class="mx-4 my-2 border-t border-sidebar-border"></div>
 
 					<div class="px-4 py-2 flex items-center justify-between">
-						<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collections</h2>
+						<h2 class="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Collections</h2>
 						<a
 							href="/collections"
 							onclick={handleNavClick}
-							class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+							class="text-xs text-muted-foreground hover:text-sidebar-foreground transition-colors"
 						>
 							Manage
 						</a>
@@ -271,11 +271,11 @@
 				{/if}
 
 				<!-- Divider -->
-				<div class="mx-4 my-2 border-t border-gray-800"></div>
+				<div class="mx-4 my-2 border-t border-sidebar-border"></div>
 
 				<!-- Feeds Section Header -->
 				<div class="px-4 py-2">
-					<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Feeds</h2>
+					<h2 class="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Feeds</h2>
 				</div>
 
 				<!-- Feed List -->
@@ -294,41 +294,40 @@
 						{#each getRepresentativeFeeds() as feed}
 							{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
 							{@const isMultiFeedCategory = categoryFeeds.length > 1}
+							{@const isActive = (isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id)}
 							<div class="flex items-center">
 								<a
 									href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
 									onclick={handleNavClick}
-									class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0 {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+									class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0 {isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 								>
 									{#if feed.feed_image}
 										<img src={feed.feed_image} alt={feed.feed_title} class="w-5 h-5 rounded object-cover flex-shrink-0" />
 									{:else if feed.feed_site_url}
 										<img src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`} alt={feed.feed_title} class="w-5 h-5 rounded object-cover flex-shrink-0" />
 									{:else}
-										<div class="w-5 h-5 rounded flex items-center justify-center bg-gray-700 flex-shrink-0">
-											<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
+										<div class="w-5 h-5 rounded flex items-center justify-center bg-muted/80 flex-shrink-0">
+											<div class="w-2.5 h-2.5 rounded-full bg-muted-foreground"></div>
 										</div>
 									{/if}
 									<span class="flex-1 truncate text-sm min-w-0">
 										{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
 									</span>
-								</a>
-
-								<div class="flex-shrink-0 px-2">
-									{#if isMultiFeedCategory}
-										<button
-											onclick={() => toggleFeedCategory(feed.feed_id)}
-											class="p-1 hover:bg-gray-800 rounded-md transition-colors"
-											aria-label="Expand category"
-										>
-											<ChevronDown size={16} class="text-gray-400 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}" />
-										</button>
-									{:else if feed.unread_count > 0}
-										<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 inline-block">
+									{#if !isMultiFeedCategory && feed.unread_count > 0}
+										<span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {isActive ? 'bg-white/30 text-white' : 'bg-sidebar-primary/20 text-sidebar-primary'}">
 											{feed.unread_count}
 										</span>
 									{/if}
-								</div>
+								</a>
+								{#if isMultiFeedCategory}
+									<button
+										onclick={() => toggleFeedCategory(feed.feed_id)}
+										class="flex-shrink-0 p-1 mx-1 hover:bg-sidebar-accent rounded-md transition-colors"
+										aria-label="Expand category"
+									>
+										<ChevronDown size={16} class="text-muted-foreground transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}" />
+									</button>
+								{/if}
 							</div>
 
 							<!-- Expanded Category Feeds -->
@@ -336,23 +335,24 @@
 								{@const allCategoryFeeds = getCategoryFeeds(feed.feed_category)}
 								<div class="ml-8 mt-0.5 mb-1 space-y-0.5 overflow-hidden">
 									{#each allCategoryFeeds as categoryFeed}
+										{@const isCategoryFeedActive = activeFeedId === categoryFeed.feed_id}
 										<a
 											href="/timeline/{categoryFeed.feed_id}"
 											onclick={handleNavClick}
-											class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors min-w-0 {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+											class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-sidebar-accent transition-colors min-w-0 {isCategoryFeedActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-muted-foreground'}"
 										>
 											{#if categoryFeed.feed_image}
 												<img src={categoryFeed.feed_image} alt={categoryFeed.feed_title} class="w-4 h-4 rounded object-cover flex-shrink-0" />
 											{:else if categoryFeed.feed_site_url}
 												<img src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(categoryFeed.feed_site_url)}&size=32`} alt={categoryFeed.feed_title} class="w-4 h-4 rounded object-cover flex-shrink-0" />
 											{:else}
-												<div class="w-4 h-4 rounded flex items-center justify-center bg-gray-700 flex-shrink-0">
-													<div class="w-2 h-2 rounded-full bg-gray-500"></div>
+												<div class="w-4 h-4 rounded flex items-center justify-center bg-muted/80 flex-shrink-0">
+													<div class="w-2 h-2 rounded-full bg-muted-foreground"></div>
 												</div>
 											{/if}
 											<span class="flex-1 truncate min-w-0">{categoryFeed.feed_title}</span>
 											{#if categoryFeed.unread_count > 0}
-												<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+												<span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {isCategoryFeedActive ? 'bg-white/30 text-white' : 'bg-sidebar-primary/20 text-sidebar-primary'}">
 													{categoryFeed.unread_count}
 												</span>
 											{/if}
@@ -366,21 +366,21 @@
 			</nav>
 
 			<!-- Footer -->
-			<div class="p-2 border-t border-gray-800 space-y-0.5 flex-shrink-0 safe-area-inset-bottom">
+			<div class="p-2 border-t border-sidebar-border space-y-0.5 flex-shrink-0 safe-area-inset-bottom">
 				<a
 					href="/settings"
 					onclick={handleNavClick}
-					class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
+					class="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent transition-colors"
 				>
-					<Settings size={18} class="text-gray-400 flex-shrink-0" />
+					<Settings size={18} class="text-muted-foreground flex-shrink-0" />
 					<span class="flex-1 min-w-0 truncate">Settings</span>
 				</a>
 
 				<button
 					onclick={handleSignOut}
-					class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors text-left"
+					class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent transition-colors text-left"
 				>
-					<LogOut size={18} class="text-gray-400 flex-shrink-0" />
+					<LogOut size={18} class="text-muted-foreground flex-shrink-0" />
 					<span class="flex-1 min-w-0 truncate">Sign Out</span>
 				</button>
 			</div>
@@ -391,15 +391,15 @@
 <!-- DESKTOP SIDEBAR -->
 {#if isDesktopMode}
 <div
-	class="{isCollapsed ? 'w-16' : ''} bg-[#121212] flex flex-col h-screen text-gray-200 {collapsedLoaded ? 'transition-all duration-300' : ''} relative overflow-visible"
+	class="{isCollapsed ? 'w-16' : ''} bg-sidebar flex flex-col h-screen text-sidebar-foreground {collapsedLoaded ? 'transition-all duration-300' : ''} relative overflow-visible"
 	style:width={!isCollapsed ? 'clamp(220px, 16vw, 320px)' : undefined}
 >
 	<!-- Header -->
-	<div class="{isCollapsed ? 'px-2' : 'px-4'} pt-6 pb-4 flex items-center justify-center border-b border-gray-800/50 flex-shrink-0">
+	<div class="{isCollapsed ? 'px-2' : 'px-4'} pt-6 pb-4 flex items-center justify-center border-b border-sidebar-border/50 flex-shrink-0">
 		{#if !isCollapsed}
 			<div class="flex items-center gap-2 justify-center">
 				<img src="/logo.png" alt="LeadrFeeds" class="h-8 object-contain" />
-				<span class="text-xl font-bold tracking-tight text-white">LeadrFeeds</span>
+				<span class="text-xl font-bold tracking-tight text-sidebar-foreground">LeadrFeeds</span>
 			</div>
 		{:else}
 			<img src="/logo.png" alt="LeadrFeeds" class="h-6 w-6 object-contain" />
@@ -409,7 +409,7 @@
 	<!-- Collapse/Expand Toggle -->
 	<button
 		onclick={toggleSidebar}
-		class="absolute top-1/2 -translate-y-1/2 -right-3 z-10 p-1.5 bg-gray-800/70 hover:bg-gray-700/80 rounded-full shadow-lg transition-all text-gray-400 hover:text-gray-200 border border-gray-700/50"
+		class="absolute top-1/2 -translate-y-1/2 -right-3 z-10 p-1.5 bg-card hover:bg-sidebar-accent cursor-pointer rounded-full shadow-lg transition-all text-muted-foreground hover:text-sidebar-foreground border border-sidebar-border/50"
 		title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 	>
 		{#if isCollapsed}
@@ -426,10 +426,10 @@
 			<a
 				href="/timeline/all"
 				onclick={handleNavClick}
-				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'bg-gray-800/70 shadow-md shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' : 'text-sidebar-foreground/80'}"
 				title={isCollapsed ? 'All Posts' : ''}
 			>
-				<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				<Home size={18} class="{currentPath === '/timeline/all' || currentPath.includes('/timeline/all') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">All Posts</span>
 				{/if}
@@ -438,10 +438,10 @@
 			<a
 				href="/timeline/starred"
 				onclick={handleNavClick}
-				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 				title={isCollapsed ? 'Starred' : ''}
 			>
-				<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				<Star size={18} class="{currentPath === '/timeline/starred' || currentPath.includes('/timeline/starred') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">Starred</span>
 				{/if}
@@ -450,14 +450,14 @@
 			<a
 				href="/timeline/unread"
 				onclick={handleNavClick}
-				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 				title={isCollapsed ? 'Unread' : ''}
 			>
-				<Circle size={18} class="{currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				<Circle size={18} class="{currentPath === '/timeline/unread' || currentPath.includes('/timeline/unread') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">Unread</span>
 					{#if totalUnread > 0}
-						<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+						<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-sidebar-primary/20 text-sidebar-primary flex-shrink-0">
 							{totalUnread}
 						</span>
 					{/if}
@@ -467,10 +467,10 @@
 			<a
 				href="/discover"
 				onclick={handleNavClick}
-				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 				title={isCollapsed ? 'Discover' : ''}
 			>
-				<Search size={18} class="{currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				<Search size={18} class="{currentPath === '/discover' && !currentPath.includes('/suggestions') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">Discover</span>
 				{/if}
@@ -479,10 +479,10 @@
 			<a
 				href="/collections"
 				onclick={handleNavClick}
-				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/collections' ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+				class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath === '/collections' ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 				title={isCollapsed ? 'Collections' : ''}
 			>
-				<FolderHeart size={18} class="{currentPath === '/collections' ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+				<FolderHeart size={18} class="{currentPath === '/collections' ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 				{#if !isCollapsed}
 					<span class="flex-1 min-w-0 truncate">Collections</span>
 				{/if}
@@ -493,14 +493,14 @@
 				<a
 					href="/discover/suggestions"
 					onclick={handleNavClick}
-					class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800/70 hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath.includes('/discover/suggestions') ? 'bg-gray-800 shadow-sm shadow-black/10 text-blue-400' : 'text-gray-300'}"
+					class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 rounded-lg text-sm font-medium hover:bg-sidebar-accent hover:shadow-lg hover:shadow-black/10 transition-all duration-200 {currentPath.includes('/discover/suggestions') ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 					title={isCollapsed ? 'Suggestions' : ''}
 				>
-					<Lightbulb size={18} class="{currentPath.includes('/discover/suggestions') ? 'text-blue-400' : 'text-gray-400'} flex-shrink-0" />
+					<Lightbulb size={18} class="{currentPath.includes('/discover/suggestions') ? 'text-sidebar-primary-foreground' : 'text-muted-foreground'} flex-shrink-0" />
 					{#if !isCollapsed}
 						<span class="flex-1 min-w-0 truncate">Suggestions</span>
 						{#if pendingSuggestionsCount > 0}
-							<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-400 flex-shrink-0">
+							<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-secondary/20 text-secondary flex-shrink-0">
 								{pendingSuggestionsCount}
 							</span>
 						{/if}
@@ -512,15 +512,15 @@
 		<!-- Collections Section -->
 		{#if collections.length > 0 || showCollectionsShimmer}
 			<!-- Divider -->
-			<div class="mx-4 my-2 border-t border-gray-800"></div>
+			<div class="mx-4 my-2 border-t border-sidebar-border"></div>
 
 			{#if !isCollapsed}
 				<div class="px-4 py-2 flex items-center justify-between">
-					<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collections</h2>
+					<h2 class="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Collections</h2>
 					<a
 						href="/collections"
 						onclick={handleNavClick}
-						class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+						class="text-xs text-muted-foreground hover:text-sidebar-foreground transition-colors"
 					>
 						Manage
 					</a>
@@ -561,12 +561,12 @@
 		{/if}
 
 		<!-- Divider -->
-		<div class="mx-4 my-2 border-t border-gray-800"></div>
+		<div class="mx-4 my-2 border-t border-sidebar-border"></div>
 
 		{#if !isCollapsed}
 			<!-- Feeds Section Header -->
 			<div class="px-4 py-2">
-				<h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Feeds</h2>
+				<h2 class="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Feeds</h2>
 			</div>
 		{/if}
 
@@ -598,41 +598,40 @@
 				{#each getRepresentativeFeeds() as feed}
 					{@const categoryFeeds = getCategoryFeeds(feed.feed_category)}
 					{@const isMultiFeedCategory = categoryFeeds.length > 1}
+					{@const isActive = (isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id)}
 					<div class="flex items-center">
 						<a
 							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
 							onclick={handleNavClick}
-							class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0 {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+							class="flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent hover:shadow-md hover:shadow-black/20 transition-all duration-200 min-w-0 {isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/80'}"
 						>
 							{#if feed.feed_image}
 								<img src={feed.feed_image} alt={feed.feed_title} class="w-5 h-5 rounded object-cover flex-shrink-0" />
 							{:else if feed.feed_site_url}
 								<img src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`} alt={feed.feed_title} class="w-5 h-5 rounded object-cover flex-shrink-0" />
 							{:else}
-								<div class="w-5 h-5 rounded flex items-center justify-center bg-gray-700 flex-shrink-0">
-									<div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div>
+								<div class="w-5 h-5 rounded flex items-center justify-center bg-muted/80 flex-shrink-0">
+									<div class="w-2.5 h-2.5 rounded-full bg-muted-foreground"></div>
 								</div>
 							{/if}
 							<span class="flex-1 truncate text-sm min-w-0">
 								{isMultiFeedCategory ? feed.feed_category : feed.feed_title}
 							</span>
-						</a>
-
-						<div class="flex-shrink-0 px-2">
-							{#if isMultiFeedCategory}
-								<button
-									onclick={() => toggleFeedCategory(feed.feed_id)}
-									class="p-1 hover:bg-gray-800 rounded-md transition-colors"
-									aria-label="Expand category"
-								>
-									<ChevronDown size={16} class="text-gray-400 transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}" />
-								</button>
-							{:else if feed.unread_count > 0}
-								<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 inline-block">
+							{#if !isMultiFeedCategory && feed.unread_count > 0}
+								<span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {isActive ? 'bg-white/30 text-white' : 'bg-sidebar-primary/20 text-sidebar-primary'}">
 									{feed.unread_count}
 								</span>
 							{/if}
-						</div>
+						</a>
+						{#if isMultiFeedCategory}
+							<button
+								onclick={() => toggleFeedCategory(feed.feed_id)}
+								class="flex-shrink-0 p-1 mx-1 hover:bg-sidebar-accent rounded-md transition-colors"
+								aria-label="Expand category"
+							>
+								<ChevronDown size={16} class="text-muted-foreground transition-transform duration-200 {expandedFeeds.has(feed.feed_id) ? 'rotate-180' : ''}" />
+							</button>
+						{/if}
 					</div>
 
 					<!-- Expanded Category Feeds -->
@@ -640,23 +639,24 @@
 						{@const allCategoryFeeds = getCategoryFeeds(feed.feed_category)}
 						<div class="ml-8 mt-0.5 mb-1 space-y-0.5 overflow-hidden">
 							{#each allCategoryFeeds as categoryFeed}
+								{@const isCategoryFeedActive = activeFeedId === categoryFeed.feed_id}
 								<a
 									href="/timeline/{categoryFeed.feed_id}"
 									onclick={handleNavClick}
-									class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-gray-800 transition-colors min-w-0 {activeFeedId === categoryFeed.feed_id ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+									class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs hover:bg-sidebar-accent transition-colors min-w-0 {isCategoryFeedActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-muted-foreground'}"
 								>
 									{#if categoryFeed.feed_image}
 										<img src={categoryFeed.feed_image} alt={categoryFeed.feed_title} class="w-4 h-4 rounded object-cover flex-shrink-0" />
 									{:else if categoryFeed.feed_site_url}
 										<img src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(categoryFeed.feed_site_url)}&size=32`} alt={categoryFeed.feed_title} class="w-4 h-4 rounded object-cover flex-shrink-0" />
 									{:else}
-										<div class="w-4 h-4 rounded flex items-center justify-center bg-gray-700 flex-shrink-0">
-											<div class="w-2 h-2 rounded-full bg-gray-500"></div>
+										<div class="w-4 h-4 rounded flex items-center justify-center bg-muted/80 flex-shrink-0">
+											<div class="w-2 h-2 rounded-full bg-muted-foreground"></div>
 										</div>
 									{/if}
 									<span class="flex-1 truncate min-w-0">{categoryFeed.feed_title}</span>
 									{#if categoryFeed.unread_count > 0}
-										<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+										<span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 {isCategoryFeedActive ? 'bg-white/30 text-white' : 'bg-sidebar-primary/20 text-sidebar-primary'}">
 											{categoryFeed.unread_count}
 										</span>
 									{/if}
@@ -675,7 +675,7 @@
 						<a
 							href={isMultiFeedCategory ? `/timeline/category:${encodeURIComponent(feed.feed_category)}` : `/timeline/${feed.feed_id}`}
 							onclick={handleNavClick}
-							class="flex items-center justify-center p-2 rounded-md hover:bg-gray-800 transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-gray-800 shadow-sm shadow-black/10' : ''}"
+							class="flex items-center justify-center p-2 rounded-md hover:bg-sidebar-accent transition-colors {(isMultiFeedCategory && activeCategory === feed.feed_category) || (!isMultiFeedCategory && activeFeedId === feed.feed_id) ? 'bg-sidebar-primary' : ''}"
 							title={isMultiFeedCategory ? feed.feed_category : feed.feed_title}
 						>
 							{#if feed.feed_image}
@@ -683,8 +683,8 @@
 							{:else if feed.feed_site_url}
 								<img src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(feed.feed_site_url)}&size=32`} alt={feed.feed_title} class="w-6 h-6 rounded object-cover" />
 							{:else}
-								<div class="w-6 h-6 rounded flex items-center justify-center bg-gray-700">
-									<div class="w-3 h-3 rounded-full bg-gray-500"></div>
+								<div class="w-6 h-6 rounded flex items-center justify-center bg-muted/80">
+									<div class="w-3 h-3 rounded-full bg-muted-foreground"></div>
 								</div>
 							{/if}
 						</a>
@@ -695,14 +695,14 @@
 	</nav>
 
 	<!-- Footer -->
-	<div class="p-2 border-t border-gray-800 space-y-0.5 flex-shrink-0">
+	<div class="p-2 border-t border-sidebar-border space-y-0.5 flex-shrink-0">
 		<a
 			href="/settings"
 			onclick={handleNavClick}
-			class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-3'} py-2 rounded-md text-sm hover:bg-gray-800 transition-colors"
+			class="flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-3'} py-2 rounded-md text-sm hover:bg-sidebar-accent transition-colors"
 			title={isCollapsed ? 'Settings' : ''}
 		>
-			<Settings size={18} class="text-gray-400 flex-shrink-0" />
+			<Settings size={18} class="text-muted-foreground flex-shrink-0" />
 			{#if !isCollapsed}
 				<span class="flex-1 min-w-0 truncate">Settings</span>
 			{/if}
@@ -710,10 +710,10 @@
 
 		<button
 			onclick={handleSignOut}
-			class="w-full flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-3'} py-2 rounded-md text-sm hover:bg-gray-800 transition-colors text-left"
+			class="w-full flex items-center gap-3 {isCollapsed ? 'justify-center px-2' : 'px-3'} py-2 rounded-md text-sm hover:bg-sidebar-accent transition-colors text-left"
 			title={isCollapsed ? 'Sign Out' : ''}
 		>
-			<LogOut size={18} class="text-gray-400 flex-shrink-0" />
+			<LogOut size={18} class="text-muted-foreground flex-shrink-0" />
 			{#if !isCollapsed}
 				<span class="flex-1 min-w-0 truncate">Sign Out</span>
 			{/if}
@@ -722,42 +722,3 @@
 </div>
 {/if}
 
-<style>
-	/* Overlay scrollbar - only visible on hover, never shifts content */
-	.scrollbar-overlay {
-		scrollbar-width: thin;
-		scrollbar-color: transparent transparent;
-		scrollbar-gutter: stable;
-		overflow-y: auto;
-	}
-
-	.scrollbar-overlay:hover {
-		scrollbar-color: #374151 transparent;
-	}
-
-	.scrollbar-overlay::-webkit-scrollbar {
-		width: 8px;
-		background: transparent;
-	}
-
-	.scrollbar-overlay::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	.scrollbar-overlay::-webkit-scrollbar-thumb {
-		background: transparent;
-		border-radius: 4px;
-	}
-
-	.scrollbar-overlay:hover::-webkit-scrollbar-thumb {
-		background: #374151;
-	}
-
-	.scrollbar-overlay::-webkit-scrollbar-thumb:hover {
-		background: #4b5563;
-	}
-
-	.scrollbar-overlay::-webkit-scrollbar-button {
-		display: none;
-	}
-</style>

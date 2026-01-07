@@ -5,7 +5,8 @@
 	import { goto } from '$app/navigation';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import MobileHeader from '$lib/components/MobileHeader.svelte';
-	import { Save, Check, X } from 'lucide-svelte';
+	import { Save, Check, X, Monitor, Sun, Moon } from 'lucide-svelte';
+	import { theme, setTheme } from '$lib/stores/theme';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 
 	// Responsive state
@@ -55,8 +56,7 @@
 			const { data: newSettings } = await supabase
 				.from('user_settings')
 				.insert({
-					user_id: $user.id,
-					theme: 'dark'
+					user_id: $user.id
 				})
 				.select()
 				.single();
@@ -247,6 +247,46 @@
 										</a>
 									</p>
 								{/if}
+							</div>
+						</div>
+					</div>
+
+					<!-- Appearance -->
+					<div class="bg-card border border-border rounded-lg p-6">
+						<h2 class="text-lg font-semibold text-foreground mb-4 select-none">Appearance</h2>
+
+						<div class="space-y-4">
+							<div>
+								<span class="block text-sm font-medium text-foreground mb-2">Theme</span>
+								<div class="flex gap-2">
+									<button
+										type="button"
+										onclick={() => setTheme('system')}
+										class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2
+											{$theme === 'system' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
+									>
+										<Monitor size={16} />
+										System
+									</button>
+									<button
+										type="button"
+										onclick={() => setTheme('light')}
+										class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2
+											{$theme === 'light' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
+									>
+										<Sun size={16} />
+										Light
+									</button>
+									<button
+										type="button"
+										onclick={() => setTheme('dark')}
+										class="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2
+											{$theme === 'dark' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground hover:bg-accent'}"
+									>
+										<Moon size={16} />
+										Dark
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>

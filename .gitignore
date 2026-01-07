@@ -1,2 +1,12 @@
 credentials.env
 .env
+
+# Git worktrees (Crystal)
+/worktrees/
+/worktree-*/
+
+# Moat task system
+.moat/
+
+# Claude Code configuration
+.claude/

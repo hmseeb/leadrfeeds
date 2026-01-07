@@ -1,12 +1,11 @@
 <script lang="ts">
-	interface Props {
-		class?: string;
+	import type { HTMLAttributes } from 'svelte/elements';
+
+	interface Props extends HTMLAttributes<HTMLDivElement> {
 		variant?: 'text' | 'circular' | 'rectangular';
-		width?: string;
-		height?: string;
 	}
 
-	let { class: className = '', variant = 'rectangular', width, height }: Props = $props();
+	let { variant = 'rectangular', class: className = '', ...restProps }: Props = $props();
 
 	const variantClasses = {
 		text: '',
@@ -17,6 +16,5 @@
 
 <div
 	class="animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%] {variantClasses[variant]} {className}"
-	style:width
-	style:height
+	{...restProps}
 ></div>

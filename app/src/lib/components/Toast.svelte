@@ -14,24 +14,24 @@
 
 	const styles = {
 		success: {
-			bg: 'bg-green-500/10 border-green-500/50',
-			icon: 'text-green-500',
-			text: 'text-green-100'
+			bg: 'bg-chart-4/10 border-chart-4/50',
+			icon: 'text-chart-4',
+			text: 'text-foreground'
 		},
 		error: {
-			bg: 'bg-red-500/10 border-red-500/50',
-			icon: 'text-red-500',
-			text: 'text-red-100'
+			bg: 'bg-primary/10 border-primary/50',
+			icon: 'text-primary',
+			text: 'text-foreground'
 		},
 		warning: {
-			bg: 'bg-yellow-500/10 border-yellow-500/50',
-			icon: 'text-yellow-500',
-			text: 'text-yellow-100'
+			bg: 'bg-secondary/10 border-secondary/50',
+			icon: 'text-secondary',
+			text: 'text-foreground'
 		},
 		info: {
-			bg: 'bg-blue-500/10 border-blue-500/50',
-			icon: 'text-blue-500',
-			text: 'text-blue-100'
+			bg: 'bg-accent/10 border-accent/50',
+			icon: 'text-accent',
+			text: 'text-foreground'
 		}
 	};
 </script>
@@ -50,7 +50,7 @@
 				<p class="flex-1 text-sm {style.text}">{t.message}</p>
 				<button
 					onclick={() => toast.remove(t.id)}
-					class="text-gray-400 hover:text-white transition-colors flex-shrink-0"
+					class="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
 					aria-label="Dismiss"
 				>
 					<X size={16} />

@@ -182,14 +182,14 @@
       label: "TL;DR",
       description: "Ultra-short 1-2 sentence takeaway",
       icon: Zap,
-      color: "text-yellow-400",
+      color: "text-secondary",
     },
     {
       name: "summarize",
       label: "Summarize",
       description: "80/20 summary with key insights",
       icon: FileText,
-      color: "text-blue-400",
+      color: "text-primary",
     },
     {
       name: "updates",
@@ -203,14 +203,14 @@
       label: "Analyze",
       description: "MECE analysis with patterns",
       icon: Sparkles,
-      color: "text-purple-400",
+      color: "text-accent",
     },
     {
       name: "actionable",
       label: "Actionable",
       description: "Extract action items and next steps",
       icon: BarChart3,
-      color: "text-green-400",
+      color: "text-chart-4",
     },
     {
       name: "compare",
@@ -224,14 +224,14 @@
       label: "Clear",
       description: "Clear conversation history",
       icon: Trash2,
-      color: "text-red-400",
+      color: "text-destructive",
     },
     {
       name: "help",
       label: "Help",
       description: "Show available commands",
       icon: HelpCircle,
-      color: "text-gray-400",
+      color: "text-muted-foreground",
     },
   ];
 
@@ -258,17 +258,17 @@ OUTPUT STYLE:
   function getContextStyle(type: ContextBadge["type"]): { bg: string; border: string; text: string } {
     switch (type) {
       case "view":
-        return { bg: "bg-blue-500/15", border: "border-blue-500/40", text: "text-blue-300" };
+        return { bg: "bg-primary/15", border: "border-primary/40", text: "text-primary" };
       case "category":
-        return { bg: "bg-purple-500/15", border: "border-purple-500/40", text: "text-purple-300" };
+        return { bg: "bg-accent/15", border: "border-accent/40", text: "text-accent" };
       case "feed":
-        return { bg: "bg-green-500/15", border: "border-green-500/40", text: "text-green-300" };
+        return { bg: "bg-chart-4/15", border: "border-chart-4/40", text: "text-chart-4" };
       case "entry":
-        return { bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-300" };
+        return { bg: "bg-primary/10", border: "border-primary/30", text: "text-primary/80" };
       case "collection":
-        return { bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-300" };
+        return { bg: "bg-accent/10", border: "border-accent/30", text: "text-accent/80" };
       default:
-        return { bg: "bg-gray-500/15", border: "border-gray-500/40", text: "text-gray-300" };
+        return { bg: "bg-muted/50", border: "border-border", text: "text-foreground/80" };
     }
   }
 
@@ -1377,7 +1377,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
 </script>
 
 <div
-  class="ai-chat-container {isMobileOverlay ? 'w-full h-full' : 'border-l border-gray-800/30'} bg-gradient-to-b from-[#0f0f0f] to-[#141414] flex flex-col h-full relative {!isMobileOverlay && !isResizing ? 'transition-[width] duration-300 ease-out' : ''}"
+  class="ai-chat-container {isMobileOverlay ? 'w-full h-full' : 'border-l border-border/30'} bg-background flex flex-col h-full relative {!isMobileOverlay && !isResizing ? 'transition-[width] duration-300 ease-out' : ''}"
   style:width={!isMobileOverlay ? `${panelWidth}px` : undefined}
 >
   <!-- Resize Handle (desktop only) -->
@@ -1385,7 +1385,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
-      class="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/50 transition-colors z-10 group"
+      class="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/50 transition-colors z-10 group"
       onmousedown={handleResizeStart}
       role="separator"
       aria-orientation="vertical"
@@ -1393,24 +1393,24 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
       tabindex="0"
     >
       <div class="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-12 -ml-1.5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-        <GripVertical size={14} class="text-gray-500" />
+        <GripVertical size={14} class="text-muted-foreground/70" />
       </div>
     </div>
   {/if}
 
   <!-- Header -->
-  <div class="px-4 py-4 border-b border-gray-800/50 {isMobileOverlay ? 'safe-area-inset-top' : ''}">
+  <div class="px-4 py-4 border-b border-border/50 {isMobileOverlay ? 'safe-area-inset-top' : ''}">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-blue-500/20">
-          <Sparkles size={18} class="text-blue-400" />
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center border border-accent/20">
+          <Sparkles size={18} class="text-primary" />
         </div>
-        <h2 class="font-semibold text-base text-gray-100">Feeds Assistant</h2>
+        <h2 class="font-semibold text-base text-foreground">Feeds Assistant</h2>
       </div>
       {#if isMobileOverlay && onClose}
         <button
           onclick={onClose}
-          class="p-2 -mr-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 rounded-xl transition-all"
+          class="p-2 -mr-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl transition-all"
           aria-label="Close"
         >
           <X size={22} />
@@ -1425,18 +1425,18 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
       <!-- Loading State with Shimmers -->
       <div class="flex flex-col items-center justify-center h-full px-4">
         <!-- Shimmer icon placeholder -->
-        <div class="w-20 h-20 rounded-2xl bg-gray-800/50 mb-5 shimmer"></div>
+        <div class="w-20 h-20 rounded-2xl bg-muted/50 mb-5 shimmer"></div>
         <!-- Shimmer title -->
-        <div class="h-5 w-40 bg-gray-800/50 rounded-lg mb-3 shimmer"></div>
+        <div class="h-5 w-40 bg-muted/50 rounded-lg mb-3 shimmer"></div>
         <!-- Shimmer description -->
-        <div class="h-4 w-56 bg-gray-800/50 rounded-lg mb-2 shimmer"></div>
-        <div class="h-4 w-48 bg-gray-800/50 rounded-lg mb-6 shimmer"></div>
+        <div class="h-4 w-56 bg-muted/50 rounded-lg mb-2 shimmer"></div>
+        <div class="h-4 w-48 bg-muted/50 rounded-lg mb-6 shimmer"></div>
         <!-- Shimmer buttons grid -->
         <div class="w-full max-w-[300px] grid grid-cols-2 gap-2">
-          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
-          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
-          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
-          <div class="h-10 bg-gray-800/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-muted/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-muted/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-muted/50 rounded-lg shimmer"></div>
+          <div class="h-10 bg-muted/50 rounded-lg shimmer"></div>
         </div>
       </div>
     {:else if !apiKey}
@@ -1445,13 +1445,13 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
         <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-4 border border-amber-500/20">
           <AlertCircle size={28} class="text-amber-400" />
         </div>
-        <h3 class="text-lg font-semibold text-gray-100 mb-2">API Key Required</h3>
-        <p class="text-sm text-gray-400 mb-4 max-w-[280px]">
+        <h3 class="text-lg font-semibold text-foreground mb-2">API Key Required</h3>
+        <p class="text-sm text-muted-foreground mb-4 max-w-[280px]">
           Configure your OpenRouter API key to start using the AI assistant.
         </p>
         <a
           href="/settings"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-foreground text-sm font-medium rounded-lg transition-colors"
         >
           Go to Settings
         </a>
@@ -1459,25 +1459,25 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
     {:else if messages.length === 0}
       <!-- Empty State -->
       <div class="flex flex-col items-center justify-center h-full text-center px-4">
-        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center mb-5 border border-gray-800/50">
-          <MessageSquare size={32} class="text-gray-500" />
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent/10 to-primary/10 flex items-center justify-center mb-5 border border-border/50">
+          <MessageSquare size={32} class="text-muted-foreground/70" />
         </div>
-        <h3 class="text-lg font-semibold text-gray-200 mb-2">Start a Conversation</h3>
-        <p class="text-sm text-gray-500 mb-6 max-w-[280px]">
+        <h3 class="text-lg font-semibold text-foreground mb-2">Start a Conversation</h3>
+        <p class="text-sm text-muted-foreground/70 mb-6 max-w-[280px]">
           Ask questions about your feeds or use commands to analyze content.
         </p>
 
         <!-- Quick Commands -->
         <div class="w-full max-w-[300px] space-y-2">
-          <p class="text-xs text-gray-600 uppercase tracking-wider mb-3">Quick Commands</p>
+          <p class="text-xs text-muted-foreground uppercase tracking-wider mb-3">Quick Commands</p>
           <div class="grid grid-cols-2 gap-2">
             {#each slashCommands.slice(0, 4) as cmd}
               <button
                 onclick={() => { input = `/${cmd.name}`; sendMessage(); }}
-                class="flex items-center gap-2 px-3 py-2.5 bg-gray-800/40 hover:bg-gray-800/70 border border-gray-700/50 rounded-lg text-left transition-all group"
+                class="flex items-center gap-2 px-3 py-2.5 bg-muted/40 hover:bg-muted/70 border border-border/70/50 rounded-lg text-left transition-all group"
               >
                 <svelte:component this={cmd.icon} size={14} class="{cmd.color} group-hover:scale-110 transition-transform" />
-                <span class="text-xs text-gray-300 font-medium">{cmd.label}</span>
+                <span class="text-xs text-foreground/80 font-medium">{cmd.label}</span>
               </button>
             {/each}
           </div>
@@ -1491,28 +1491,28 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             <!-- User Message -->
             <div class="flex justify-end gap-2">
               <div class="max-w-[85%] flex flex-col items-end">
-                <div class="px-4 py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-2xl rounded-br-md">
-                  <p class="text-sm text-gray-100 whitespace-pre-wrap">{message.content}</p>
+                <div class="px-4 py-2.5 bg-primary/20 border border-primary/30 rounded-2xl rounded-br-md">
+                  <p class="text-sm text-foreground whitespace-pre-wrap">{message.content}</p>
                 </div>
-                <span class="text-[10px] text-gray-600 mt-1 mr-1">{formatTime(message.created_at)}</span>
+                <span class="text-[10px] text-muted-foreground mt-1 mr-1">{formatTime(message.created_at)}</span>
               </div>
-              <div class="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <User size={14} class="text-blue-400" />
+              <div class="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <User size={14} class="text-primary" />
               </div>
             </div>
           {:else}
             <!-- Assistant Message -->
             <div class="flex gap-2">
-              <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5 border border-purple-500/20">
-                <Bot size={14} class="text-purple-400" />
+              <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5 border border-accent/20">
+                <Bot size={14} class="text-accent" />
               </div>
               <div class="max-w-[85%] flex flex-col">
-                <div class="px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-2xl rounded-tl-md">
+                <div class="px-4 py-3 bg-muted/50 border border-border/70/50 rounded-2xl rounded-tl-md">
                   <div class="prose-chat text-sm">
                     {@html renderMarkdown(message.content)}
                   </div>
                 </div>
-                <span class="text-[10px] text-gray-600 mt-1 ml-1">{formatTime(message.created_at)}</span>
+                <span class="text-[10px] text-muted-foreground mt-1 ml-1">{formatTime(message.created_at)}</span>
               </div>
             </div>
           {/if}
@@ -1522,28 +1522,28 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
       <!-- Streaming Content -->
       {#if streamingContent}
         <div class="flex gap-2 animate-fade-in">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5 border border-purple-500/20">
-            <Bot size={14} class="text-purple-400" />
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5 border border-accent/20">
+            <Bot size={14} class="text-accent" />
           </div>
           <div class="max-w-[85%]">
-            <div class="px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-2xl rounded-tl-md">
+            <div class="px-4 py-3 bg-muted/50 border border-border/70/50 rounded-2xl rounded-tl-md">
               <div class="prose-chat text-sm">
                 {@html renderMarkdown(streamingContent)}
               </div>
-              <span class="inline-block w-2 h-4 bg-purple-400/80 animate-pulse ml-0.5 rounded-sm"></span>
+              <span class="inline-block w-2 h-4 bg-accent/80 animate-pulse ml-0.5 rounded-sm"></span>
             </div>
           </div>
         </div>
       {:else if loading}
         <!-- Loading State -->
         <div class="flex gap-2 animate-fade-in">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 border border-purple-500/20">
-            <Bot size={14} class="text-purple-400" />
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center flex-shrink-0 border border-accent/20">
+            <Bot size={14} class="text-accent" />
           </div>
-          <div class="flex gap-1 items-center px-3 py-2 bg-gray-800/40 rounded-2xl rounded-tl-md">
-            <span class="w-1.5 h-1.5 rounded-full bg-purple-400/70 animate-bounce" style="animation-delay: 0ms"></span>
-            <span class="w-1.5 h-1.5 rounded-full bg-purple-400/70 animate-bounce" style="animation-delay: 150ms"></span>
-            <span class="w-1.5 h-1.5 rounded-full bg-purple-400/70 animate-bounce" style="animation-delay: 300ms"></span>
+          <div class="flex gap-1 items-center px-3 py-2 bg-muted/40 rounded-2xl rounded-tl-md">
+            <span class="w-1.5 h-1.5 rounded-full bg-accent/70 animate-bounce" style="animation-delay: 0ms"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-accent/70 animate-bounce" style="animation-delay: 150ms"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-accent/70 animate-bounce" style="animation-delay: 300ms"></span>
           </div>
         </div>
       {/if}
@@ -1551,7 +1551,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
   </div>
 
   <!-- Input Area -->
-  <div class="p-4 border-t border-gray-800/50 bg-[#0f0f0f]/80 backdrop-blur-sm">
+  <div class="p-4 border-t border-border/50 bg-background/80 backdrop-blur-sm">
     <!-- Context Badges -->
     {#if activeContexts.length > 0}
       <div class="flex flex-wrap gap-1.5 mb-3">
@@ -1568,7 +1568,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
               class="p-0.5 hover:bg-white/10 rounded-full transition-colors opacity-60 group-hover:opacity-100"
               type="button"
             >
-              <X size={12} class="text-gray-400" />
+              <X size={12} class="text-muted-foreground" />
             </button>
           </div>
         {/each}
@@ -1581,31 +1581,31 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
     >
       <!-- Command Menu -->
       {#if showCommandMenu && filteredCommands.length > 0}
-        <div class="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1a] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up">
+        <div class="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up">
           <div class="p-1.5">
             {#each filteredCommands as command, index}
               <button
                 type="button"
                 onclick={() => { input = `/${command.name}`; showCommandMenu = false; sendMessage(); }}
-                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {index === selectedCommandIndex ? 'bg-blue-500/15 border border-blue-500/30' : 'hover:bg-gray-800/50 border border-transparent'}"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {index === selectedCommandIndex ? 'bg-primary/15 border border-primary/30' : 'hover:bg-muted/50 border border-transparent'}"
               >
-                <div class="w-8 h-8 rounded-lg bg-gray-800/80 flex items-center justify-center">
+                <div class="w-8 h-8 rounded-lg bg-muted/80 flex items-center justify-center">
                   <svelte:component this={command.icon} size={16} class={command.color} />
                 </div>
                 <div class="flex-1 text-left">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-200">/{command.name}</span>
-                    <span class="text-xs text-gray-500">{command.label}</span>
+                    <span class="text-sm font-medium text-foreground">/{command.name}</span>
+                    <span class="text-xs text-muted-foreground/70">{command.label}</span>
                   </div>
-                  <p class="text-xs text-gray-500">{command.description}</p>
+                  <p class="text-xs text-muted-foreground/70">{command.description}</p>
                 </div>
               </button>
             {/each}
           </div>
-          <div class="px-3 py-2 border-t border-gray-800/50 bg-gray-900/50 flex items-center gap-4 text-[10px] text-gray-500">
-            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px]">↑↓</kbd> Navigate</span>
-            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px]">Tab</kbd> Complete</span>
-            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px]">↵</kbd> Select</span>
+          <div class="px-3 py-2 border-t border-border/50 bg-card/50 flex items-center gap-4 text-[10px] text-muted-foreground/70">
+            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-muted rounded text-[10px]">↑↓</kbd> Navigate</span>
+            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-muted rounded text-[10px]">Tab</kbd> Complete</span>
+            <span class="flex items-center gap-1"><kbd class="px-1.5 py-0.5 bg-muted rounded text-[10px]">↵</kbd> Select</span>
           </div>
         </div>
       {/if}
@@ -1620,11 +1620,11 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             disabled={!apiKey || loading}
             placeholder={apiKey ? "Ask anything or type /" : "Configure API key first..."}
             rows="1"
-            class="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[44px] max-h-[120px]"
+            class="w-full px-4 py-3 bg-muted/50 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[44px] max-h-[120px]"
             style="field-sizing: content;"
           ></textarea>
           {#if !input && apiKey}
-            <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-600 pointer-events-none">
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-muted-foreground pointer-events-none">
               <Command size={12} />
               <span class="text-[10px]">/</span>
             </div>
@@ -1633,7 +1633,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
         <button
           type="submit"
           disabled={!apiKey || loading || !input.trim()}
-          class="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-blue-500/25 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:hover:shadow-none"
+          class="p-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-primary/25 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:hover:shadow-none cursor-pointer"
         >
           {#if loading}
             <Loader2 size={18} class="animate-spin" />
@@ -1650,7 +1650,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             <button
               type="button"
               onclick={() => showContextMenu = !showContextMenu}
-              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-400 bg-gray-800/30 hover:bg-gray-800/60 border border-gray-700/40 rounded-lg transition-all hover:text-gray-300"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground bg-muted/30 hover:bg-muted/60 border border-border/70/40 rounded-lg transition-all hover:text-foreground/80"
             >
               <Plus size={14} />
               <span>Context</span>
@@ -1659,28 +1659,28 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
 
           <!-- Context Menu -->
           {#if showContextMenu}
-            <div class="absolute bottom-full left-0 mb-2 w-72 bg-[#1a1a1a] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
-              <div class="p-2 border-b border-gray-800/50">
+            <div class="absolute bottom-full left-0 mb-2 w-72 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
+              <div class="p-2 border-b border-border/50">
                 <input
                   type="text"
                   placeholder="Search contexts..."
                   bind:value={contextSearch}
-                  class="w-full px-3 py-2 text-sm bg-gray-800/50 text-gray-200 border border-gray-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 placeholder:text-gray-500"
+                  class="w-full px-3 py-2 text-sm bg-muted/50 text-foreground border border-border/70/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground/70"
                 />
               </div>
 
               <div class="max-h-72 overflow-y-auto">
                 <!-- Views -->
                 <div class="p-2">
-                  <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Views</p>
+                  <p class="text-[10px] uppercase tracking-wider text-muted-foreground px-2 mb-1">Views</p>
                   {#if !hasViewContext("all")}
                     <button
                       type="button"
                       onclick={() => { addAllPostsContext(); showContextMenu = false; }}
-                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground/80 rounded-lg hover:bg-muted/50 transition-colors"
                     >
-                      <div class="w-6 h-6 rounded-md bg-blue-500/15 flex items-center justify-center">
-                        <FileText size={12} class="text-blue-400" />
+                      <div class="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
+                        <FileText size={12} class="text-primary" />
                       </div>
                       All Posts
                     </button>
@@ -1689,10 +1689,10 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
                     <button
                       type="button"
                       onclick={() => { addStarredContext(); showContextMenu = false; }}
-                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground/80 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div class="w-6 h-6 rounded-md bg-yellow-500/15 flex items-center justify-center">
-                        <Sparkles size={12} class="text-yellow-400" />
+                        <Sparkles size={12} class="text-secondary" />
                       </div>
                       Starred Posts
                     </button>
@@ -1701,7 +1701,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
                     <button
                       type="button"
                       onclick={() => { addUnreadContext(); showContextMenu = false; }}
-                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground/80 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div class="w-6 h-6 rounded-md bg-cyan-500/15 flex items-center justify-center">
                         <FileText size={12} class="text-cyan-400" />
@@ -1715,13 +1715,13 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
                 {#if $collectionsStore.collections.length > 0}
                   {@const availableCollections = $collectionsStore.collections.filter((c) => !hasCollectionContext(c.collection_id) && (!contextSearch || c.collection_name?.toLowerCase().includes(contextSearch.toLowerCase())))}
                   {#if availableCollections.length > 0}
-                    <div class="p-2 border-t border-gray-800/50">
-                      <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Collections</p>
+                    <div class="p-2 border-t border-border/50">
+                      <p class="text-[10px] uppercase tracking-wider text-muted-foreground px-2 mb-1">Collections</p>
                       {#each availableCollections.slice(0, 6) as collection}
                         <button
                           type="button"
                           onclick={() => { addContext({ id: `manual-collection-${collection.collection_id}`, type: "collection", label: collection.collection_name, data: { collection_id: collection.collection_id, collection_name: collection.collection_name } }); showContextMenu = false; contextSearch = ""; }}
-                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors truncate"
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground/80 rounded-lg hover:bg-muted/50 transition-colors truncate"
                         >
                           <div class="w-6 h-6 rounded-md bg-violet-500/15 flex items-center justify-center flex-shrink-0">
                             <FileText size={12} class="text-violet-400" />
@@ -1737,16 +1737,16 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
                 {#if feeds.length > 0}
                   {@const availableFeeds = feeds.filter((f) => !hasFeedContext(f.id) && (!contextSearch || f.title?.toLowerCase().includes(contextSearch.toLowerCase())))}
                   {#if availableFeeds.length > 0}
-                    <div class="p-2 border-t border-gray-800/50">
-                      <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Feeds</p>
+                    <div class="p-2 border-t border-border/50">
+                      <p class="text-[10px] uppercase tracking-wider text-muted-foreground px-2 mb-1">Feeds</p>
                       {#each availableFeeds.slice(0, 8) as feed}
                         <button
                           type="button"
                           onclick={() => { addContext({ id: `manual-feed-${feed.id}`, type: "feed", label: feed.title, data: feed }); showContextMenu = false; contextSearch = ""; }}
-                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors truncate"
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground/80 rounded-lg hover:bg-muted/50 transition-colors truncate"
                         >
                           <div class="w-6 h-6 rounded-md bg-green-500/15 flex items-center justify-center flex-shrink-0">
-                            <FileText size={12} class="text-green-400" />
+                            <FileText size={12} class="text-chart-4" />
                           </div>
                           <span class="truncate">{feed.title}</span>
                         </button>
@@ -1759,13 +1759,13 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
                 {#if timelineEntries.length > 0}
                   {@const availableEntries = timelineEntries.filter((e) => !hasEntryContext(e.entry_id) && (!contextSearch || e.entry_title?.toLowerCase().includes(contextSearch.toLowerCase())))}
                   {#if availableEntries.length > 0}
-                    <div class="p-2 border-t border-gray-800/50">
-                      <p class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">Recent Posts</p>
+                    <div class="p-2 border-t border-border/50">
+                      <p class="text-[10px] uppercase tracking-wider text-muted-foreground px-2 mb-1">Recent Posts</p>
                       {#each availableEntries.slice(0, 6) as entry}
                         <button
                           type="button"
                           onclick={() => { addContext({ id: `manual-entry-${entry.entry_id}`, type: "entry", label: entry.entry_title, data: entry }); showContextMenu = false; contextSearch = ""; }}
-                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
+                          class="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground/80 rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <div class="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center flex-shrink-0">
                             <FileText size={12} class="text-orange-400" />
@@ -1786,20 +1786,20 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             <button
               type="button"
               onclick={() => showTimeRangeMenu = !showTimeRangeMenu}
-              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-400 bg-gray-800/30 hover:bg-gray-800/60 border border-gray-700/40 rounded-lg transition-all hover:text-gray-300"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground bg-muted/30 hover:bg-muted/60 border border-border/70/40 rounded-lg transition-all hover:text-foreground/80"
             >
               <span>{currentTimeRangeLabel}</span>
               <ChevronDown size={12} class="transition-transform {showTimeRangeMenu ? 'rotate-180' : ''}" />
             </button>
 
             {#if showTimeRangeMenu}
-              <div class="absolute bottom-full left-0 mb-2 bg-[#1a1a1a] border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
+              <div class="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up z-50">
                 <div class="p-1.5">
                   {#each TIME_RANGES as range}
                     <button
                       type="button"
                       onclick={() => selectTimeRange(range.hours)}
-                      class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors {selectedHoursLookback === range.hours ? 'bg-blue-500/15 text-blue-300' : 'text-gray-300 hover:bg-gray-800/50'}"
+                      class="w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors {selectedHoursLookback === range.hours ? 'bg-primary/15 text-primary/80' : 'text-foreground/80 hover:bg-muted/50'}"
                     >
                       <span>{range.label}</span>
                     </button>
@@ -1814,209 +1814,3 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
   </div>
 </div>
 
-<style>
-  .ai-chat-container {
-    --scrollbar-thumb: rgba(255, 255, 255, 0.1);
-    --scrollbar-track: transparent;
-  }
-
-  .ai-chat-container ::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .ai-chat-container ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
-
-  .ai-chat-container ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 3px;
-  }
-
-  .ai-chat-container ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  /* Prose styling for chat messages */
-  :global(.prose-chat) {
-    color: #e5e5e5;
-    line-height: 1.6;
-  }
-
-  :global(.prose-chat p) {
-    margin: 0.5em 0;
-  }
-
-  :global(.prose-chat p:first-child) {
-    margin-top: 0;
-  }
-
-  :global(.prose-chat p:last-child) {
-    margin-bottom: 0;
-  }
-
-  :global(.prose-chat strong) {
-    color: #fff;
-    font-weight: 600;
-  }
-
-  :global(.prose-chat em) {
-    color: #a3a3a3;
-  }
-
-  :global(.prose-chat code) {
-    background: rgba(0, 0, 0, 0.3);
-    padding: 0.15em 0.4em;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #f472b6;
-  }
-
-  :global(.prose-chat pre) {
-    background: rgba(0, 0, 0, 0.4);
-    padding: 0.75em 1em;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 0.75em 0;
-  }
-
-  :global(.prose-chat pre code) {
-    background: none;
-    padding: 0;
-    color: #e5e5e5;
-  }
-
-  :global(.prose-chat ul, .prose-chat ol) {
-    margin: 0.5em 0;
-    padding-left: 1.25em;
-  }
-
-  :global(.prose-chat li) {
-    margin: 0.25em 0;
-  }
-
-  :global(.prose-chat h1, .prose-chat h2, .prose-chat h3) {
-    color: #fff;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-  }
-
-  :global(.prose-chat h1:first-child, .prose-chat h2:first-child, .prose-chat h3:first-child) {
-    margin-top: 0;
-  }
-
-  :global(.prose-chat h2) {
-    font-size: 1.1em;
-  }
-
-  :global(.prose-chat h3) {
-    font-size: 1em;
-  }
-
-  :global(.prose-chat a) {
-    color: #60a5fa;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  :global(.prose-chat a:hover) {
-    color: #93c5fd;
-  }
-
-  :global(.prose-chat blockquote) {
-    border-left: 3px solid #3b82f6;
-    padding-left: 1em;
-    margin: 0.75em 0;
-    color: #a3a3a3;
-  }
-
-  :global(.prose-chat table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0.75em 0;
-    font-size: 0.9em;
-  }
-
-  :global(.prose-chat th, .prose-chat td) {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 0.5em 0.75em;
-    text-align: left;
-  }
-
-  :global(.prose-chat th) {
-    background: rgba(0, 0, 0, 0.2);
-    font-weight: 600;
-  }
-
-  :global(.prose-chat hr) {
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin: 1em 0;
-  }
-
-  /* Animations */
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.03) 25%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.03) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.2s ease-out;
-  }
-
-  /* Mobile optimizations */
-  @media (max-width: 768px) {
-    .ai-chat-container {
-      font-size: 16px; /* Prevent zoom on iOS */
-    }
-
-    textarea {
-      font-size: 16px !important;
-    }
-
-    input {
-      font-size: 16px !important;
-    }
-  }
-</style>

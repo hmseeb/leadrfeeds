@@ -524,7 +524,7 @@
 									</span>
 									<!-- Waitlist count badge -->
 									{#if feedStatusMap.get(suggestion.id)?.waitlistCount}
-										<span class="px-2 py-0.5 text-xs rounded-full font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1">
+										<span class="px-2 py-0.5 text-xs rounded-full font-medium bg-secondary/20 text-secondary flex items-center gap-1">
 											<Users size={12} />
 											{feedStatusMap.get(suggestion.id)?.waitlistCount} waiting
 										</span>

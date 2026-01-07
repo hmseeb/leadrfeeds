@@ -94,10 +94,10 @@
 		<button
 			type="button"
 			onclick={() => onSelect(iconName)}
-			class="p-2 rounded-lg transition-all duration-150 flex items-center justify-center
+			class="p-2 rounded-lg transition-all duration-150 flex items-center justify-center cursor-pointer
 				{selectedIcon === iconName
-				? 'bg-blue-500/30 ring-2 ring-blue-500 text-blue-400'
-				: 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'}"
+				? 'bg-primary/30 ring-2 ring-primary text-primary'
+				: 'hover:bg-muted text-muted-foreground hover:text-foreground'}"
 			title={iconName}
 		>
 			<IconComponent size={20} />
