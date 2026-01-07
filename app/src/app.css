@@ -41,6 +41,15 @@
     --input: 220 10% 18%;
     --ring: 217 75% 55%;
     --radius: 0.75rem;
+
+    /* Sidebar - slightly darker than background */
+    --sidebar: 0 0% 5%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 217 75% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 10% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 10% 20%;
   }
 }
 
@@ -78,6 +87,40 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground;
+}
+
+/* Scrollbar overlay - only visible on hover */
+.scrollbar-overlay {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+  overflow-y: auto;
+}
+
+.scrollbar-overlay:hover {
+  scrollbar-color: hsl(var(--muted)) transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.scrollbar-overlay:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+}
+
+.scrollbar-overlay::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
 }
 
 /* Prose styles for article content */
