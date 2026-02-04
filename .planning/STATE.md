@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** Users can access their data programmatically without limitations -- simple auth, comprehensive queries, reliable responses.
-**Current focus:** Phase 5 - Entries Endpoint
+**Current focus:** Phase 6 - Feeds Endpoint
 
 ## Current Position
 
-Phase: 5 of 9 (Entries Endpoint)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-04 -- Completed 05-01-PLAN.md
+Phase: 5 of 9 (Entries Endpoint) - COMPLETE
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-02-04 -- Completed 05-02-PLAN.md
 
-Progress: [####------] 44%
+Progress: [#####-----] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 3 min
-- Total execution time: 0.31 hours
+- Total execution time: 0.35 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [####------] 44%
 | 02-authentication-middleware | 2 | 6min | 3min |
 | 03-error-handling-pagination | 1 | 2min | 2min |
 | 04-rate-limiting | 1 | 2min | 2min |
-| 05-entries-endpoint | 1 | 2min | 2min |
+| 05-entries-endpoint | 2 | 4min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 2min, 3min, 2min, 2min
+- Last 5 plans: 2min, 3min, 2min, 2min, 2min
 - Trend: Consistent with baseline
 
 *Updated after each plan completion*
@@ -70,6 +70,9 @@ Recent decisions affecting current work:
 - [05-01]: Subscription-first query pattern (query user subscriptions before entries)
 - [05-01]: Status merge via Map for O(1) lookup
 - [05-01]: Handle Supabase feed relation as array or object
+- [05-02]: Pre-query status pattern (query user_entry_status first for status filters)
+- [05-02]: Inclusion vs exclusion tracking for is_read=true vs is_read=false
+- [05-02]: ILIKE search with or() for multi-column search
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 05-01-PLAN.md
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
-Next: Execute 05-02-PLAN.md (Advanced filters)
+Next: Execute Phase 6 - Feeds Endpoint
