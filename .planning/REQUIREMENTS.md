@@ -1,7 +1,7 @@
 # Requirements: LeadrFeeds API
 
 **Defined:** 2026-02-04
-**Core Value:** Users can access their data programmatically without limitations — simple auth, comprehensive queries, reliable responses.
+**Core Value:** Users can access their data programmatically without limitations -- simple auth, comprehensive queries, reliable responses.
 
 ## v1 Requirements
 
@@ -113,52 +113,52 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KEY-01 | TBD | Pending |
-| KEY-02 | TBD | Pending |
-| KEY-03 | TBD | Pending |
-| KEY-04 | TBD | Pending |
-| KEY-05 | TBD | Pending |
-| KEY-06 | TBD | Pending |
-| AUTH-01 | TBD | Pending |
-| AUTH-02 | TBD | Pending |
-| AUTH-03 | TBD | Pending |
-| AUTH-04 | TBD | Pending |
-| ENT-01 | TBD | Pending |
-| ENT-02 | TBD | Pending |
-| ENT-03 | TBD | Pending |
-| ENT-04 | TBD | Pending |
-| ENT-05 | TBD | Pending |
-| ENT-06 | TBD | Pending |
-| ENT-07 | TBD | Pending |
-| FEED-01 | TBD | Pending |
-| FEED-02 | TBD | Pending |
-| FEED-03 | TBD | Pending |
-| COLL-01 | TBD | Pending |
-| COLL-02 | TBD | Pending |
-| COLL-03 | TBD | Pending |
-| STAT-01 | TBD | Pending |
-| STAT-02 | TBD | Pending |
-| STAT-03 | TBD | Pending |
-| RATE-01 | TBD | Pending |
-| RATE-02 | TBD | Pending |
-| RATE-03 | TBD | Pending |
-| PAGE-01 | TBD | Pending |
-| PAGE-02 | TBD | Pending |
-| PAGE-03 | TBD | Pending |
-| DOC-01 | TBD | Pending |
-| DOC-02 | TBD | Pending |
-| DOC-03 | TBD | Pending |
-| DOC-04 | TBD | Pending |
-| DOC-05 | TBD | Pending |
-| ERR-01 | TBD | Pending |
-| ERR-02 | TBD | Pending |
-| ERR-03 | TBD | Pending |
+| KEY-01 | Phase 8 | Pending |
+| KEY-02 | Phase 8 | Pending |
+| KEY-03 | Phase 8 | Pending |
+| KEY-04 | Phase 8 | Pending |
+| KEY-05 | Phase 8 | Pending |
+| KEY-06 | Phase 1 | Pending |
+| AUTH-01 | Phase 2 | Pending |
+| AUTH-02 | Phase 2 | Pending |
+| AUTH-03 | Phase 2 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| ENT-01 | Phase 5 | Pending |
+| ENT-02 | Phase 5 | Pending |
+| ENT-03 | Phase 5 | Pending |
+| ENT-04 | Phase 5 | Pending |
+| ENT-05 | Phase 5 | Pending |
+| ENT-06 | Phase 5 | Pending |
+| ENT-07 | Phase 5 | Pending |
+| FEED-01 | Phase 6 | Pending |
+| FEED-02 | Phase 6 | Pending |
+| FEED-03 | Phase 6 | Pending |
+| COLL-01 | Phase 7 | Pending |
+| COLL-02 | Phase 7 | Pending |
+| COLL-03 | Phase 7 | Pending |
+| STAT-01 | Phase 7 | Pending |
+| STAT-02 | Phase 7 | Pending |
+| STAT-03 | Phase 7 | Pending |
+| RATE-01 | Phase 4 | Pending |
+| RATE-02 | Phase 4 | Pending |
+| RATE-03 | Phase 4 | Pending |
+| PAGE-01 | Phase 3 | Pending |
+| PAGE-02 | Phase 3 | Pending |
+| PAGE-03 | Phase 3 | Pending |
+| DOC-01 | Phase 9 | Pending |
+| DOC-02 | Phase 9 | Pending |
+| DOC-03 | Phase 9 | Pending |
+| DOC-04 | Phase 9 | Pending |
+| DOC-05 | Phase 9 | Pending |
+| ERR-01 | Phase 3 | Pending |
+| ERR-02 | Phase 3 | Pending |
+| ERR-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38 (will be mapped during roadmap creation)
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-04*
-*Last updated: 2026-02-04 after initial definition*
+*Last updated: 2026-02-04 after roadmap creation*
