@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Error Handling & Pagination** - Cross-cutting response infrastructure
 - [x] **Phase 4: Rate Limiting** - Upstash-based protection with headers
 - [x] **Phase 5: Entries Endpoint** - Core feed entry access with filtering
-- [ ] **Phase 6: Feeds Endpoint** - Feed metadata and subscription data
+- [x] **Phase 6: Feeds Endpoint** - Feed metadata and subscription data
 - [ ] **Phase 7: Collections & Stats** - Secondary data endpoints
 - [ ] **Phase 8: Key Management UI** - User-facing key CRUD in settings
 - [ ] **Phase 9: Documentation** - OpenAPI spec and user guides
@@ -113,7 +113,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01-PLAN.md - Feeds endpoint with subscription query and unread counts
+- [x] 06-01-PLAN.md - Feeds endpoint with subscription query and unread counts
 
 ### Phase 7: Collections & Stats
 **Goal**: Users can query collections and aggregate statistics
@@ -175,7 +175,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 3. Error Handling & Pagination | 1/1 | Complete | 2026-02-04 |
 | 4. Rate Limiting | 1/1 | Complete | 2026-02-04 |
 | 5. Entries Endpoint | 2/2 | Complete | 2026-02-04 |
-| 6. Feeds Endpoint | 0/1 | Planned | - |
+| 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
 | 7. Collections & Stats | 0/? | Not started | - |
 | 8. Key Management UI | 0/? | Not started | - |
 | 9. Documentation | 0/? | Not started | - |

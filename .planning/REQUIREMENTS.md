@@ -35,9 +35,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Feeds Endpoint
 
-- [ ] **FEED-01**: API returns user's subscribed feeds
-- [ ] **FEED-02**: API returns feed metadata (title, URL, category)
-- [ ] **FEED-03**: API returns unread count per feed
+- [x] **FEED-01**: API returns user's subscribed feeds
+- [x] **FEED-02**: API returns feed metadata (title, URL, category)
+- [x] **FEED-03**: API returns unread count per feed
 
 ### Collections Endpoint
 
@@ -130,9 +130,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENT-05 | Phase 5 | Complete |
 | ENT-06 | Phase 5 | Complete |
 | ENT-07 | Phase 5 | Complete |
-| FEED-01 | Phase 6 | Pending |
-| FEED-02 | Phase 6 | Pending |
-| FEED-03 | Phase 6 | Pending |
+| FEED-01 | Phase 6 | Complete |
+| FEED-02 | Phase 6 | Complete |
+| FEED-03 | Phase 6 | Complete |
 | COLL-01 | Phase 7 | Pending |
 | COLL-02 | Phase 7 | Pending |
 | COLL-03 | Phase 7 | Pending |
