@@ -126,10 +126,11 @@ Plans:
   4. GET /api/v1/stats returns total unread count
   5. Stats include total starred count
   6. Stats include per-feed counts
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md - Collections and stats endpoints
+- [ ] 07-02-PLAN.md - Entries collection_id filter
 
 ### Phase 8: Key Management UI
 **Goal**: Users can create, view, and revoke API keys in the web interface
@@ -176,7 +177,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 4. Rate Limiting | 1/1 | Complete | 2026-02-04 |
 | 5. Entries Endpoint | 2/2 | Complete | 2026-02-04 |
 | 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
-| 7. Collections & Stats | 0/? | Not started | - |
+| 7. Collections & Stats | 0/2 | Not started | - |
 | 8. Key Management UI | 0/? | Not started | - |
 | 9. Documentation | 0/? | Not started | - |
 
