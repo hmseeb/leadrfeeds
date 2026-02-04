@@ -137,8 +137,56 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return serverError();
 	}
 
-	// TODO: Task 3 - Add status fetch and response building
+	// 7. Fetch user_entry_status for returned entries
+	const entryIds = entries?.map((e) => e.id) || [];
+	let statusMap = new Map<string, { is_read: boolean; is_starred: boolean }>();
 
-	// Temporary return for Task 2 verification
-	return paginatedResponse(entries || [], { next_cursor: null, has_more: false, limit });
+	if (entryIds.length > 0) {
+		const { data: statuses } = await supabase
+			.from('user_entry_status')
+			.select('entry_id, is_read, is_starred')
+			.eq('user_id', userId)
+			.in('entry_id', entryIds);
+
+		statusMap = new Map(
+			statuses?.map((s) => [
+				s.entry_id,
+				{ is_read: s.is_read ?? false, is_starred: s.is_starred ?? false }
+			]) || []
+		);
+	}
+
+	// 8. Transform entries to response shape
+	const transformedEntries =
+		entries?.map((entry) => {
+			// Supabase returns feed as object or array depending on relationship
+			const feed = Array.isArray(entry.feeds) ? entry.feeds[0] : entry.feeds;
+			const status = statusMap.get(entry.id);
+
+			return {
+				id: entry.id,
+				title: entry.title,
+				url: entry.url,
+				description: entry.description,
+				content: entry.content,
+				author: entry.author,
+				published_at: entry.published_at,
+				feed: {
+					id: feed.id,
+					title: feed.title,
+					category: feed.category,
+					image: feed.image
+				},
+				is_read: status?.is_read ?? false,
+				is_starred: status?.is_starred ?? false
+			};
+		}) || [];
+
+	// 9. Build pagination response
+	const { items, meta } = buildPaginationMeta(transformedEntries, limit, (item) => ({
+		p: item.published_at!,
+		i: item.id
+	}));
+
+	return paginatedResponse(items, meta);
 };
