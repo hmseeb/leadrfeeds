@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 
 ## Current Position
 
-Phase: 6 of 9 (Feeds Endpoint) - COMPLETE
+Phase: 7 of 9 (Collections & Stats) - COMPLETE
 Plan: 1 of 1 complete
 Status: Phase complete
-Last activity: 2026-02-04 -- Completed 06-01-PLAN.md
+Last activity: 2026-02-05 -- Completed 07-01-PLAN.md
 
-Progress: [######----] 60%
+Progress: [#######---] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 3 min
-- Total execution time: 0.37 hours
+- Total execution time: 0.40 hours
 
 **By Phase:**
 
@@ -33,10 +33,11 @@ Progress: [######----] 60%
 | 04-rate-limiting | 1 | 2min | 2min |
 | 05-entries-endpoint | 2 | 4min | 2min |
 | 06-feeds-endpoint | 1 | 1min | 1min |
+| 07-collections-stats | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 2min, 2min, 2min, 1min
-- Trend: Improving efficiency
+- Last 5 plans: 2min, 2min, 2min, 1min, 2min
+- Trend: Consistent efficiency
 
 *Updated after each plan completion*
 
@@ -77,6 +78,10 @@ Recent decisions affecting current work:
 - [06-01]: Non-paginated response for bounded data sets (feeds list ~10-100)
 - [06-01]: Reuse get_unread_counts RPC instead of duplicating logic
 - [06-01]: Order by subscribed_at DESC for consistent ordering
+- [07-01]: Use existing RPCs (get_user_collections_with_counts, get_unread_counts)
+- [07-01]: Batch query pattern with Map grouping for nested resources
+- [07-01]: Derive totals from per-item counts (single source of truth)
+- [07-01]: Head-only count query for efficient row count
 
 ### Pending Todos
 
@@ -84,11 +89,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet.
+- Uncommitted entries endpoint collection_id filter exists in working directory (from prior session)
 
 ## Session Continuity
 
-Last session: 2026-02-04
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-02-05
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
-Next: Execute Phase 7 - API Enhancements
+Next: Execute Phase 8 - API Enhancements
