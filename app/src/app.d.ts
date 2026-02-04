@@ -8,6 +8,7 @@ declare global {
 				userId: string;
 				keyId: string;
 			};
+			rateLimitHeaders?: Record<string, string>;
 		}
 		// interface PageData {}
 		// interface PageState {}

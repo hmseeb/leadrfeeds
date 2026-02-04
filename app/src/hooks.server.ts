@@ -1,11 +1,16 @@
-// Server hooks for centralized API authentication
-// Protects all /api/v1/* routes with API key validation
+// Server hooks for centralized API authentication and rate limiting
+// Protects all /api/v1/* routes with API key validation and rate limits
 
 import type { Handle } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
 import { validateApiKey } from '$lib/server/api-keys';
-import { unauthorized } from '$lib/server/api-response';
+import { unauthorized, rateLimited } from '$lib/server/api-response';
+import { checkRateLimit } from '$lib/server/rate-limit';
 
-export const handle: Handle = async ({ event, resolve }) => {
+/**
+ * Authentication handler - validates API keys for /api/v1/* routes
+ */
+const authHandler: Handle = async ({ event, resolve }) => {
 	// Only protect /api/v1/* routes
 	// All other routes (web pages, auth, static assets) pass through
 	if (!event.url.pathname.startsWith('/api/v1/')) {
@@ -49,6 +54,52 @@ export const handle: Handle = async ({ event, resolve }) => {
 		keyId: result.keyId!
 	};
 
-	// Continue to route handler
+	// Continue to next handler
 	return resolve(event);
 };
+
+/**
+ * Rate limiting handler - checks rate limits for authenticated API requests
+ */
+const rateLimitHandler: Handle = async ({ event, resolve }) => {
+	// Only apply to /api/v1/* routes
+	if (!event.url.pathname.startsWith('/api/v1/')) {
+		return resolve(event);
+	}
+
+	// Skip if auth failed (no apiUser means 401 already returned)
+	if (!event.locals.apiUser) {
+		return resolve(event);
+	}
+
+	// Check rate limit using the API key ID
+	const { allowed, headers, retryAfter } = await checkRateLimit(event.locals.apiUser.keyId);
+
+	if (!allowed) {
+		// Rate limit exceeded - return 429 with headers
+		const response = rateLimited('Rate limit exceeded. Please slow down.', retryAfter);
+
+		// Add rate limit headers to 429 response
+		Object.entries(headers).forEach(([key, value]) => {
+			response.headers.set(key, value);
+		});
+
+		return response;
+	}
+
+	// Store headers to add to successful response
+	event.locals.rateLimitHeaders = headers;
+
+	// Continue to route handler
+	const response = await resolve(event);
+
+	// Add rate limit headers to successful response
+	Object.entries(headers).forEach(([key, value]) => {
+		response.headers.set(key, value);
+	});
+
+	return response;
+};
+
+// Compose handlers: auth runs first, then rate limiting
+export const handle = sequence(authHandler, rateLimitHandler);
