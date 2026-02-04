@@ -110,10 +110,10 @@ Plans:
   1. GET /api/v1/feeds returns user's subscribed feeds
   2. Each feed includes metadata (title, URL, category)
   3. Each feed includes unread entry count
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md - Feeds endpoint with subscription query and unread counts
 
 ### Phase 7: Collections & Stats
 **Goal**: Users can query collections and aggregate statistics
@@ -175,7 +175,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 3. Error Handling & Pagination | 1/1 | Complete | 2026-02-04 |
 | 4. Rate Limiting | 1/1 | Complete | 2026-02-04 |
 | 5. Entries Endpoint | 2/2 | Complete | 2026-02-04 |
-| 6. Feeds Endpoint | 0/? | Not started | - |
+| 6. Feeds Endpoint | 0/1 | Planned | - |
 | 7. Collections & Stats | 0/? | Not started | - |
 | 8. Key Management UI | 0/? | Not started | - |
 | 9. Documentation | 0/? | Not started | - |
