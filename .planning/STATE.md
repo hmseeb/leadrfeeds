@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** Users can access their data programmatically without limitations -- simple auth, comprehensive queries, reliable responses.
-**Current focus:** Phase 1 - Database Foundation
+**Current focus:** Phase 1 - Database Foundation (COMPLETE)
 
 ## Current Position
 
 Phase: 1 of 9 (Database Foundation)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-04 -- Completed 01-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-04 -- Completed 01-02-PLAN.md
 
-Progress: [#---------] 5%
+Progress: [##--------] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 5 min
-- Total execution time: 0.08 hours
+- Total plans completed: 2
+- Average duration: 3.5 min
+- Total execution time: 0.12 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-database-foundation | 1 | 5min | 5min |
+| 01-database-foundation | 2 | 7min | 3.5min |
 
 **Recent Trend:**
-- Last 5 plans: 5min
-- Trend: Establishing baseline
+- Last 5 plans: 5min, 2min
+- Trend: Faster than baseline
 
 *Updated after each plan completion*
 
@@ -46,6 +46,10 @@ Recent decisions affecting current work:
 - [Init]: Per-user rate limits (prevent single user from overwhelming database)
 - [Init]: Hashed API keys (SHA-256 with prefix lookup, never store plaintext)
 - [01-01]: Use $env/dynamic/private for service role key (runtime validation vs build-time)
+- [01-02]: Use crypto.randomUUID for CSPRNG key generation
+- [01-02]: Use Web Crypto API for SHA-256 hashing
+- [01-02]: Use Node crypto.timingSafeEqual for timing-safe comparison
+- [01-02]: Fire-and-forget last_used_at updates to avoid blocking validation
 
 ### Pending Todos
 
@@ -57,7 +61,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-04 14:38 UTC
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-02-04 14:45 UTC
+Stopped at: Completed 01-02-PLAN.md (Phase 1 complete)
 Resume file: None
-Next: 01-02-PLAN.md (TypeScript types and key validation utilities)
+Next: Phase 02 - API Foundation (route handlers, middleware, rate limiting)
