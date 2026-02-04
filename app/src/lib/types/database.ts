@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          id: string
+          user_id: string
+          label: string
+          key_prefix: string
+          key_hash: string
+          expires_at: string | null
+          revoked_at: string | null
+          last_used_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          label: string
+          key_prefix: string
+          key_hash: string
+          expires_at?: string | null
+          revoked_at?: string | null
+          last_used_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          label?: string
+          key_prefix?: string
+          key_hash?: string
+          expires_at?: string | null
+          revoked_at?: string | null
+          last_used_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       feed_suggestions: {
         Row: {
           id: string
