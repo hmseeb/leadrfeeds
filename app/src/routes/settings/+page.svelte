@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/services/supabase';
-	import { user } from '$lib/stores/auth';
+	import { user, session } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import MobileHeader from '$lib/components/MobileHeader.svelte';
-	import { Save, Check, X, Monitor, Sun, Moon } from 'lucide-svelte';
+	import { Save, Check, X, Monitor, Sun, Moon, Key, Plus, Trash2 } from 'lucide-svelte';
 	import { theme, setTheme } from '$lib/stores/theme';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
+	import { format, formatDistanceToNow, parseISO } from 'date-fns';
+	import ApiKeyModal from '$lib/components/ApiKeyModal.svelte';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
 	// Responsive state
 	const isDesktopMode = $derived($useDesktopLayout);
@@ -22,6 +25,40 @@
 	let saveSuccess = $state(false);
 	let saveError = $state('');
 
+	// API Keys state
+	let apiKeys = $state<Array<{
+		id: string;
+		label: string;
+		key_prefix: string;
+		expires_at: string | null;
+		revoked_at: string | null;
+		last_used_at: string | null;
+		created_at: string;
+	}>>([]);
+	let keysLoading = $state(true);
+	let keysError = $state('');
+
+	// Create key form state
+	let newKeyLabel = $state('');
+	let newKeyExpires = $state('');
+	let creatingKey = $state(false);
+	let createError = $state('');
+
+	// Show key modal state
+	let showKeyModal = $state(false);
+	let newlyCreatedKey = $state('');
+	let newlyCreatedKeyLabel = $state('');
+
+	// Revoke confirmation state
+	let showRevokeModal = $state(false);
+	let keyToRevoke = $state<{ id: string; label: string } | null>(null);
+	let revoking = $state(false);
+
+	// Minimum expiration date (tomorrow)
+	const minExpirationDate = $derived(
+		format(new Date(Date.now() + 86400000), 'yyyy-MM-dd')
+	);
+
 	const availableModels = [
 		{ id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
 		{ id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus' },
@@ -33,6 +70,21 @@
 		{ id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5' }
 	];
 
+	function getAuthHeaders(): HeadersInit {
+		const accessToken = $session?.access_token;
+		if (!accessToken) return {};
+		return {
+			'Authorization': `Bearer ${accessToken}`,
+			'Content-Type': 'application/json'
+		};
+	}
+
+	function getKeyStatus(key: typeof apiKeys[0]): 'active' | 'expired' | 'revoked' {
+		if (key.revoked_at) return 'revoked';
+		if (key.expires_at && parseISO(key.expires_at) < new Date()) return 'expired';
+		return 'active';
+	}
+
 	onMount(async () => {
 		if (!$user) {
 			goto('/auth/login');
@@ -40,6 +92,7 @@
 		}
 
 		await loadSettings();
+		await loadApiKeys();
 	});
 
 	async function loadSettings() {
@@ -83,6 +136,107 @@
 		}
 
 		loading = false;
+	}
+
+	async function loadApiKeys() {
+		if (!$user) return;
+		keysLoading = true;
+		keysError = '';
+
+		try {
+			const response = await fetch('/settings/api-keys', {
+				headers: getAuthHeaders()
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to load API keys');
+			}
+
+			apiKeys = await response.json();
+		} catch (e) {
+			keysError = e instanceof Error ? e.message : 'Failed to load keys';
+		} finally {
+			keysLoading = false;
+		}
+	}
+
+	async function createApiKey() {
+		if (!newKeyLabel.trim()) return;
+
+		creatingKey = true;
+		createError = '';
+
+		try {
+			const body: { label: string; expires_at?: string } = {
+				label: newKeyLabel.trim()
+			};
+
+			if (newKeyExpires) {
+				// Set expiration to end of day UTC
+				body.expires_at = new Date(newKeyExpires + 'T23:59:59Z').toISOString();
+			}
+
+			const response = await fetch('/settings/api-keys', {
+				method: 'POST',
+				headers: getAuthHeaders(),
+				body: JSON.stringify(body)
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.message || 'Failed to create key');
+			}
+
+			const data = await response.json();
+
+			// Show the key in modal (only time it's visible)
+			newlyCreatedKey = data.full_key;
+			newlyCreatedKeyLabel = data.label;
+			showKeyModal = true;
+
+			// Reset form
+			newKeyLabel = '';
+			newKeyExpires = '';
+
+			// Reload keys list
+			await loadApiKeys();
+		} catch (e) {
+			createError = e instanceof Error ? e.message : 'Failed to create key';
+		} finally {
+			creatingKey = false;
+		}
+	}
+
+	function confirmRevoke(key: { id: string; label: string }) {
+		keyToRevoke = key;
+		showRevokeModal = true;
+	}
+
+	async function revokeApiKey() {
+		if (!keyToRevoke) return;
+
+		revoking = true;
+
+		try {
+			const response = await fetch('/settings/api-keys', {
+				method: 'DELETE',
+				headers: getAuthHeaders(),
+				body: JSON.stringify({ id: keyToRevoke.id })
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to revoke key');
+			}
+
+			await loadApiKeys();
+		} catch (e) {
+			// Show error briefly
+			keysError = e instanceof Error ? e.message : 'Failed to revoke key';
+			setTimeout(() => keysError = '', 3000);
+		} finally {
+			revoking = false;
+			keyToRevoke = null;
+		}
 	}
 
 	async function saveSettings() {
@@ -303,6 +457,129 @@
 						</div>
 					</div>
 
+					<!-- API Keys -->
+					<div class="bg-card border border-border rounded-lg p-6">
+						<div class="flex items-center justify-between mb-4">
+							<div class="flex items-center gap-2">
+								<Key size={20} class="text-primary" />
+								<h2 class="text-lg font-semibold text-foreground select-none">API Keys</h2>
+							</div>
+						</div>
+
+						<p class="text-sm text-muted-foreground mb-4">
+							API keys allow programmatic access to your feed data. Keys are shown only once when created.
+						</p>
+
+						{#if keysLoading}
+							<p class="text-muted-foreground text-sm">Loading keys...</p>
+						{:else if keysError}
+							<p class="text-destructive text-sm">{keysError}</p>
+						{:else}
+							<!-- Create new key form -->
+							<div class="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-background border border-border rounded-md">
+								<div class="flex-1">
+									<label for="keyLabel" class="block text-xs text-muted-foreground mb-1">Label</label>
+									<input
+										id="keyLabel"
+										type="text"
+										bind:value={newKeyLabel}
+										placeholder="e.g., My Integration"
+										maxlength={100}
+										class="w-full px-3 py-2 bg-card border border-border rounded-md text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+									/>
+								</div>
+								<div class="sm:w-40">
+									<label for="keyExpires" class="block text-xs text-muted-foreground mb-1">Expires (optional)</label>
+									<input
+										id="keyExpires"
+										type="date"
+										bind:value={newKeyExpires}
+										min={minExpirationDate}
+										class="w-full px-3 py-2 bg-card border border-border rounded-md text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+									/>
+								</div>
+								<div class="flex items-end">
+									<button
+										onclick={createApiKey}
+										disabled={creatingKey || !newKeyLabel.trim()}
+										class="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+									>
+										<Plus size={16} />
+										{creatingKey ? 'Creating...' : 'Create Key'}
+									</button>
+								</div>
+							</div>
+
+							{#if createError}
+								<p class="text-destructive text-sm mb-4">{createError}</p>
+							{/if}
+
+							<!-- Keys list -->
+							{#if apiKeys.length === 0}
+								<p class="text-muted-foreground text-sm text-center py-8">
+									No API keys yet. Create one to get started.
+								</p>
+							{:else}
+								<div class="space-y-3">
+									{#each apiKeys as key (key.id)}
+										{@const status = getKeyStatus(key)}
+										<div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-background border border-border rounded-md gap-3">
+											<div class="flex-1 min-w-0">
+												<div class="flex items-center gap-2 flex-wrap">
+													<span class="font-medium text-foreground">{key.label}</span>
+													<!-- Status badge -->
+													{#if status === 'revoked'}
+														<span class="px-2 py-0.5 text-xs bg-destructive/10 text-destructive rounded">
+															Revoked
+														</span>
+													{:else if status === 'expired'}
+														<span class="px-2 py-0.5 text-xs bg-secondary/10 text-secondary rounded">
+															Expired
+														</span>
+													{:else}
+														<span class="px-2 py-0.5 text-xs bg-green-500/10 text-green-600 dark:text-green-400 rounded">
+															Active
+														</span>
+													{/if}
+												</div>
+												<div class="text-xs text-muted-foreground mt-1 space-y-0.5">
+													<div>
+														<span class="font-mono">{key.key_prefix}...</span>
+														<span class="mx-2">|</span>
+														Created {format(parseISO(key.created_at), 'MMM d, yyyy')}
+													</div>
+													{#if key.expires_at}
+														<div>
+															Expires {format(parseISO(key.expires_at), 'MMM d, yyyy')}
+														</div>
+													{/if}
+													{#if key.last_used_at}
+														<div>
+															Last used {formatDistanceToNow(parseISO(key.last_used_at), { addSuffix: true })}
+														</div>
+													{:else}
+														<div>Never used</div>
+													{/if}
+												</div>
+											</div>
+
+											<!-- Revoke button -->
+											{#if status === 'active'}
+												<button
+													onclick={() => confirmRevoke({ id: key.id, label: key.label })}
+													class="px-3 py-1.5 text-destructive hover:bg-destructive/10 rounded-md text-sm flex items-center gap-1.5 self-start sm:self-center"
+												>
+													<Trash2 size={14} />
+													Revoke
+												</button>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{/if}
+						{/if}
+					</div>
+
 					<!-- Save Button -->
 					<div class="flex items-center gap-4">
 						<button
@@ -333,3 +610,29 @@
 		</div>
 	</div>
 </div>
+
+<!-- API Key Modal (show once) -->
+<ApiKeyModal
+	bind:isOpen={showKeyModal}
+	apiKey={newlyCreatedKey}
+	label={newlyCreatedKeyLabel}
+	onClose={() => {
+		showKeyModal = false;
+		newlyCreatedKey = '';
+		newlyCreatedKeyLabel = '';
+	}}
+/>
+
+<!-- Revoke Confirmation Modal -->
+<ConfirmModal
+	bind:isOpen={showRevokeModal}
+	title="Revoke API Key"
+	message={`Are you sure you want to revoke "${keyToRevoke?.label}"? This action cannot be undone. Any applications using this key will stop working.`}
+	confirmText={revoking ? 'Revoking...' : 'Revoke Key'}
+	variant="danger"
+	onConfirm={revokeApiKey}
+	onCancel={() => {
+		showRevokeModal = false;
+		keyToRevoke = null;
+	}}
+/>
