@@ -49,9 +49,96 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 	}
 
-	// TODO: Task 2 - Add database query logic
+	// Get Supabase admin client
+	const supabase = getSupabaseAdmin();
+
+	// 1. Query user's subscribed feed IDs
+	const { data: subscriptions, error: subError } = await supabase
+		.from('user_subscriptions')
+		.select('feed_id')
+		.eq('user_id', userId);
+
+	if (subError) {
+		console.error('Subscriptions query error:', subError);
+		return serverError();
+	}
+
+	const subscribedFeedIds = subscriptions?.map((s) => s.feed_id) || [];
+
+	// Return empty result if no subscriptions
+	if (subscribedFeedIds.length === 0) {
+		return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+	}
+
+	// 2. Validate feed_id filter if provided
+	if (feedId && !subscribedFeedIds.includes(feedId)) {
+		return badRequest('Feed not found in subscriptions', 'FEED_NOT_FOUND');
+	}
+
+	// 3. Build entries query with feed join
+	let query = supabase
+		.from('entries')
+		.select(
+			`
+			id,
+			title,
+			url,
+			description,
+			content,
+			author,
+			published_at,
+			feed_id,
+			feeds!inner (
+				id,
+				title,
+				category,
+				image
+			)
+		`
+		)
+		.in('feed_id', subscribedFeedIds)
+		.order('published_at', { ascending: false })
+		.order('id', { ascending: false })
+		.limit(limit + 1);
+
+	// 4. Apply cursor filter if provided
+	if (cursor) {
+		const cursorData = decodeCursor(cursor);
+		if (!cursorData) {
+			return badRequest('Invalid cursor format', 'INVALID_CURSOR');
+		}
+		query = query.or(
+			`published_at.lt.${cursorData.p},and(published_at.eq.${cursorData.p},id.lt.${cursorData.i})`
+		);
+	}
+
+	// 5. Apply filters
+	if (feedId) {
+		query = query.eq('feed_id', feedId);
+	}
+
+	if (category) {
+		query = query.eq('feeds.category', category);
+	}
+
+	if (startDate) {
+		query = query.gte('published_at', startDate.toISOString());
+	}
+
+	if (endDate) {
+		query = query.lte('published_at', endDate.toISOString());
+	}
+
+	// 6. Execute query
+	const { data: entries, error: queryError } = await query;
+
+	if (queryError) {
+		console.error('Entries query error:', queryError);
+		return serverError();
+	}
+
 	// TODO: Task 3 - Add status fetch and response building
 
-	// Temporary return for Task 1 verification
-	return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+	// Temporary return for Task 2 verification
+	return paginatedResponse(entries || [], { next_cursor: null, has_more: false, limit });
 };
