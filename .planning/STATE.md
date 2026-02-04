@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** Users can access their data programmatically without limitations -- simple auth, comprehensive queries, reliable responses.
-**Current focus:** Phase 3 - Error Handling & Pagination
+**Current focus:** Phase 4 - Timeline Endpoint
 
 ## Current Position
 
 Phase: 3 of 9 (Error Handling & Pagination)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-04 -- Completed 03-01-PLAN.md
+Plan: Gap closure complete (02-02)
+Status: Phase 3 complete, Phase 2 gap closed
+Last activity: 2026-02-04 -- Completed 02-02-PLAN.md (gap closure)
 
 Progress: [###-------] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 3 min
-- Total execution time: 0.2 hours
+- Total execution time: 0.25 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-database-foundation | 2 | 7min | 3.5min |
-| 02-authentication-middleware | 1 | 3min | 3min |
+| 02-authentication-middleware | 2 | 6min | 3min |
 | 03-error-handling-pagination | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 2min, 3min, 2min
+- Last 5 plans: 5min, 2min, 3min, 2min, 3min
 - Trend: Consistent with baseline
 
 *Updated after each plan completion*
@@ -55,6 +55,9 @@ Recent decisions affecting current work:
 - [02-01]: Return Response directly instead of error() for JSON API errors
 - [02-01]: Path check first in hooks.server.ts for zero overhead on non-API routes
 - [02-01]: Non-null assertions safe after validateApiKey valid check
+- [02-02]: Use getter function pattern for lazy initialization
+- [02-02]: Cache client instance after first initialization
+- [02-02]: Move env var validation from module scope to function scope
 - [03-01]: Short cursor keys (p, i) to minimize Base64 encoded size
 - [03-01]: Cursor validation includes date parsing to reject malformed cursors
 - [03-01]: getEffectiveLimit treats null/undefined/< 1 as default
@@ -70,6 +73,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 03-01-PLAN.md (Phase 3 complete)
+Stopped at: Completed 02-02-PLAN.md (gap closure)
 Resume file: None
 Next: /gsd:execute-phase 4 (Timeline Endpoint)
