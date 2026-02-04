@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 02-authentication-middleware
 source: [02-01-SUMMARY.md]
 started: 2026-02-04T15:30:00Z
@@ -52,7 +52,14 @@ skipped: 3
   reason: "User reported: Server crashes with 'Error: SUPABASE_SERVICE_ROLE_KEY is not set' when accessing API routes - error thrown at module load time from supabase.ts:13"
   severity: blocker
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "supabase.ts throws at module evaluation time, not when client is used. hooks.server.ts imports this eagerly, causing crash for ALL requests before route filtering can execute."
+  artifacts:
+    - path: "app/src/lib/server/supabase.ts"
+      issue: "Lines 12-14 throw at module scope instead of deferring to first use"
+    - path: "app/src/lib/server/api-keys.ts"
+      issue: "Line 5 imports supabaseAdmin eagerly"
+    - path: "app/src/hooks.server.ts"
+      issue: "Line 5 imports validateApiKey eagerly for ALL requests"
+  missing:
+    - "Change supabase.ts to use lazy initialization (factory function or getter)"
+  debug_session: ".planning/debug/service-role-key-crash.md"
