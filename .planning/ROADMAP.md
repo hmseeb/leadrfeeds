@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Database Foundation** - API key table with SHA-256 hashing and prefix lookup
 - [x] **Phase 2: Authentication Middleware** - Centralized key validation in hooks.server.ts
-- [ ] **Phase 3: Error Handling & Pagination** - Cross-cutting response infrastructure
+- [x] **Phase 3: Error Handling & Pagination** - Cross-cutting response infrastructure
 - [ ] **Phase 4: Rate Limiting** - Upstash-based protection with headers
 - [ ] **Phase 5: Entries Endpoint** - Core feed entry access with filtering
 - [ ] **Phase 6: Feeds Endpoint** - Feed metadata and subscription data
@@ -68,7 +68,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 03-01-PLAN.md - Error response helpers and cursor pagination utilities
+- [x] 03-01-PLAN.md - Error response helpers and cursor pagination utilities
 
 ### Phase 4: Rate Limiting
 **Goal**: API is protected from abuse with per-key rate limits and informative headers
@@ -79,10 +79,10 @@ Plans:
   2. All responses include X-RateLimit-Remaining and X-RateLimit-Reset headers
   3. Exceeded limits return 429 with Retry-After header
   4. Rate limiting uses atomic operations (no race conditions)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md - Upstash rate limiter with hooks.server.ts integration
 
 ### Phase 5: Entries Endpoint
 **Goal**: Users can query their feed entries with filtering, search, and pagination
@@ -172,7 +172,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 1. Database Foundation | 2/2 | Complete | 2026-02-04 |
 | 2. Authentication Middleware | 2/2 | Complete | 2026-02-04 |
 | 3. Error Handling & Pagination | 1/1 | Complete | 2026-02-04 |
-| 4. Rate Limiting | 0/? | Not started | - |
+| 4. Rate Limiting | 0/1 | Not started | - |
 | 5. Entries Endpoint | 0/? | Not started | - |
 | 6. Feeds Endpoint | 0/? | Not started | - |
 | 7. Collections & Stats | 0/? | Not started | - |
