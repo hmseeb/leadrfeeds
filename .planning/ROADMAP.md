@@ -143,10 +143,11 @@ Plans:
   4. User can manage multiple API keys
   5. User can view list of keys with status and last used time
   6. Full key is shown only once at creation (never again)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md - Server endpoint for key CRUD + ApiKeyModal component
+- [ ] 08-02-PLAN.md - Settings page integration with key list and management UI
 
 ### Phase 9: Documentation
 **Goal**: External users have comprehensive documentation for API integration
@@ -178,7 +179,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 5. Entries Endpoint | 2/2 | Complete | 2026-02-04 |
 | 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
 | 7. Collections & Stats | 2/2 | Complete | 2026-02-05 |
-| 8. Key Management UI | 0/? | Not started | - |
+| 8. Key Management UI | 0/2 | Not started | - |
 | 9. Documentation | 0/? | Not started | - |
 
 ---
