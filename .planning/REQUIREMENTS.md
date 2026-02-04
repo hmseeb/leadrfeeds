@@ -53,15 +53,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Rate Limiting
 
-- [ ] **RATE-01**: API enforces per-key rate limits
-- [ ] **RATE-02**: API returns rate limit headers (remaining, reset)
-- [ ] **RATE-03**: API returns 429 with retry-after on limit exceeded
+- [x] **RATE-01**: API enforces per-key rate limits
+- [x] **RATE-02**: API returns rate limit headers (remaining, reset)
+- [x] **RATE-03**: API returns 429 with retry-after on limit exceeded
 
 ### Pagination
 
-- [ ] **PAGE-01**: API uses cursor-based pagination
-- [ ] **PAGE-02**: API returns next_cursor in response
-- [ ] **PAGE-03**: API supports configurable page size (with max limit)
+- [x] **PAGE-01**: API uses cursor-based pagination
+- [x] **PAGE-02**: API returns next_cursor in response
+- [x] **PAGE-03**: API supports configurable page size (with max limit)
 
 ### Documentation
 
@@ -73,9 +73,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Error Handling
 
-- [ ] **ERR-01**: API returns consistent error response format
-- [ ] **ERR-02**: API uses appropriate HTTP status codes
-- [ ] **ERR-03**: API error messages are helpful but don't leak internals
+- [x] **ERR-01**: API returns consistent error response format
+- [x] **ERR-02**: API uses appropriate HTTP status codes
+- [x] **ERR-03**: API error messages are helpful but don't leak internals
 
 ## v2 Requirements
 
@@ -139,20 +139,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STAT-01 | Phase 7 | Pending |
 | STAT-02 | Phase 7 | Pending |
 | STAT-03 | Phase 7 | Pending |
-| RATE-01 | Phase 4 | Pending |
-| RATE-02 | Phase 4 | Pending |
-| RATE-03 | Phase 4 | Pending |
-| PAGE-01 | Phase 3 | Pending |
-| PAGE-02 | Phase 3 | Pending |
-| PAGE-03 | Phase 3 | Pending |
+| RATE-01 | Phase 4 | Complete |
+| RATE-02 | Phase 4 | Complete |
+| RATE-03 | Phase 4 | Complete |
+| PAGE-01 | Phase 3 | Complete |
+| PAGE-02 | Phase 3 | Complete |
+| PAGE-03 | Phase 3 | Complete |
 | DOC-01 | Phase 9 | Pending |
 | DOC-02 | Phase 9 | Pending |
 | DOC-03 | Phase 9 | Pending |
 | DOC-04 | Phase 9 | Pending |
 | DOC-05 | Phase 9 | Pending |
-| ERR-01 | Phase 3 | Pending |
-| ERR-02 | Phase 3 | Pending |
-| ERR-03 | Phase 3 | Pending |
+| ERR-01 | Phase 3 | Complete |
+| ERR-02 | Phase 3 | Complete |
+| ERR-03 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total
