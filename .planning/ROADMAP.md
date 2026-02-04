@@ -64,10 +64,10 @@ Plans:
   3. Error messages help users without leaking implementation details
   4. Paginated responses include cursor for next page
   5. Page size is configurable with enforced maximum
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md - Error response helpers and cursor pagination utilities
 
 ### Phase 4: Rate Limiting
 **Goal**: API is protected from abuse with per-key rate limits and informative headers
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 |-------|----------------|--------|-----------|
 | 1. Database Foundation | 2/2 | Complete | 2026-02-04 |
 | 2. Authentication Middleware | 1/1 | Complete | 2026-02-04 |
-| 3. Error Handling & Pagination | 0/? | Not started | - |
+| 3. Error Handling & Pagination | 0/1 | Not started | - |
 | 4. Rate Limiting | 0/? | Not started | - |
 | 5. Entries Endpoint | 0/? | Not started | - |
 | 6. Feeds Endpoint | 0/? | Not started | - |
