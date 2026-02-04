@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 7 of 9 (Collections & Stats) - COMPLETE
-Plan: 1 of 1 complete
+Plan: 2 of 2 complete
 Status: Phase complete
-Last activity: 2026-02-05 -- Completed 07-01-PLAN.md
+Last activity: 2026-02-05 -- Completed 07-02-PLAN.md
 
-Progress: [#######---] 70%
+Progress: [#######---] 73%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 3 min
-- Total execution time: 0.40 hours
+- Total plans completed: 11
+- Average duration: 2.7 min
+- Total execution time: 0.43 hours
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [#######---] 70%
 | 04-rate-limiting | 1 | 2min | 2min |
 | 05-entries-endpoint | 2 | 4min | 2min |
 | 06-feeds-endpoint | 1 | 1min | 1min |
-| 07-collections-stats | 1 | 2min | 2min |
+| 07-collections-stats | 2 | 4min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 2min, 2min, 2min, 1min, 2min
+- Last 5 plans: 2min, 2min, 1min, 2min, 2min
 - Trend: Consistent efficiency
 
 *Updated after each plan completion*
@@ -82,6 +82,9 @@ Recent decisions affecting current work:
 - [07-01]: Batch query pattern with Map grouping for nested resources
 - [07-01]: Derive totals from per-item counts (single source of truth)
 - [07-01]: Head-only count query for efficient row count
+- [07-02]: Verify collection ownership via feed_collections.user_id
+- [07-02]: Empty collection returns empty result (not error)
+- [07-02]: Intersect collection feeds with subscribed feeds for security
 
 ### Pending Todos
 
@@ -89,11 +92,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Uncommitted entries endpoint collection_id filter exists in working directory (from prior session)
+None yet.
 
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 07-01-PLAN.md
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
-Next: Execute Phase 8 - API Enhancements
+Next: Execute Phase 8 - OPML Import/Export
