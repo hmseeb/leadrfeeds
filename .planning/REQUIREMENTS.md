@@ -41,15 +41,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Collections Endpoint
 
-- [ ] **COLL-01**: API returns user's collections
-- [ ] **COLL-02**: API returns feeds within each collection
-- [ ] **COLL-03**: API supports filtering entries by collection
+- [x] **COLL-01**: API returns user's collections
+- [x] **COLL-02**: API returns feeds within each collection
+- [x] **COLL-03**: API supports filtering entries by collection
 
 ### Stats Endpoint
 
-- [ ] **STAT-01**: API returns total unread count
-- [ ] **STAT-02**: API returns total starred count
-- [ ] **STAT-03**: API returns counts per feed
+- [x] **STAT-01**: API returns total unread count
+- [x] **STAT-02**: API returns total starred count
+- [x] **STAT-03**: API returns counts per feed
 
 ### Rate Limiting
 
@@ -133,12 +133,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FEED-01 | Phase 6 | Complete |
 | FEED-02 | Phase 6 | Complete |
 | FEED-03 | Phase 6 | Complete |
-| COLL-01 | Phase 7 | Pending |
-| COLL-02 | Phase 7 | Pending |
-| COLL-03 | Phase 7 | Pending |
-| STAT-01 | Phase 7 | Pending |
-| STAT-02 | Phase 7 | Pending |
-| STAT-03 | Phase 7 | Pending |
+| COLL-01 | Phase 7 | Complete |
+| COLL-02 | Phase 7 | Complete |
+| COLL-03 | Phase 7 | Complete |
+| STAT-01 | Phase 7 | Complete |
+| STAT-02 | Phase 7 | Complete |
+| STAT-03 | Phase 7 | Complete |
 | RATE-01 | Phase 4 | Complete |
 | RATE-02 | Phase 4 | Complete |
 | RATE-03 | Phase 4 | Complete |

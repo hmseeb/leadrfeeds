@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Rate Limiting** - Upstash-based protection with headers
 - [x] **Phase 5: Entries Endpoint** - Core feed entry access with filtering
 - [x] **Phase 6: Feeds Endpoint** - Feed metadata and subscription data
-- [ ] **Phase 7: Collections & Stats** - Secondary data endpoints
+- [x] **Phase 7: Collections & Stats** - Secondary data endpoints
 - [ ] **Phase 8: Key Management UI** - User-facing key CRUD in settings
 - [ ] **Phase 9: Documentation** - OpenAPI spec and user guides
 
@@ -129,8 +129,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md - Collections and stats endpoints
-- [ ] 07-02-PLAN.md - Entries collection_id filter
+- [x] 07-01-PLAN.md - Collections and stats endpoints
+- [x] 07-02-PLAN.md - Entries collection_id filter
 
 ### Phase 8: Key Management UI
 **Goal**: Users can create, view, and revoke API keys in the web interface
@@ -177,7 +177,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 4. Rate Limiting | 1/1 | Complete | 2026-02-04 |
 | 5. Entries Endpoint | 2/2 | Complete | 2026-02-04 |
 | 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
-| 7. Collections & Stats | 0/2 | Not started | - |
+| 7. Collections & Stats | 2/2 | Complete | 2026-02-05 |
 | 8. Key Management UI | 0/? | Not started | - |
 | 9. Documentation | 0/? | Not started | - |
 
