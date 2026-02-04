@@ -27,6 +27,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	// Parse filter parameters
 	const feedId = url.searchParams.get('feed_id');
+	const collectionId = url.searchParams.get('collection_id');
 	const category = url.searchParams.get('category');
 	const startDateParam = url.searchParams.get('start_date');
 	const endDateParam = url.searchParams.get('end_date');
@@ -66,19 +67,62 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return serverError();
 	}
 
-	const subscribedFeedIds = subscriptions?.map((s) => s.feed_id) || [];
+	let subscribedFeedIds = subscriptions?.map((s) => s.feed_id) || [];
 
 	// Return empty result if no subscriptions
 	if (subscribedFeedIds.length === 0) {
 		return paginatedResponse([], { next_cursor: null, has_more: false, limit });
 	}
 
-	// 2. Validate feed_id filter if provided
+	// 2. If collection_id provided, intersect with collection feeds
+	if (collectionId) {
+		// Verify collection belongs to user (security: prevent accessing other users' collections)
+		const { data: collection, error: collError } = await supabase
+			.from('feed_collections')
+			.select('id')
+			.eq('id', collectionId)
+			.eq('user_id', userId)
+			.single();
+
+		if (collError || !collection) {
+			return badRequest('Collection not found', 'COLLECTION_NOT_FOUND');
+		}
+
+		// Get feed IDs in this collection
+		const { data: collFeeds, error: cfError } = await supabase
+			.from('collection_feeds')
+			.select('feed_id')
+			.eq('collection_id', collectionId);
+
+		if (cfError) {
+			console.error('Collection feeds error:', cfError);
+			return serverError();
+		}
+
+		const collectionFeedIds = collFeeds?.map((cf) => cf.feed_id) || [];
+
+		// Empty collection = empty result
+		if (collectionFeedIds.length === 0) {
+			return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+		}
+
+		// Intersect collection feeds with subscribed feeds
+		// (user may have unsubscribed from a feed that's still in collection)
+		const collectionSet = new Set(collectionFeedIds);
+		subscribedFeedIds = subscribedFeedIds.filter((id) => collectionSet.has(id));
+
+		// If no overlap between collection and subscriptions, empty result
+		if (subscribedFeedIds.length === 0) {
+			return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+		}
+	}
+
+	// 3. Validate feed_id filter if provided
 	if (feedId && !subscribedFeedIds.includes(feedId)) {
 		return badRequest('Feed not found in subscriptions', 'FEED_NOT_FOUND');
 	}
 
-	// 3. Pre-query for status filters (is_starred, is_read)
+	// 4. Pre-query for status filters (is_starred, is_read)
 	// Track entry IDs to include (null = no filter), and entry IDs to exclude
 	let includeEntryIds: string[] | null = null;
 	let excludeEntryIds: string[] | null = null;
@@ -161,7 +205,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// If readIds is empty, all entries are unread - no filter needed
 	}
 
-	// 4. Build entries query with feed join
+	// 5. Build entries query with feed join
 	let query = supabase
 		.from('entries')
 		.select(
@@ -187,7 +231,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		.order('id', { ascending: false })
 		.limit(limit + 1);
 
-	// 5. Apply cursor filter if provided
+	// 6. Apply cursor filter if provided
 	if (cursor) {
 		const cursorData = decodeCursor(cursor);
 		if (!cursorData) {
@@ -198,7 +242,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		);
 	}
 
-	// 6. Apply filters
+	// 7. Apply filters
 	if (feedId) {
 		query = query.eq('feed_id', feedId);
 	}
@@ -233,7 +277,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		);
 	}
 
-	// 7. Execute query
+	// 8. Execute query
 	const { data: entries, error: queryError } = await query;
 
 	if (queryError) {
@@ -241,7 +285,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return serverError();
 	}
 
-	// 8. Fetch user_entry_status for returned entries
+	// 9. Fetch user_entry_status for returned entries
 	const entryIds = entries?.map((e) => e.id) || [];
 	let statusMap = new Map<string, { is_read: boolean; is_starred: boolean }>();
 
@@ -260,7 +304,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		);
 	}
 
-	// 9. Transform entries to response shape
+	// 10. Transform entries to response shape
 	const transformedEntries =
 		entries?.map((entry) => {
 			// Supabase returns feed as object or array depending on relationship
@@ -286,7 +330,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			};
 		}) || [];
 
-	// 10. Build pagination response
+	// 11. Build pagination response
 	const { items, meta } = buildPaginationMeta(transformedEntries, limit, (item) => ({
 		p: item.published_at!,
 		i: item.id
