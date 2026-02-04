@@ -2,7 +2,7 @@
 // This file is in $lib/server/ and cannot be imported from browser code
 
 import { timingSafeEqual } from 'crypto';
-import { supabaseAdmin } from './supabase';
+import { getSupabaseAdmin } from './supabase';
 
 /**
  * Generate a cryptographically secure API key.
@@ -90,7 +90,7 @@ export async function validateApiKey(apiKey: string): Promise<{
 	const providedHash = await sha256(apiKey);
 
 	// Lookup by prefix (indexed, O(1))
-	const { data: keys, error } = await supabaseAdmin
+	const { data: keys, error } = await getSupabaseAdmin()
 		.from('api_keys')
 		.select('id, user_id, key_hash, expires_at, revoked_at')
 		.eq('key_prefix', prefix);
@@ -121,7 +121,7 @@ export async function validateApiKey(apiKey: string): Promise<{
 			// Update last_used_at (fire and forget, don't block validation)
 			void (async () => {
 				try {
-					await supabaseAdmin
+					await getSupabaseAdmin()
 						.from('api_keys')
 						.update({ last_used_at: new Date().toISOString() })
 						.eq('id', key.id);
