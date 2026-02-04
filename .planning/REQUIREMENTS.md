@@ -25,13 +25,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Entries Endpoint
 
-- [ ] **ENT-01**: API returns user's feed entries with pagination
-- [ ] **ENT-02**: API supports filtering entries by date range (start/end)
-- [ ] **ENT-03**: API supports filtering entries by feed ID
-- [ ] **ENT-04**: API supports filtering entries by category
-- [ ] **ENT-05**: API supports filtering entries by read/unread status
-- [ ] **ENT-06**: API supports filtering entries by starred status
-- [ ] **ENT-07**: API supports full-text search across entry content
+- [x] **ENT-01**: API returns user's feed entries with pagination
+- [x] **ENT-02**: API supports filtering entries by date range (start/end)
+- [x] **ENT-03**: API supports filtering entries by feed ID
+- [x] **ENT-04**: API supports filtering entries by category
+- [x] **ENT-05**: API supports filtering entries by read/unread status
+- [x] **ENT-06**: API supports filtering entries by starred status
+- [x] **ENT-07**: API supports full-text search across entry content
 
 ### Feeds Endpoint
 
@@ -123,13 +123,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-02 | Phase 2 | Complete |
 | AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 1 | Complete |
-| ENT-01 | Phase 5 | Pending |
-| ENT-02 | Phase 5 | Pending |
-| ENT-03 | Phase 5 | Pending |
-| ENT-04 | Phase 5 | Pending |
-| ENT-05 | Phase 5 | Pending |
-| ENT-06 | Phase 5 | Pending |
-| ENT-07 | Phase 5 | Pending |
+| ENT-01 | Phase 5 | Complete |
+| ENT-02 | Phase 5 | Complete |
+| ENT-03 | Phase 5 | Complete |
+| ENT-04 | Phase 5 | Complete |
+| ENT-05 | Phase 5 | Complete |
+| ENT-06 | Phase 5 | Complete |
+| ENT-07 | Phase 5 | Complete |
 | FEED-01 | Phase 6 | Pending |
 | FEED-02 | Phase 6 | Pending |
 | FEED-03 | Phase 6 | Pending |
