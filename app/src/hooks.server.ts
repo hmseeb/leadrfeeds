@@ -3,23 +3,7 @@
 
 import type { Handle } from '@sveltejs/kit';
 import { validateApiKey } from '$lib/server/api-keys';
-
-/**
- * Create a JSON 401 Unauthorized response.
- * Returns Response directly instead of using error() to ensure JSON format.
- */
-function unauthorized(message: string): Response {
-	return new Response(
-		JSON.stringify({
-			error: 'Unauthorized',
-			message
-		}),
-		{
-			status: 401,
-			headers: { 'Content-Type': 'application/json' }
-		}
-	);
-}
+import { unauthorized } from '$lib/server/api-response';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	// Only protect /api/v1/* routes
