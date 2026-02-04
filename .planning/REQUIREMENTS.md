@@ -14,14 +14,14 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **KEY-03**: User can revoke an active API key
 - [ ] **KEY-04**: User can create multiple API keys (different integrations)
 - [ ] **KEY-05**: User can view list of their API keys with status
-- [ ] **KEY-06**: API key is shown once on creation (hashed in database)
+- [x] **KEY-06**: API key is shown once on creation (hashed in database)
 
 ### API Authentication
 
 - [ ] **AUTH-01**: API validates key via Authorization header (Bearer token)
 - [ ] **AUTH-02**: API rejects expired keys with appropriate error
 - [ ] **AUTH-03**: API rejects revoked keys with appropriate error
-- [ ] **AUTH-04**: API uses timing-safe comparison to prevent attacks
+- [x] **AUTH-04**: API uses timing-safe comparison to prevent attacks
 
 ### Entries Endpoint
 
@@ -118,11 +118,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KEY-03 | Phase 8 | Pending |
 | KEY-04 | Phase 8 | Pending |
 | KEY-05 | Phase 8 | Pending |
-| KEY-06 | Phase 1 | Pending |
+| KEY-06 | Phase 1 | Complete |
 | AUTH-01 | Phase 2 | Pending |
 | AUTH-02 | Phase 2 | Pending |
 | AUTH-03 | Phase 2 | Pending |
-| AUTH-04 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Complete |
 | ENT-01 | Phase 5 | Pending |
 | ENT-02 | Phase 5 | Pending |
 | ENT-03 | Phase 5 | Pending |
