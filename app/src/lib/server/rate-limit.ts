@@ -10,10 +10,15 @@ let ratelimit: Ratelimit | null = null;
 
 /**
  * Get or create the Ratelimit instance.
- * Returns null during build to avoid connection errors.
+ * Returns null during build or if Upstash credentials are not configured.
  */
 export function getRateLimiter(): Ratelimit | null {
 	if (building) {
+		return null;
+	}
+
+	// Check if Upstash credentials are configured
+	if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
 		return null;
 	}
 
