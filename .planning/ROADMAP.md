@@ -13,7 +13,7 @@ This roadmap delivers a public read-only API for LeadrFeeds, enabling users to p
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Database Foundation** - API key table with SHA-256 hashing and prefix lookup
-- [ ] **Phase 2: Authentication Middleware** - Centralized key validation in hooks.server.ts
+- [x] **Phase 2: Authentication Middleware** - Centralized key validation in hooks.server.ts
 - [ ] **Phase 3: Error Handling & Pagination** - Cross-cutting response infrastructure
 - [ ] **Phase 4: Rate Limiting** - Upstash-based protection with headers
 - [ ] **Phase 5: Entries Endpoint** - Core feed entry access with filtering
@@ -52,7 +52,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01-PLAN.md - Server hooks with API key authentication middleware
+- [x] 02-01-PLAN.md - Server hooks with API key authentication middleware
 
 ### Phase 3: Error Handling & Pagination
 **Goal**: All API responses follow consistent format with proper error handling and pagination
@@ -169,7 +169,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Database Foundation | 2/2 | Complete | 2026-02-04 |
-| 2. Authentication Middleware | 0/1 | Planned | - |
+| 2. Authentication Middleware | 1/1 | Complete | 2026-02-04 |
 | 3. Error Handling & Pagination | 0/? | Not started | - |
 | 4. Rate Limiting | 0/? | Not started | - |
 | 5. Entries Endpoint | 0/? | Not started | - |

@@ -18,9 +18,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### API Authentication
 
-- [ ] **AUTH-01**: API validates key via Authorization header (Bearer token)
-- [ ] **AUTH-02**: API rejects expired keys with appropriate error
-- [ ] **AUTH-03**: API rejects revoked keys with appropriate error
+- [x] **AUTH-01**: API validates key via Authorization header (Bearer token)
+- [x] **AUTH-02**: API rejects expired keys with appropriate error
+- [x] **AUTH-03**: API rejects revoked keys with appropriate error
 - [x] **AUTH-04**: API uses timing-safe comparison to prevent attacks
 
 ### Entries Endpoint
@@ -119,9 +119,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KEY-04 | Phase 8 | Pending |
 | KEY-05 | Phase 8 | Pending |
 | KEY-06 | Phase 1 | Complete |
-| AUTH-01 | Phase 2 | Pending |
-| AUTH-02 | Phase 2 | Pending |
-| AUTH-03 | Phase 2 | Pending |
+| AUTH-01 | Phase 2 | Complete |
+| AUTH-02 | Phase 2 | Complete |
+| AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 1 | Complete |
 | ENT-01 | Phase 5 | Pending |
 | ENT-02 | Phase 5 | Pending |
