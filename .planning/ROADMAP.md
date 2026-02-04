@@ -96,10 +96,11 @@ Plans:
   5. Entries can be filtered by read/unread status
   6. Entries can be filtered by starred status
   7. Full-text search works across entry title and content
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md - Core entries endpoint with pagination, basic filters (feed_id, category, date range), and status merge
+- [ ] 05-02-PLAN.md - Status filters (is_read, is_starred) and search functionality
 
 ### Phase 6: Feeds Endpoint
 **Goal**: Users can query their subscribed feeds and metadata
@@ -173,7 +174,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 2. Authentication Middleware | 2/2 | Complete | 2026-02-04 |
 | 3. Error Handling & Pagination | 1/1 | Complete | 2026-02-04 |
 | 4. Rate Limiting | 1/1 | Complete | 2026-02-04 |
-| 5. Entries Endpoint | 0/? | Not started | - |
+| 5. Entries Endpoint | 0/2 | Not started | - |
 | 6. Feeds Endpoint | 0/? | Not started | - |
 | 7. Collections & Stats | 0/? | Not started | - |
 | 8. Key Management UI | 0/? | Not started | - |
