@@ -30,6 +30,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const category = url.searchParams.get('category');
 	const startDateParam = url.searchParams.get('start_date');
 	const endDateParam = url.searchParams.get('end_date');
+	const isReadParam = url.searchParams.get('is_read');
+	const isStarredParam = url.searchParams.get('is_starred');
+	const search = url.searchParams.get('search');
 
 	// Validate date parameters
 	let startDate: Date | null = null;
@@ -75,7 +78,90 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return badRequest('Feed not found in subscriptions', 'FEED_NOT_FOUND');
 	}
 
-	// 3. Build entries query with feed join
+	// 3. Pre-query for status filters (is_starred, is_read)
+	// Track entry IDs to include (null = no filter), and entry IDs to exclude
+	let includeEntryIds: string[] | null = null;
+	let excludeEntryIds: string[] | null = null;
+
+	// Handle is_starred filter
+	if (isStarredParam === 'true') {
+		const { data: starred, error: starredError } = await supabase
+			.from('user_entry_status')
+			.select('entry_id')
+			.eq('user_id', userId)
+			.eq('is_starred', true);
+
+		if (starredError) {
+			console.error('Starred query error:', starredError);
+			return serverError();
+		}
+
+		includeEntryIds = starred?.map((s) => s.entry_id) || [];
+
+		// If no starred entries, return empty result immediately
+		if (includeEntryIds.length === 0) {
+			return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+		}
+	}
+
+	// Handle is_read filter
+	if (isReadParam === 'true') {
+		const { data: read, error: readError } = await supabase
+			.from('user_entry_status')
+			.select('entry_id')
+			.eq('user_id', userId)
+			.eq('is_read', true);
+
+		if (readError) {
+			console.error('Read query error:', readError);
+			return serverError();
+		}
+
+		const readIds = read?.map((s) => s.entry_id) || [];
+
+		// If combined with starred filter, intersect the sets
+		if (includeEntryIds !== null) {
+			const readSet = new Set(readIds);
+			includeEntryIds = includeEntryIds.filter((id) => readSet.has(id));
+		} else {
+			includeEntryIds = readIds;
+		}
+
+		if (includeEntryIds.length === 0) {
+			return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+		}
+	}
+
+	// Handle is_read=false (unread entries) - need to EXCLUDE read entries
+	if (isReadParam === 'false') {
+		const { data: read, error: readError } = await supabase
+			.from('user_entry_status')
+			.select('entry_id')
+			.eq('user_id', userId)
+			.eq('is_read', true);
+
+		if (readError) {
+			console.error('Read query error:', readError);
+			return serverError();
+		}
+
+		const readIds = read?.map((s) => s.entry_id) || [];
+
+		// If we already have includeEntryIds (from is_starred=true), filter those
+		if (includeEntryIds !== null) {
+			const readSet = new Set(readIds);
+			includeEntryIds = includeEntryIds.filter((id) => !readSet.has(id));
+			if (includeEntryIds.length === 0) {
+				return paginatedResponse([], { next_cursor: null, has_more: false, limit });
+			}
+		} else if (readIds.length > 0) {
+			// No includeEntryIds yet, so we need to exclude read entries in main query
+			excludeEntryIds = readIds;
+		}
+		// If readIds is empty, all entries are unread - no filter needed
+	}
+
+	// 4. Build entries query with feed join
 	let query = supabase
 		.from('entries')
 		.select(
@@ -101,7 +187,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		.order('id', { ascending: false })
 		.limit(limit + 1);
 
-	// 4. Apply cursor filter if provided
+	// 5. Apply cursor filter if provided
 	if (cursor) {
 		const cursorData = decodeCursor(cursor);
 		if (!cursorData) {
@@ -112,7 +198,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		);
 	}
 
-	// 5. Apply filters
+	// 6. Apply filters
 	if (feedId) {
 		query = query.eq('feed_id', feedId);
 	}
@@ -129,7 +215,25 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		query = query.lte('published_at', endDate.toISOString());
 	}
 
-	// 6. Execute query
+	// Apply status filter (include IDs from pre-query)
+	if (includeEntryIds !== null) {
+		query = query.in('id', includeEntryIds);
+	}
+
+	// Apply status exclusion filter (exclude IDs from is_read=false)
+	if (excludeEntryIds !== null && excludeEntryIds.length > 0) {
+		query = query.not('id', 'in', `(${excludeEntryIds.join(',')})`);
+	}
+
+	// Apply search filter (ILIKE for case-insensitive partial match)
+	if (search && search.trim()) {
+		const searchTerm = search.trim();
+		query = query.or(
+			`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`
+		);
+	}
+
+	// 7. Execute query
 	const { data: entries, error: queryError } = await query;
 
 	if (queryError) {
@@ -137,7 +241,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return serverError();
 	}
 
-	// 7. Fetch user_entry_status for returned entries
+	// 8. Fetch user_entry_status for returned entries
 	const entryIds = entries?.map((e) => e.id) || [];
 	let statusMap = new Map<string, { is_read: boolean; is_starred: boolean }>();
 
@@ -156,7 +260,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		);
 	}
 
-	// 8. Transform entries to response shape
+	// 9. Transform entries to response shape
 	const transformedEntries =
 		entries?.map((entry) => {
 			// Supabase returns feed as object or array depending on relationship
@@ -182,7 +286,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			};
 		}) || [];
 
-	// 9. Build pagination response
+	// 10. Build pagination response
 	const { items, meta } = buildPaginationMeta(transformedEntries, limit, (item) => ({
 		p: item.published_at!,
 		i: item.id
