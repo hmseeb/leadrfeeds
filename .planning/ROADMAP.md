@@ -33,10 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Key lookup uses indexed prefix for O(1) performance
   3. Service role client exists and is isolated from browser code
   4. Key validation uses timing-safe comparison
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md - Database table and service role client
+- [ ] 01-02-PLAN.md - TypeScript types and key validation utilities
 
 ### Phase 2: Authentication Middleware
 **Goal**: All /api/v1/* routes are protected by centralized API key validation
@@ -167,7 +168,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Database Foundation | 0/? | Not started | - |
+| 1. Database Foundation | 0/2 | Planned | - |
 | 2. Authentication Middleware | 0/? | Not started | - |
 | 3. Error Handling & Pagination | 0/? | Not started | - |
 | 4. Rate Limiting | 0/? | Not started | - |
