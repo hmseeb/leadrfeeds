@@ -28,6 +28,8 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.80.0",
+		"@upstash/ratelimit": "^2.0.8",
+		"@upstash/redis": "^1.36.2",
 		"canvas-confetti": "^1.9.4",
 		"date-fns": "^4.1.0",
 		"lucide-svelte": "^0.553.0",
