@@ -7,7 +7,7 @@ export const openApiSpec = {
 	},
 	servers: [
 		{
-			url: 'https://leadrfeeds.com/api/v1',
+			url: 'https://feeds.leadrai.com/api/v1',
 			description: 'Production'
 		}
 	],

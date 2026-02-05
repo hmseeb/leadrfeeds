@@ -37,9 +37,9 @@
 
 	// Code examples
 	const authExample = {
-		curl: `curl -X GET "https://leadrfeeds.com/api/v1/entries" \\
+		curl: `curl -X GET "https://feeds.leadrai.com/api/v1/entries" \\
   -H "Authorization: Bearer lf_your_api_key_here"`,
-		javascript: `const response = await fetch('https://leadrfeeds.com/api/v1/entries', {
+		javascript: `const response = await fetch('https://feeds.leadrai.com/api/v1/entries', {
   headers: {
     'Authorization': 'Bearer lf_your_api_key_here'
   }
@@ -48,14 +48,14 @@ const data = await response.json();`,
 		python: `import requests
 
 response = requests.get(
-    'https://leadrfeeds.com/api/v1/entries',
+    'https://feeds.leadrai.com/api/v1/entries',
     headers={'Authorization': 'Bearer lf_your_api_key_here'}
 )
 data = response.json()`
 	};
 
 	const entriesExample = {
-		curl: `curl -X GET "https://leadrfeeds.com/api/v1/entries?limit=10&is_read=false" \\
+		curl: `curl -X GET "https://feeds.leadrai.com/api/v1/entries?limit=10&is_read=false" \\
   -H "Authorization: Bearer lf_your_api_key_here"`,
 		javascript: `const params = new URLSearchParams({
   limit: '10',
@@ -63,7 +63,7 @@ data = response.json()`
 });
 
 const response = await fetch(
-  \`https://leadrfeeds.com/api/v1/entries?\${params}\`,
+  \`https://feeds.leadrai.com/api/v1/entries?\${params}\`,
   {
     headers: {
       'Authorization': 'Bearer lf_your_api_key_here'
@@ -82,7 +82,7 @@ if (data.meta.has_more) {
 		python: `import requests
 
 response = requests.get(
-    'https://leadrfeeds.com/api/v1/entries',
+    'https://feeds.leadrai.com/api/v1/entries',
     params={'limit': 10, 'is_read': False},
     headers={'Authorization': 'Bearer lf_your_api_key_here'}
 )
@@ -91,16 +91,16 @@ data = response.json()
 # Paginate through results
 if data['meta']['has_more']:
     next_response = requests.get(
-        'https://leadrfeeds.com/api/v1/entries',
+        'https://feeds.leadrai.com/api/v1/entries',
         params={'cursor': data['meta']['next_cursor']},
         headers={'Authorization': 'Bearer lf_your_api_key_here'}
     )`
 	};
 
 	const feedsExample = {
-		curl: `curl -X GET "https://leadrfeeds.com/api/v1/feeds" \\
+		curl: `curl -X GET "https://feeds.leadrai.com/api/v1/feeds" \\
   -H "Authorization: Bearer lf_your_api_key_here"`,
-		javascript: `const response = await fetch('https://leadrfeeds.com/api/v1/feeds', {
+		javascript: `const response = await fetch('https://feeds.leadrai.com/api/v1/feeds', {
   headers: {
     'Authorization': 'Bearer lf_your_api_key_here'
   }
@@ -114,7 +114,7 @@ feeds.forEach(feed => {
 		python: `import requests
 
 response = requests.get(
-    'https://leadrfeeds.com/api/v1/feeds',
+    'https://feeds.leadrai.com/api/v1/feeds',
     headers={'Authorization': 'Bearer lf_your_api_key_here'}
 )
 feeds = response.json()['data']
@@ -125,9 +125,9 @@ for feed in feeds:
 	};
 
 	const collectionsExample = {
-		curl: `curl -X GET "https://leadrfeeds.com/api/v1/collections" \\
+		curl: `curl -X GET "https://feeds.leadrai.com/api/v1/collections" \\
   -H "Authorization: Bearer lf_your_api_key_here"`,
-		javascript: `const response = await fetch('https://leadrfeeds.com/api/v1/collections', {
+		javascript: `const response = await fetch('https://feeds.leadrai.com/api/v1/collections', {
   headers: {
     'Authorization': 'Bearer lf_your_api_key_here'
   }
@@ -140,7 +140,7 @@ collections.forEach(collection => {
 		python: `import requests
 
 response = requests.get(
-    'https://leadrfeeds.com/api/v1/collections',
+    'https://feeds.leadrai.com/api/v1/collections',
     headers={'Authorization': 'Bearer lf_your_api_key_here'}
 )
 collections = response.json()['data']
@@ -150,9 +150,9 @@ for collection in collections:
 	};
 
 	const statsExample = {
-		curl: `curl -X GET "https://leadrfeeds.com/api/v1/stats" \\
+		curl: `curl -X GET "https://feeds.leadrai.com/api/v1/stats" \\
   -H "Authorization: Bearer lf_your_api_key_here"`,
-		javascript: `const response = await fetch('https://leadrfeeds.com/api/v1/stats', {
+		javascript: `const response = await fetch('https://feeds.leadrai.com/api/v1/stats', {
   headers: {
     'Authorization': 'Bearer lf_your_api_key_here'
   }
@@ -164,7 +164,7 @@ console.log(\`Total starred: \${stats.total_starred}\`);`,
 		python: `import requests
 
 response = requests.get(
-    'https://leadrfeeds.com/api/v1/stats',
+    'https://feeds.leadrai.com/api/v1/stats',
     headers={'Authorization': 'Bearer lf_your_api_key_here'}
 )
 stats = response.json()['data']
@@ -404,7 +404,7 @@ print(f"Total starred: {stats['total_starred']}")`
 
 				<div class="mb-6 rounded-lg border border-border bg-card p-4">
 					<h3 class="mb-2 font-semibold text-foreground">Base URL</h3>
-					<code class="rounded bg-muted px-2 py-1 text-sm font-mono text-primary">https://leadrfeeds.com/api/v1</code>
+					<code class="rounded bg-muted px-2 py-1 text-sm font-mono text-primary">https://feeds.leadrai.com/api/v1</code>
 				</div>
 
 				<div class="grid gap-4 sm:grid-cols-3">
