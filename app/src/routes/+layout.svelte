@@ -2,22 +2,8 @@
 	import '../app.css';
 	import { loading } from '$lib/stores/auth';
 	import Toast from '$lib/components/Toast.svelte';
-	import { onMount } from 'svelte';
-	import { loadTheme } from '$lib/stores/theme';
 
 	let { children } = $props();
-
-	onMount(() => {
-		let cleanup: (() => void) | undefined;
-
-		(async () => {
-			cleanup = await loadTheme();
-		})();
-
-		return () => {
-			cleanup?.();
-		};
-	});
 </script>
 
 <svelte:head>
