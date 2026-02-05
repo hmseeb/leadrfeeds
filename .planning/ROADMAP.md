@@ -159,10 +159,11 @@ Plans:
   3. Authentication guide explains key creation and usage
   4. OpenAPI/Swagger specification is available for download
   5. Code examples exist for common languages (curl, JavaScript, Python)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md - Documentation foundation (CodeBlock, ParamTable, OpenAPI spec, endpoint)
+- [ ] 09-02-PLAN.md - Documentation page and Settings integration
 
 ## Progress
 
@@ -180,7 +181,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
 | 7. Collections & Stats | 2/2 | Complete | 2026-02-05 |
 | 8. Key Management UI | 2/2 | Complete | 2026-02-05 |
-| 9. Documentation | 0/? | Not started | - |
+| 9. Documentation | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-04*
