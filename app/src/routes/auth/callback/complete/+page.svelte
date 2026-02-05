@@ -3,9 +3,34 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { supabase } from '$lib/services/supabase';
+	import { user } from '$lib/stores/auth';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	let error = $state('');
+
+	// Wait for auth store to sync after OAuth
+	function waitForAuthSync(maxWaitMs = 3000): Promise<boolean> {
+		return new Promise((resolve) => {
+			// If already have user, resolve immediately
+			if ($user) {
+				resolve(true);
+				return;
+			}
+
+			const timeout = setTimeout(() => {
+				unsubscribe();
+				resolve(false);
+			}, maxWaitMs);
+
+			const unsubscribe = user.subscribe((u) => {
+				if (u) {
+					clearTimeout(timeout);
+					unsubscribe();
+					resolve(true);
+				}
+			});
+		});
+	}
 
 	onMount(async () => {
 		const code = $page.url.searchParams.get('code');
@@ -28,6 +53,9 @@
 			return;
 		}
 
+		// Wait for auth store to sync before navigating
+		await waitForAuthSync();
+
 		// Check if user has settings (existing user) or needs onboarding (new user)
 		const { data: settings } = await supabase
 			.from('user_settings')
@@ -36,11 +64,10 @@
 			.single();
 
 		if (!settings) {
-			// New user - create settings with default theme
+			// New user - create settings
 			// Use upsert to handle race conditions (e.g., double-click, retry)
 			await supabase.from('user_settings').upsert({
-				user_id: session.user.id,
-				theme: 'dark'
+				user_id: session.user.id
 			}, { onConflict: 'user_id' });
 			// Redirect to discover for onboarding
 			goto('/discover');
