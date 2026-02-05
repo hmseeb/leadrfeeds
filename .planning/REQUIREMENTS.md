@@ -65,11 +65,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Documentation
 
-- [ ] **DOC-01**: API has documentation page accessible to users
-- [ ] **DOC-02**: Documentation includes endpoint reference
-- [ ] **DOC-03**: Documentation includes authentication guide
-- [ ] **DOC-04**: API provides OpenAPI/Swagger specification
-- [ ] **DOC-05**: Documentation includes code examples
+- [x] **DOC-01**: API has documentation page accessible to users
+- [x] **DOC-02**: Documentation includes endpoint reference
+- [x] **DOC-03**: Documentation includes authentication guide
+- [x] **DOC-04**: API provides OpenAPI/Swagger specification
+- [x] **DOC-05**: Documentation includes code examples
 
 ### Error Handling
 
@@ -145,11 +145,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAGE-01 | Phase 3 | Complete |
 | PAGE-02 | Phase 3 | Complete |
 | PAGE-03 | Phase 3 | Complete |
-| DOC-01 | Phase 9 | Pending |
-| DOC-02 | Phase 9 | Pending |
-| DOC-03 | Phase 9 | Pending |
-| DOC-04 | Phase 9 | Pending |
-| DOC-05 | Phase 9 | Pending |
+| DOC-01 | Phase 9 | Complete |
+| DOC-02 | Phase 9 | Complete |
+| DOC-03 | Phase 9 | Complete |
+| DOC-04 | Phase 9 | Complete |
+| DOC-05 | Phase 9 | Complete |
 | ERR-01 | Phase 3 | Complete |
 | ERR-02 | Phase 3 | Complete |
 | ERR-03 | Phase 3 | Complete |
@@ -161,4 +161,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-04*
-*Last updated: 2026-02-04 after roadmap creation*
+*Last updated: 2026-02-05 - all v1 requirements complete*

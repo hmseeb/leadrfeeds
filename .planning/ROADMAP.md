@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Feeds Endpoint** - Feed metadata and subscription data
 - [x] **Phase 7: Collections & Stats** - Secondary data endpoints
 - [x] **Phase 8: Key Management UI** - User-facing key CRUD in settings
-- [ ] **Phase 9: Documentation** - OpenAPI spec and user guides
+- [x] **Phase 9: Documentation** - OpenAPI spec and user guides
 
 ## Phase Details
 
@@ -162,8 +162,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md - Documentation foundation (CodeBlock, ParamTable, OpenAPI spec, endpoint)
-- [ ] 09-02-PLAN.md - Documentation page and Settings integration
+- [x] 09-01-PLAN.md - Documentation foundation (CodeBlock, ParamTable, OpenAPI spec, endpoint)
+- [x] 09-02-PLAN.md - Documentation page and Settings integration
 
 ## Progress
 
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
 | 7. Collections & Stats | 2/2 | Complete | 2026-02-05 |
 | 8. Key Management UI | 2/2 | Complete | 2026-02-05 |
-| 9. Documentation | 0/2 | Not started | - |
+| 9. Documentation | 2/2 | Complete | 2026-02-05 |
 
 ---
 *Roadmap created: 2026-02-04*
