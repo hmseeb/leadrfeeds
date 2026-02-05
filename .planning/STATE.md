@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** Users can access their data programmatically without limitations -- simple auth, comprehensive queries, reliable responses.
-**Current focus:** Phase 8 - Key Management UI
+**Current focus:** Phase 8 - Key Management UI (COMPLETE)
 
 ## Current Position
 
-Phase: 8 of 9 (Key Management UI) - IN PROGRESS
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-05 -- Completed 08-01-PLAN.md (API key endpoint and modal)
+Phase: 8 of 9 (Key Management UI) - COMPLETE
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-02-05 -- Completed 08-02-PLAN.md (Settings page API keys UI)
 
-Progress: [########--] 85%
+Progress: [########=-] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 2.6 min
-- Total execution time: 0.45 hours
+- Total execution time: 0.48 hours
 
 **By Phase:**
 
@@ -34,10 +34,10 @@ Progress: [########--] 85%
 | 05-entries-endpoint | 2 | 4min | 2min |
 | 06-feeds-endpoint | 1 | 1min | 1min |
 | 07-collections-stats | 2 | 4min | 2min |
-| 08-key-management-ui | 1 | 2min | 2min |
+| 08-key-management-ui | 2 | 5min | 2.5min |
 
 **Recent Trend:**
-- Last 5 plans: 2min, 1min, 2min, 2min, 2min
+- Last 5 plans: 1min, 2min, 2min, 2min, 3min
 - Trend: Consistent efficiency
 
 *Updated after each plan completion*
@@ -89,6 +89,8 @@ Recent decisions affecting current work:
 - [08-01]: Bearer token auth via Authorization header for client-side Supabase auth
 - [08-01]: User ownership check on DELETE to prevent unauthorized revocation
 - [08-01]: Modal requires explicit acknowledgment (no click-outside close)
+- [08-02]: Derived status from revoked_at and expires_at fields
+- [08-02]: Inline create form instead of separate modal
 
 ### Pending Todos
 
@@ -101,6 +103,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 08-01-PLAN.md
+Stopped at: Completed 08-02-PLAN.md (Phase 8 complete)
 Resume file: None
-Next: Execute 08-02-PLAN.md (Settings page UI)
+Next: Execute Phase 9 (Documentation)
