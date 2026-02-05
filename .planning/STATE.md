@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** Users can access their data programmatically without limitations -- simple auth, comprehensive queries, reliable responses.
-**Current focus:** Phase 8 - Key Management UI (COMPLETE)
+**Current focus:** Phase 9 - Documentation
 
 ## Current Position
 
-Phase: 8 of 9 (Key Management UI) - COMPLETE
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-05 -- Completed 08-02-PLAN.md (Settings page API keys UI)
+Phase: 9 of 9 (Documentation) - IN PROGRESS
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-05 -- Completed 09-01-PLAN.md (Documentation Foundation)
 
-Progress: [########=-] 90%
+Progress: [##########] 97%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 2.6 min
-- Total execution time: 0.48 hours
+- Total execution time: 0.53 hours
 
 **By Phase:**
 
@@ -35,9 +35,10 @@ Progress: [########=-] 90%
 | 06-feeds-endpoint | 1 | 1min | 1min |
 | 07-collections-stats | 2 | 4min | 2min |
 | 08-key-management-ui | 2 | 5min | 2.5min |
+| 09-documentation | 1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 1min, 2min, 2min, 2min, 3min
+- Last 5 plans: 2min, 2min, 2min, 3min, 3min
 - Trend: Consistent efficiency
 
 *Updated after each plan completion*
@@ -91,6 +92,10 @@ Recent decisions affecting current work:
 - [08-01]: Modal requires explicit acknowledgment (no click-outside close)
 - [08-02]: Derived status from revoked_at and expires_at fields
 - [08-02]: Inline create form instead of separate modal
+- [09-01]: Use prismjs for syntax highlighting (widely used, supports all needed languages)
+- [09-01]: OpenAPI 3.1.0 spec with as const for type safety
+- [09-01]: No Content-Disposition header on /api/openapi.json (view in browser)
+- [09-01]: Prism theme overrides using CSS variables for dark mode
 
 ### Pending Todos
 
@@ -103,6 +108,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 08-02-PLAN.md (Phase 8 complete)
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
-Next: Execute Phase 9 (Documentation)
+Next: Execute 09-02-PLAN.md (Documentation Page)
