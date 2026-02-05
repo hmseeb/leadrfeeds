@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Entries Endpoint** - Core feed entry access with filtering
 - [x] **Phase 6: Feeds Endpoint** - Feed metadata and subscription data
 - [x] **Phase 7: Collections & Stats** - Secondary data endpoints
-- [ ] **Phase 8: Key Management UI** - User-facing key CRUD in settings
+- [x] **Phase 8: Key Management UI** - User-facing key CRUD in settings
 - [ ] **Phase 9: Documentation** - OpenAPI spec and user guides
 
 ## Phase Details
@@ -146,8 +146,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md - Server endpoint for key CRUD + ApiKeyModal component
-- [ ] 08-02-PLAN.md - Settings page integration with key list and management UI
+- [x] 08-01-PLAN.md - Server endpoint for key CRUD + ApiKeyModal component
+- [x] 08-02-PLAN.md - Settings page integration with key list and management UI
 
 ### Phase 9: Documentation
 **Goal**: External users have comprehensive documentation for API integration
@@ -179,7 +179,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 5. Entries Endpoint | 2/2 | Complete | 2026-02-04 |
 | 6. Feeds Endpoint | 1/1 | Complete | 2026-02-04 |
 | 7. Collections & Stats | 2/2 | Complete | 2026-02-05 |
-| 8. Key Management UI | 0/2 | Not started | - |
+| 8. Key Management UI | 2/2 | Complete | 2026-02-05 |
 | 9. Documentation | 0/? | Not started | - |
 
 ---

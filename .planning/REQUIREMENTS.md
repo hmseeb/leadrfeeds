@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### API Key Management
 
-- [ ] **KEY-01**: User can create API key with a custom label
-- [ ] **KEY-02**: User can set expiration date when creating key
-- [ ] **KEY-03**: User can revoke an active API key
-- [ ] **KEY-04**: User can create multiple API keys (different integrations)
-- [ ] **KEY-05**: User can view list of their API keys with status
+- [x] **KEY-01**: User can create API key with a custom label
+- [x] **KEY-02**: User can set expiration date when creating key
+- [x] **KEY-03**: User can revoke an active API key
+- [x] **KEY-04**: User can create multiple API keys (different integrations)
+- [x] **KEY-05**: User can view list of their API keys with status
 - [x] **KEY-06**: API key is shown once on creation (hashed in database)
 
 ### API Authentication
@@ -113,11 +113,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KEY-01 | Phase 8 | Pending |
-| KEY-02 | Phase 8 | Pending |
-| KEY-03 | Phase 8 | Pending |
-| KEY-04 | Phase 8 | Pending |
-| KEY-05 | Phase 8 | Pending |
+| KEY-01 | Phase 8 | Complete |
+| KEY-02 | Phase 8 | Complete |
+| KEY-03 | Phase 8 | Complete |
+| KEY-04 | Phase 8 | Complete |
+| KEY-05 | Phase 8 | Complete |
 | KEY-06 | Phase 1 | Complete |
 | AUTH-01 | Phase 2 | Complete |
 | AUTH-02 | Phase 2 | Complete |
