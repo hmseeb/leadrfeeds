@@ -5,7 +5,7 @@
 	import { goto } from '$app/navigation';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import MobileHeader from '$lib/components/MobileHeader.svelte';
-	import { Save, Check, X, Monitor, Sun, Moon, Key, Plus, Trash2 } from 'lucide-svelte';
+	import { Save, Check, X, Monitor, Sun, Moon, Key, Plus, Trash2, Book } from 'lucide-svelte';
 	import { theme, setTheme } from '$lib/stores/theme';
 	import { useDesktopLayout } from '$lib/stores/screenSize';
 	import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -466,9 +466,14 @@
 							</div>
 						</div>
 
-						<p class="text-sm text-muted-foreground mb-4">
+						<p class="text-sm text-muted-foreground mb-3">
 							API keys allow programmatic access to your feed data. Keys are shown only once when created.
 						</p>
+
+						<a href="/docs/api" class="text-sm text-primary hover:text-primary/90 inline-flex items-center gap-1.5 mb-4">
+							<Book size={14} />
+							View API Documentation
+						</a>
 
 						{#if keysLoading}
 							<p class="text-muted-foreground text-sm">Loading keys...</p>
