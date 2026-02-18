@@ -119,41 +119,19 @@
     aiContextCache = new Map();
   }
 
-  // Pagination helper to fetch all entries from RPC calls (bypassing PostgREST 1000 row limit)
-  const PAGE_SIZE = 1000;
-
-  async function fetchAllPaginated<T>(
+  // Helper to call AI context RPCs directly (no pagination needed - RPCs return all entries for the date range)
+  async function fetchRpc<T>(
     rpcName: 'get_ai_context' | 'get_collection_ai_context',
     params: Record<string, unknown>
   ): Promise<T[]> {
-    let allResults: T[] = [];
-    let offset = 0;
-    let hasMore = true;
+    const { data, error } = await supabase.rpc(rpcName, params as any);
 
-    while (hasMore) {
-      const { data, error } = await supabase.rpc(rpcName, {
-        ...params,
-        result_limit: PAGE_SIZE,
-        result_offset: offset
-      } as any);
-
-      if (error) {
-        console.error(`Error fetching from ${rpcName}:`, error);
-        break;
-      }
-
-      const results = (data || []) as T[];
-      allResults = [...allResults, ...results];
-
-      // If we got fewer results than PAGE_SIZE, we've reached the end
-      if (results.length < PAGE_SIZE) {
-        hasMore = false;
-      } else {
-        offset += PAGE_SIZE;
-      }
+    if (error) {
+      console.error(`Error fetching from ${rpcName}:`, error);
+      return [];
     }
 
-    return allResults;
+    return (data || []) as T[];
   }
 
   function selectTimeRange(hours: number) {
@@ -318,7 +296,7 @@ OUTPUT STYLE:
 
     try {
       // Use pagination to bypass PostgREST 1000 row limit
-      let entries: AIContextEntry[] = await fetchAllPaginated<AIContextEntry>('get_ai_context', {
+      let entries: AIContextEntry[] = await fetchRpc<AIContextEntry>('get_ai_context', {
         user_id_param: $user.id,
         feed_id_filter: viewType === 'feed' ? feedId : undefined,
         starred_only: viewType === 'starred',
@@ -399,7 +377,7 @@ OUTPUT STYLE:
 
     try {
       // Use pagination to bypass PostgREST 1000 row limit
-      const entries: AIContextEntry[] = await fetchAllPaginated<AIContextEntry>('get_collection_ai_context', {
+      const entries: AIContextEntry[] = await fetchRpc<AIContextEntry>('get_collection_ai_context', {
         user_id_param: $user.id,
         collection_id_param: collectionId,
         hours_lookback: selectedHoursLookback,
@@ -1038,7 +1016,18 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
 
     for (const context of activeContexts) {
       if (context.type === "view" && (context.label === "All" || context.label === "All Posts")) {
-        const entries = await fetchAIContext('all', undefined, undefined, searchQuery);
+        let entries = await fetchAIContext('all', undefined, undefined, searchQuery);
+
+        // Fallback: if RPC returns empty, use timeline entries
+        if (entries.length === 0 && timelineEntries.length > 0) {
+          entries = timelineEntries.map((e: any) => ({
+            entry_id: e.entry_id, entry_title: e.entry_title, entry_description: e.entry_description,
+            entry_content: e.entry_content, entry_author: e.entry_author, entry_url: e.entry_url,
+            entry_published_at: e.entry_published_at, feed_id: e.feed_id, feed_title: e.feed_title,
+            feed_category: e.feed_category, feed_url: null, feed_site_url: null, is_starred: e.is_starred ?? false
+          }));
+        }
+
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const entrySummaries = entries
@@ -1056,7 +1045,21 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
           contextParts.push(`## Context: User is viewing all posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "view" && (context.label === "Starred" || context.label === "Starred Posts")) {
-        const entries = await fetchAIContext('starred', undefined, undefined, searchQuery);
+        let entries = await fetchAIContext('starred', undefined, undefined, searchQuery);
+
+        // Fallback: if RPC returns empty, use starred timeline entries
+        if (entries.length === 0 && timelineEntries.length > 0) {
+          const starredEntries = timelineEntries.filter((e: any) => e.is_starred);
+          if (starredEntries.length > 0) {
+            entries = starredEntries.map((e: any) => ({
+              entry_id: e.entry_id, entry_title: e.entry_title, entry_description: e.entry_description,
+              entry_content: e.entry_content, entry_author: e.entry_author, entry_url: e.entry_url,
+              entry_published_at: e.entry_published_at, feed_id: e.feed_id, feed_title: e.feed_title,
+              feed_category: e.feed_category, feed_url: null, feed_site_url: null, is_starred: true
+            }));
+          }
+        }
+
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const entrySummaries = entries
@@ -1073,7 +1076,21 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
           contextParts.push(`## Context: User is viewing their starred/saved posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "view" && (context.label === "Unread" || context.label === "Unread Posts")) {
-        const entries = await fetchAIContext('unread', undefined, undefined, searchQuery);
+        let entries = await fetchAIContext('unread', undefined, undefined, searchQuery);
+
+        // Fallback: if RPC returns empty, use unread timeline entries
+        if (entries.length === 0 && timelineEntries.length > 0) {
+          const unreadEntries = timelineEntries.filter((e: any) => !e.is_read);
+          if (unreadEntries.length > 0) {
+            entries = unreadEntries.map((e: any) => ({
+              entry_id: e.entry_id, entry_title: e.entry_title, entry_description: e.entry_description,
+              entry_content: e.entry_content, entry_author: e.entry_author, entry_url: e.entry_url,
+              entry_published_at: e.entry_published_at, feed_id: e.feed_id, feed_title: e.feed_title,
+              feed_category: e.feed_category, feed_url: null, feed_site_url: null, is_starred: e.is_starred ?? false
+            }));
+          }
+        }
+
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const entrySummaries = entries
@@ -1090,7 +1107,18 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
           contextParts.push(`## Context: User is viewing their unread posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "category") {
-        const entries = await fetchAIContext('category', undefined, context.data.category, searchQuery);
+        let entries = await fetchAIContext('category', undefined, context.data.category, searchQuery);
+
+        // Fallback: if RPC returns empty, use timeline entries (already filtered by category in the page)
+        if (entries.length === 0 && timelineEntries.length > 0) {
+          entries = timelineEntries.map((e: any) => ({
+            entry_id: e.entry_id, entry_title: e.entry_title, entry_description: e.entry_description,
+            entry_content: e.entry_content, entry_author: e.entry_author, entry_url: e.entry_url,
+            entry_published_at: e.entry_published_at, feed_id: e.feed_id, feed_title: e.feed_title,
+            feed_category: e.feed_category, feed_url: null, feed_site_url: null, is_starred: e.is_starred ?? false
+          }));
+        }
+
         if (entries.length > 0) {
           const totalEntries = entries.length;
           const summaries = entries
@@ -1108,10 +1136,33 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
         }
       } else if (context.type === "feed") {
         const feedId = context.data.feed_id || context.data.id;
-        const entries = await fetchAIContext('feed', feedId, undefined, searchQuery);
-        if (entries.length > 0) {
-          const totalEntries = entries.length;
-          const summaries = entries
+        let feedEntries = await fetchAIContext('feed', feedId, undefined, searchQuery);
+
+        // Fallback: if RPC returns empty, use timeline entries for this feed
+        if (feedEntries.length === 0 && timelineEntries.length > 0) {
+          const fallbackEntries = timelineEntries.filter((e: any) => e.feed_id === feedId);
+          if (fallbackEntries.length > 0) {
+            feedEntries = fallbackEntries.map((e: any) => ({
+              entry_id: e.entry_id,
+              entry_title: e.entry_title,
+              entry_description: e.entry_description,
+              entry_content: e.entry_content,
+              entry_author: e.entry_author,
+              entry_url: e.entry_url,
+              entry_published_at: e.entry_published_at,
+              feed_id: e.feed_id,
+              feed_title: e.feed_title,
+              feed_category: e.feed_category,
+              feed_url: null,
+              feed_site_url: null,
+              is_starred: e.is_starred ?? false
+            }));
+          }
+        }
+
+        if (feedEntries.length > 0) {
+          const totalEntries = feedEntries.length;
+          const summaries = feedEntries
             .map((entry, index) => {
               const description = stripHtml(entry.entry_description || "");
               const postNum = totalEntries - index;
@@ -1120,14 +1171,25 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             })
             .join("\n\n---\n\n");
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## ${context.label} Feed${searchSuffix} (last ${timeLabel}, ${entries.length} posts, ordered newest to oldest):\n\n${summaries}`);
+          contextParts.push(`## ${context.label} Feed${searchSuffix} (${feedEntries.length} posts, ordered newest to oldest):\n\n${summaries}`);
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
           contextParts.push(`## Context: User is asking about the "${context.label}" feed${searchSuffix} (no posts from last ${timeLabel})`);
         }
       } else if (context.type === "collection") {
         const collectionId = context.data.collection_id;
-        const entries = await fetchCollectionAIContext(collectionId, searchQuery);
+        let entries = await fetchCollectionAIContext(collectionId, searchQuery);
+
+        // Fallback: if RPC returns empty, use timeline entries (already filtered by collection in the page)
+        if (entries.length === 0 && timelineEntries.length > 0) {
+          entries = timelineEntries.map((e: any) => ({
+            entry_id: e.entry_id, entry_title: e.entry_title, entry_description: e.entry_description,
+            entry_content: e.entry_content, entry_author: e.entry_author, entry_url: e.entry_url,
+            entry_published_at: e.entry_published_at, feed_id: e.feed_id, feed_title: e.feed_title,
+            feed_category: e.feed_category, feed_url: null, feed_site_url: null, is_starred: e.is_starred ?? false
+          }));
+        }
+
         if (entries.length > 0) {
           // Get unique feed names in this collection
           const feedNames = [...new Set(entries.map(e => e.feed_title).filter(Boolean))];
@@ -1143,7 +1205,7 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             })
             .join("\n\n---\n\n");
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
-          contextParts.push(`## ${context.label} Collection${feedListStr}${searchSuffix} (last ${timeLabel}, ${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
+          contextParts.push(`## ${context.label} Collection${feedListStr}${searchSuffix} (${entries.length} entries, ordered newest to oldest):\n\n${summaries}`);
         } else {
           const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
           contextParts.push(`## Context: User is viewing the "${context.label}" collection${searchSuffix} (no entries from last ${timeLabel})`);
