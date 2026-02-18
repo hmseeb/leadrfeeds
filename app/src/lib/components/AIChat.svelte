@@ -1051,8 +1051,9 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             })
             .join("\n\n---\n\n");
           contextParts.push(`${buildHeader('All Posts', entries.length)}\n\n${entrySummaries}`);
-        } else if (searchQuery) {
-          contextParts.push(`## Context: User searched for "${searchQuery}" in All Posts (no matching entries from last ${timeLabel})`);
+        } else {
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## Context: User is viewing all posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "view" && (context.label === "Starred" || context.label === "Starred Posts")) {
         const entries = await fetchAIContext('starred', undefined, undefined, searchQuery);
@@ -1101,8 +1102,9 @@ Be concise. Skip minor/trivial updates. Focus on what actually matters to users.
             })
             .join("\n\n---\n\n");
           contextParts.push(`${buildHeader(`${context.label} Posts`, entries.length)}\n\n${summaries}`);
-        } else if (searchQuery) {
-          contextParts.push(`## Context: User searched for "${searchQuery}" in ${context.label} (no matching entries from last ${timeLabel})`);
+        } else {
+          const searchSuffix = searchQuery ? ` matching "${searchQuery}"` : '';
+          contextParts.push(`## Context: User is viewing ${context.label} posts${searchSuffix} (none from last ${timeLabel})`);
         }
       } else if (context.type === "feed") {
         const feedId = context.data.feed_id || context.data.id;
